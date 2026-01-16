@@ -72,7 +72,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       active = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   async function handleLogout() {
     if (!supabaseClient) return;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -63,7 +63,7 @@ export default function PessoaPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
 
-  async function loadPessoa() {
+  const loadPessoa = useCallback(async () => {
     if (!supabaseClient || !pessoaId) return;
     setLoading(true);
     setStatusMessage("");
@@ -115,11 +115,11 @@ export default function PessoaPerfilPage() {
     setDepartamentos(departamentosResult.data ?? []);
     setPessoaDepto(pessoaDeptoResult.data ?? []);
     setLoading(false);
-  }
+  }, [pessoaId]);
 
   useEffect(() => {
     loadPessoa();
-  }, [pessoaId]);
+  }, [loadPessoa]);
 
   const deptoMap = useMemo(
     () => new Map(departamentos.map((dept) => [dept.id, dept.nome])),

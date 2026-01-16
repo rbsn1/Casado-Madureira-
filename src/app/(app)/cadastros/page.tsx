@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -36,7 +36,7 @@ export default function CadastrosPage() {
 
   const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
 
-  async function loadPessoas() {
+  const loadPessoas = useCallback(async () => {
     if (!supabaseClient) {
       setStatusMessage("Supabase não configurado.");
       return;
@@ -136,11 +136,11 @@ export default function CadastrosPage() {
 
     setPessoas(merged);
     setLoading(false);
-  }
+  }, [searchParams]);
 
   useEffect(() => {
     loadPessoas();
-  }, [searchParams]);
+  }, [loadPessoas]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();

@@ -130,6 +130,7 @@ export default function LoginPage() {
         <div className="card p-6 shadow-lg">
           {bgUrl ? (
             <div className="mb-6 flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={bgUrl}
                 alt="Logo Casados com a Madureira"

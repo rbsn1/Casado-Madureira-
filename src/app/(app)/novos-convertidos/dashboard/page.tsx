@@ -60,8 +60,8 @@ export default function NovosConvertidosDashboardPage() {
           volunteers: item.count
         }))
       );
-      setDestaques(data?.destaques ?? destaques);
-      setPendencias(data?.pendencias ?? pendencias);
+      setDestaques((prev) => data?.destaques ?? prev);
+      setPendencias((prev) => data?.pendencias ?? prev);
     }
 
     loadDashboard();
