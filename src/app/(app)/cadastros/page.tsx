@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -20,7 +20,7 @@ type PessoaItem = {
   updated_at?: string | null;
 };
 
-export default function CadastrosPage() {
+function CadastrosContent() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
@@ -486,5 +486,13 @@ export default function CadastrosPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CadastrosPage() {
+  return (
+    <Suspense fallback={<div className="card p-4 text-sm text-slate-500">Carregando...</div>}>
+      <CadastrosContent />
+    </Suspense>
   );
 }

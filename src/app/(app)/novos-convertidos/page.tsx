@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -16,7 +16,7 @@ type IntegracaoItem = {
   telefone_whatsapp: string | null;
 };
 
-export default function NovosConvertidosPage() {
+function NovosConvertidosContent() {
   const [items, setItems] = useState<IntegracaoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
@@ -203,5 +203,13 @@ export default function NovosConvertidosPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function NovosConvertidosPage() {
+  return (
+    <Suspense fallback={<div className="card p-4 text-sm text-slate-500">Carregando...</div>}>
+      <NovosConvertidosContent />
+    </Suspense>
   );
 }
