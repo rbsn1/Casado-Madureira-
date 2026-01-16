@@ -18,9 +18,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "userId and role are required" }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin
+  const payload = { user_id: userId, role, active };
+  const { error } = await (supabaseAdmin as any)
     .from("usuarios_perfis")
-    .upsert({ user_id: userId, role, active });
+    .upsert(payload);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
