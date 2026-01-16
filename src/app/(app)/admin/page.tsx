@@ -16,6 +16,7 @@ const roleOptions = [
 ];
 
 async function apiFetch(path: string, options: RequestInit = {}) {
+  if (!supabaseClient) throw new Error("Supabase não configurado.");
   const { data } = await supabaseClient.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Sem sessão ativa.");
@@ -127,6 +128,7 @@ export default function AdminPage() {
       return;
     }
     try {
+      if (!supabaseClient) throw new Error("Supabase não configurado.");
       const { data } = await supabaseClient.auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error("Sem sessão ativa.");
