@@ -24,7 +24,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: roleError.message }, { status: 500 });
   }
 
-  const rolesByUser = (roles ?? []).reduce<Record<string, { role: string; active: boolean }[]>>(
+  const rolesByUser = ((roles ?? []) as { user_id: string; role: string; active: boolean }[]).reduce<
+    Record<string, { role: string; active: boolean }[]>
+  >(
     (acc, item) => {
       acc[item.user_id] = acc[item.user_id] ?? [];
       acc[item.user_id].push({ role: item.role, active: item.active });
@@ -68,9 +70,10 @@ export async function POST(request: Request) {
   }
 
   if (role) {
-    const { error: roleError } = await supabaseAdmin
+    const payload = { user_id: data.user.id, role, active: true };
+    const { error: roleError } = await (supabaseAdmin as any)
       .from("usuarios_perfis")
-      .upsert({ user_id: data.user.id, role, active: true });
+      .upsert(payload);
     if (roleError) {
       return NextResponse.json({ error: roleError.message }, { status: 500 });
     }
