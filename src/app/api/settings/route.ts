@@ -19,9 +19,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const typedData = (data ?? []) as { key: string; value: string | null }[];
   if (key) {
-    return NextResponse.json({ value: data?.[0]?.value ?? null });
+    return NextResponse.json({ value: typedData[0]?.value ?? null });
   }
 
-  return NextResponse.json({ settings: data ?? [] });
+  return NextResponse.json({ settings: typedData });
 }
