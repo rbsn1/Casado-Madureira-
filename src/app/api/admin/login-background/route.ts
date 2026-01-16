@@ -52,9 +52,13 @@ export async function POST(request: Request) {
     .from("login-backgrounds")
     .getPublicUrl(path);
 
-  const { error: settingsError } = await supabaseAdmin
+  const settingsPayload = {
+    key: "login_background_url",
+    value: publicUrl.publicUrl
+  };
+  const { error: settingsError } = await (supabaseAdmin as any)
     .from("app_settings")
-    .upsert({ key: "login_background_url", value: publicUrl.publicUrl });
+    .upsert(settingsPayload);
 
   if (settingsError) {
     return NextResponse.json({ error: settingsError.message }, { status: 500 });
