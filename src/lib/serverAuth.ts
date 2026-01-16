@@ -32,7 +32,8 @@ export async function requireAdmin(request: Request) {
     .eq("user_id", data.user.id)
     .eq("active", true);
 
-  if (roleError || !roles?.some((item) => item.role === "ADMIN_MASTER")) {
+  const typedRoles = (roles ?? []) as { role: string }[];
+  if (roleError || !typedRoles.some((item) => item.role === "ADMIN_MASTER")) {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 
