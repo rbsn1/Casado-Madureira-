@@ -4,7 +4,7 @@ type Stage = {
 };
 
 export function FunnelChart({ stages }: { stages: Stage[] }) {
-  const max = Math.max(...stages.map((s) => s.value), 1);
+  const max = stages.length ? Math.max(...stages.map((s) => s.value), 1) : 1;
 
   return (
     <div className="card p-4">
@@ -27,6 +27,7 @@ export function FunnelChart({ stages }: { stages: Stage[] }) {
             </div>
           </div>
         ))}
+        {!stages.length ? <p className="text-xs text-slate-500">Sem dados no período.</p> : null}
       </div>
     </div>
   );

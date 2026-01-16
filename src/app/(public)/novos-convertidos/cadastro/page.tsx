@@ -3,44 +3,49 @@
 import { FormEvent, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
-export default function PublicCadastroPage() {
+const igrejaOptions = [
+  "Sede",
+  "Congregação Cidade Nova",
+  "Congregação Japiim",
+  "Congregação Alvorada",
+  "Outra"
+];
+
+const bairroOptions = [
+  "Adrianópolis",
+  "Aleixo",
+  "Alvorada",
+  "Centro",
+  "Cidade Nova",
+  "Compensa",
+  "Dom Pedro",
+  "Flores",
+  "Japiim",
+  "Jorge Teixeira",
+  "Lago Azul",
+  "Mauazinho",
+  "Monte das Oliveiras",
+  "Parque Dez",
+  "Petrópolis",
+  "Planalto",
+  "Ponta Negra",
+  "Praça 14",
+  "Redenção",
+  "Santa Etelvina",
+  "São José",
+  "Tancredo Neves",
+  "Tarumã",
+  "Zumbi",
+  "Outro"
+];
+
+export default function NovoConvertidoCadastroPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [origem, setOrigem] = useState("Culto da Manhã");
-  const [igreja, setIgreja] = useState("Sede");
+  const [igreja, setIgreja] = useState(igrejaOptions[0]);
   const [igrejaOutra, setIgrejaOutra] = useState("");
-  const [bairro, setBairro] = useState("Adrianópolis");
+  const [bairro, setBairro] = useState(bairroOptions[0]);
   const [bairroOutro, setBairroOutro] = useState("");
-
-  const origemOptions = ["Culto da Manhã", "Culto da Tarde", "Culto da Noite"];
-  const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
-  const bairroOptions = [
-    "Adrianópolis",
-    "Aleixo",
-    "Alvorada",
-    "Centro",
-    "Cidade Nova",
-    "Compensa",
-    "Dom Pedro",
-    "Flores",
-    "Japiim",
-    "Jorge Teixeira",
-    "Lago Azul",
-    "Mauazinho",
-    "Monte das Oliveiras",
-    "Parque Dez",
-    "Petrópolis",
-    "Planalto",
-    "Ponta Negra",
-    "Praça 14",
-    "Redenção",
-    "Santa Etelvina",
-    "São José",
-    "Tancredo Neves",
-    "Tarumã",
-    "Zumbi",
-    "Outro"
-  ];
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,14 +58,6 @@ export default function PublicCadastroPage() {
       return;
     }
 
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const bairroInput = String(formData.get("bairro") ?? "");
-    if (bairroInput && bairroInput.trim().length < 2) {
-      setStatus("error");
-      setMessage("O bairro precisa ter ao menos 2 caracteres.");
-      return;
-    }
     if (igreja === "Outra" && !igrejaOutra.trim()) {
       setStatus("error");
       setMessage("Informe a igreja de origem.");
@@ -71,12 +68,15 @@ export default function PublicCadastroPage() {
       setMessage("Informe o bairro.");
       return;
     }
+
+    const formData = new FormData(event.currentTarget);
     const igrejaOrigem = igreja === "Outra" ? igrejaOutra : igreja;
     const bairroFinal = bairro === "Outro" ? bairroOutro : bairro;
+
     const payload = {
       nome_completo: String(formData.get("nome_completo") ?? ""),
       telefone_whatsapp: String(formData.get("telefone_whatsapp") ?? ""),
-      origem,
+      origem: "Novos Convertidos",
       igreja_origem: igrejaOrigem || null,
       bairro: bairroFinal || null,
       data: formData.get("data") ? String(formData.get("data")) : null,
@@ -91,14 +91,13 @@ export default function PublicCadastroPage() {
       return;
     }
 
-    form.reset();
+    event.currentTarget.reset();
+    setIgreja(igrejaOptions[0]);
+    setIgrejaOutra("");
+    setBairro(bairroOptions[0]);
+    setBairroOutro("");
     setStatus("success");
     setMessage("Cadastro enviado com sucesso. Aguarde o contato da equipe.");
-    setOrigem("Culto da Manhã");
-    setIgreja("Sede");
-    setIgrejaOutra("");
-    setBairro("Adrianópolis");
-    setBairroOutro("");
   }
 
   return (
@@ -106,9 +105,9 @@ export default function PublicCadastroPage() {
       <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-10">
         <div className="text-center">
           <p className="text-sm font-semibold text-emerald-700">Casados com a Madureira</p>
-          <h1 className="mt-2 text-3xl font-bold text-emerald-900">Cadastro de novos</h1>
+          <h1 className="mt-2 text-3xl font-bold text-emerald-900">Cadastro de Novos Convertidos</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Mobile-first. Ao enviar, cria cadastro, registra na fila de integração e adiciona evento na timeline.
+            Preencha os dados para iniciar o acompanhamento da equipe.
           </p>
         </div>
 
@@ -128,23 +127,8 @@ export default function PublicCadastroPage() {
               required
               name="telefone_whatsapp"
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="(21) 99999-0000"
+              placeholder="(92) 9xxxx-xxxx"
             />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Origem</span>
-            <select
-              name="origem"
-              value={origem}
-              onChange={(event) => setOrigem(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            >
-              {origemOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Igreja de origem / Congregação</span>
@@ -234,10 +218,6 @@ export default function PublicCadastroPage() {
             </p>
           ) : null}
         </form>
-
-        <p className="text-center text-xs text-slate-600">
-          Ao enviar, cria pessoa, integra fila (status PENDENTE) e adiciona evento CADASTRO & ENCAMINHADO na timeline.
-        </p>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ type Entry = {
 };
 
 export function DepartmentBarChart({ entries }: { entries: Entry[] }) {
-  const max = Math.max(...entries.map((e) => e.volunteers), 1);
+  const max = entries.length ? Math.max(...entries.map((e) => e.volunteers), 1) : 1;
 
   return (
     <div className="card p-4">
@@ -27,6 +27,7 @@ export function DepartmentBarChart({ entries }: { entries: Entry[] }) {
             </div>
           </div>
         ))}
+        {!entries.length ? <p className="text-xs text-slate-500">Sem dados no período.</p> : null}
       </div>
     </div>
   );

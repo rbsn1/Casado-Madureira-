@@ -1,13 +1,19 @@
 import clsx from "clsx";
 
 const variants: Record<string, string> = {
-  PENDENTE: "bg-amber-100 text-amber-900",
-  EM_ANDAMENTO: "bg-blue-100 text-blue-900",
-  CONCLUIDO: "bg-emerald-100 text-emerald-900",
-  INTEGRADO: "bg-emerald-100 text-emerald-900",
-  BATIZADO: "bg-cyan-100 text-cyan-900",
-  ATIVO: "bg-emerald-100 text-emerald-900",
-  INATIVO: "bg-slate-200 text-slate-700"
+  PENDENTE: "bg-warning-100 text-warning-600",
+  EM_ANDAMENTO: "bg-info-100 text-info-600",
+  ENCAMINHADO: "bg-accent-100 text-accent-600",
+  CONTATO: "bg-brand-100 text-brand-900",
+  CONCLUIDO: "bg-success-100 text-success-600",
+  INTEGRADO: "bg-success-100 text-success-600",
+  BATIZADO: "bg-accent-100 text-accent-600",
+  BATISMO: "bg-accent-100 text-accent-600",
+  CADASTRO: "bg-brand-100 text-brand-900",
+  ENCAMINHADO_EVENTO: "bg-accent-100 text-accent-600",
+  DEPTO_VINCULO: "bg-tea-100 text-tea-600",
+  ATIVO: "bg-success-100 text-success-600",
+  INATIVO: "bg-surface text-text-muted"
 };
 
 export function StatusBadge({ value }: { value: string }) {

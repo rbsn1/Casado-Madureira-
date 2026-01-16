@@ -4,20 +4,20 @@
 
 :root {
   color-scheme: light;
-  --tea-green: #d0f0c0;
+  --tea-green: #dcebe2;
 }
 
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f7f9f7;
-  color: #0f172a;
+  background: #ffffff;
+  color: #1f2933;
 }
 
 .app-shell {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px 1fr;
-  background: linear-gradient(120deg, #f2fbf2 0%, #ffffff 40%);
+  background: #ffffff;
 }
 
 @media (max-width: 1024px) {
@@ -27,11 +27,11 @@ body {
 }
 
 .card {
-  @apply bg-white rounded-2xl border border-slate-100 shadow-sm;
+  @apply bg-white rounded-2xl border border-border shadow-sm;
 }
 
 .card-muted {
-  @apply bg-slate-50 border-slate-200;
+  @apply bg-surface border-border;
 }
 
 .pill {
