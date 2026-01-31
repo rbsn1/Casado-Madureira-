@@ -194,8 +194,8 @@ export default function LoginPage() {
   }, [nextEvents]);
 
   return (
-    <PortalBackground heroImageSrc="/portal-hero.jpg" heroHeight="560px">
-      {/* Substitua /public/portal-hero.jpg pela imagem final do mock. */}
+    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
+      {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
         <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
           <div className="flex items-center gap-3">

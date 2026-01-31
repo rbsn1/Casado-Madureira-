@@ -13,23 +13,33 @@ export function PortalBackground({
 }: PortalBackgroundProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#F7FBF7] text-slate-900">
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-emerald-50/60 to-emerald-100/70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-white via-emerald-50/50 to-emerald-100/60" />
 
-      {/* Hero image backdrop (optional) */}
+      {/* Hero image backdrop (optional): community scene */}
       {heroImageSrc ? (
         <div className="absolute inset-x-0 top-0" style={{ height: heroHeight }} aria-hidden="true">
           <div
-            className="absolute inset-0 bg-center bg-no-repeat bg-cover opacity-[0.14] blur-2xl saturate-50"
+            className="absolute inset-0 bg-cover bg-no-repeat opacity-[0.13] blur-2xl saturate-60"
             style={{
               backgroundImage: `url(${heroImageSrc})`,
               backgroundPosition: "right center",
-              transform: "translateX(32px)"
+              transform: "translateX(28px)"
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.9)_0%,_rgba(255,255,255,0.55)_45%,_rgba(255,255,255,0.2)_75%)]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/80 via-white/35 to-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.92)_0%,_rgba(255,255,255,0.6)_45%,_rgba(220,238,229,0.35)_75%)]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/50 to-emerald-100/20" />
         </div>
       ) : null}
+
+      {/* Symbolic pattern overlay (rings/olive/cross) */}
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"240\" height=\"240\" viewBox=\"0 0 240 240\"><g fill=\"none\" stroke=\"%23000000\" stroke-width=\"1\"><circle cx=\"44\" cy=\"52\" r=\"18\"/><circle cx=\"68\" cy=\"52\" r=\"18\"/><path d=\"M120 44v28M106 58h28\"/><path d=\"M170 60c10 10 22 10 32 0\"/><path d=\"M170 60c2 8 6 14 12 18\"/><path d=\"M202 60c-2 8-6 14-12 18\"/></g></svg>')",
+          backgroundSize: "240px 240px"
+        }}
+      />
 
       {/* Glows */}
       <div className="absolute left-1/2 top-10 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-emerald-200/30 blur-[140px]" />
