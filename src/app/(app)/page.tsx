@@ -20,6 +20,10 @@ type MonthlyEntry = {
   count: number;
 };
 
+function formatDate(value: Date) {
+  return value.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 function getPeriodRange(period: string, customStart?: string, customEnd?: string) {
   const now = new Date();
   if (period === "Personalizado" && customStart && customEnd) {
@@ -72,6 +76,7 @@ export default function DashboardPage() {
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
   const [anoSelecionado, setAnoSelecionado] = useState<number>(currentYear);
   const [mensal, setMensal] = useState<MonthlyEntry[]>([]);
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
   useEffect(() => {
     async function loadDashboard() {
@@ -140,49 +145,79 @@ export default function DashboardPage() {
     return `/cadastros?origem_tipo=${encodeURIComponent(value)}`;
   }
 
+  const periodSummary = useMemo(() => {
+    const range = getPeriodRange(period, customStart, customEnd);
+    if (!range.start || !range.end) return "Selecione um período para acompanhar a movimentação.";
+    return `${formatDate(range.start)} – ${formatDate(range.end)}`;
+  }, [period, customStart, customEnd]);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="pill bg-emerald-100 text-emerald-900">Filtros rápidos</span>
-        <div className="flex flex-wrap gap-2">
-          {["Hoje", "Semana", "Mês", "Personalizado"].map((label) => (
-            <button
-              key={label}
-              onClick={() => setPeriod(label)}
-              className={`rounded-full border border-brand-100 px-3 py-1 text-sm font-medium transition ${
-                period === label
-                  ? "bg-brand-900 text-white"
-                  : "bg-brand-100 text-brand-900 hover:bg-brand-100/70"
-              }`}
+      <section className="card relative overflow-hidden border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Visão geral</p>
+            <h2 className="mt-1 text-2xl font-semibold text-emerald-900">Resumo do período</h2>
+            <p className="mt-1 text-sm text-slate-600">{periodSummary}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {["Hoje", "Semana", "Mês", "Personalizado"].map((label) => (
+              <button
+                key={label}
+                onClick={() => setPeriod(label)}
+                className={`rounded-full border border-brand-100 px-3 py-1 text-sm font-medium transition ${
+                  period === label
+                    ? "bg-brand-900 text-white shadow-sm"
+                    : "bg-white text-brand-900 hover:bg-brand-100/70"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {period === "Personalizado" ? (
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4">
+            <label className="space-y-1 text-xs text-slate-600">
+              <span>Início</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(event) => setCustomStart(event.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-xs text-slate-600">
+              <span>Fim</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(event) => setCustomEnd(event.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              />
+            </label>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
+          <span className="pill bg-emerald-100 text-emerald-900">Atalhos</span>
+          {[
+            { label: "Cadastros do mês", href: `/cadastros?mes=${currentYear}-${currentMonth}` },
+            { label: "Origem manhã", href: "/cadastros?origem_tipo=manha" },
+            { label: "Origem noite", href: "/cadastros?origem_tipo=noite" },
+            { label: "Origem evento", href: "/cadastros?origem_tipo=evento" }
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-full border border-emerald-100 bg-white px-3 py-1 text-xs font-medium text-emerald-900 transition hover:border-emerald-300 hover:bg-emerald-50"
             >
-              {label}
-            </button>
+              {item.label}
+            </Link>
           ))}
         </div>
-      </div>
-
-      {period === "Personalizado" ? (
-        <div className="card flex flex-wrap items-end gap-3 p-4">
-          <label className="space-y-1 text-xs text-slate-600">
-            <span>Início</span>
-            <input
-              type="date"
-              value={customStart}
-              onChange={(event) => setCustomStart(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <label className="space-y-1 text-xs text-slate-600">
-            <span>Fim</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(event) => setCustomEnd(event.target.value)}
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-        </div>
-      ) : null}
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Total de casados" value={kpi.totalCasados} hint="Base cadastrada" tone="emerald" />
@@ -190,93 +225,97 @@ export default function DashboardPage() {
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <InsightBarChart
-          title="Top Igrejas / Congregações"
-          badge="Origem"
-          entries={igrejas}
-          hrefForLabel={(label) =>
-            label === "Sem igreja"
-              ? "/cadastros?igreja_origem=__null"
-              : `/cadastros?igreja_origem=${encodeURIComponent(label)}`
-          }
-        />
-        <InsightBarChart
-          title="Top Bairros"
-          badge="Origem"
-          entries={bairros}
-          hrefForLabel={(label) =>
-            label === "Sem bairro" ? "/cadastros?bairro=__null" : `/cadastros?bairro=${encodeURIComponent(label)}`
-          }
-        />
-        <InsightBarChart
-          title="Origem do cadastro"
-          badge="Manhã/Noite/Evento"
-          entries={origem}
-          hrefForLabel={getOrigemHref}
-        />
-      </div>
-
-      <MonthlyRegistrationsChart
-        entries={mensal}
-        year={anoSelecionado}
-        years={anosDisponiveis.length ? anosDisponiveis : [currentYear]}
-        onYearChange={setAnoSelecionado}
-        onMonthClick={handleMonthClick}
-      />
-
       <div className="grid gap-4 lg:grid-cols-3">
-        <div className="card p-4">
-          <h3 className="text-sm font-semibold text-emerald-900">Crescimento por bairro</h3>
-          <div className="mt-4 space-y-2">
-            {crescimentoBairros.length ? (
-              crescimentoBairros.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.label === "Sem bairro" ? "/cadastros?bairro=__null" : `/cadastros?bairro=${encodeURIComponent(item.label)}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
-                >
-                  <span className="font-medium text-slate-800">{item.label}</span>
-                  <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                    {formatDelta(item.delta, item.delta_pct)}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
-            )}
+        <div className="space-y-4 lg:col-span-2">
+          <MonthlyRegistrationsChart
+            entries={mensal}
+            year={anoSelecionado}
+            years={anosDisponiveis.length ? anosDisponiveis : [currentYear]}
+            onYearChange={setAnoSelecionado}
+            onMonthClick={handleMonthClick}
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <InsightBarChart
+              title="Top Igrejas / Congregações"
+              badge="Origem"
+              entries={igrejas}
+              hrefForLabel={(label) =>
+                label === "Sem igreja"
+                  ? "/cadastros?igreja_origem=__null"
+                  : `/cadastros?igreja_origem=${encodeURIComponent(label)}`
+              }
+            />
+            <InsightBarChart
+              title="Top Bairros"
+              badge="Origem"
+              entries={bairros}
+              hrefForLabel={(label) =>
+                label === "Sem bairro"
+                  ? "/cadastros?bairro=__null"
+                  : `/cadastros?bairro=${encodeURIComponent(label)}`
+              }
+            />
           </div>
+          <InsightBarChart
+            title="Origem do cadastro"
+            badge="Manhã/Noite/Evento"
+            entries={origem}
+            hrefForLabel={getOrigemHref}
+          />
         </div>
-        <div className="card p-4">
-          <h3 className="text-sm font-semibold text-emerald-900">Crescimento por igreja de origem</h3>
-          <div className="mt-4 space-y-2">
-            {crescimentoIgrejas.length ? (
-              crescimentoIgrejas.map((item) => (
-                <Link
-                  key={item.label}
-                  href={
-                    item.label === "Sem igreja"
-                      ? "/cadastros?igreja_origem=__null"
-                      : `/cadastros?igreja_origem=${encodeURIComponent(item.label)}`
-                  }
-                  className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
-                >
-                  <span className="font-medium text-slate-800">{item.label}</span>
-                  <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
-                    {formatDelta(item.delta, item.delta_pct)}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="card p-4">
-        <h3 className="text-sm font-semibold text-emerald-900">Ações sugeridas</h3>
-        <p className="mt-2 text-sm text-slate-600">{sugestao}</p>
+        <div className="space-y-4">
+          <div className="card p-4">
+            <h3 className="text-sm font-semibold text-emerald-900">Crescimento por bairro</h3>
+            <div className="mt-4 space-y-2">
+              {crescimentoBairros.length ? (
+                crescimentoBairros.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={item.label === "Sem bairro" ? "/cadastros?bairro=__null" : `/cadastros?bairro=${encodeURIComponent(item.label)}`}
+                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
+                  >
+                    <span className="font-medium text-slate-800">{item.label}</span>
+                    <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                      {formatDelta(item.delta, item.delta_pct)}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
+              )}
+            </div>
+          </div>
+          <div className="card p-4">
+            <h3 className="text-sm font-semibold text-emerald-900">Crescimento por igreja de origem</h3>
+            <div className="mt-4 space-y-2">
+              {crescimentoIgrejas.length ? (
+                crescimentoIgrejas.map((item) => (
+                  <Link
+                    key={item.label}
+                    href={
+                      item.label === "Sem igreja"
+                        ? "/cadastros?igreja_origem=__null"
+                        : `/cadastros?igreja_origem=${encodeURIComponent(item.label)}`
+                    }
+                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
+                  >
+                    <span className="font-medium text-slate-800">{item.label}</span>
+                    <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                      {formatDelta(item.delta, item.delta_pct)}
+                    </span>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
+              )}
+            </div>
+          </div>
+          <div className="card p-4">
+            <h3 className="text-sm font-semibold text-emerald-900">Ações sugeridas</h3>
+            <p className="mt-2 text-sm text-slate-600">{sugestao}</p>
+          </div>
+        </div>
       </div>
 
       {statusMessage ? (
