@@ -153,33 +153,6 @@ function formatTime(value: unknown) {
   return String(value);
 }
 
-function formatScheduleItem(event: WeeklyEvent): ScheduleItem {
-  const title =
-    event.title ||
-    event.titulo ||
-    event.nome ||
-    event.name ||
-    event.evento ||
-    "Encontro";
-  const day =
-    event.day ||
-    event.dia ||
-    event.dia_semana ||
-    event.weekday ||
-    event.week_day ||
-    "";
-  const time = formatTime(
-    event.time || event.horario || event.starts_at || event.start_time || event.startTime
-  );
-  const location = event.location || event.local || event.endereco || event.place || "";
-  const meta = [day, time, location].filter(Boolean).join(" • ");
-
-  return {
-    title,
-    meta: meta || "Agenda semanal atualizada pela equipe."
-  };
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [status, setStatus] = useState<LoginStatus>("idle");
