@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
     }
     setStatus("success");
     setMessage("Senha atualizada. Faça login novamente.");
-    setTimeout(() => router.push("/login"), 1000);
+    setTimeout(() => router.push("/acesso-interno"), 1000);
   }
 
   return (

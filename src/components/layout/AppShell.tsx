@@ -50,7 +50,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       const { data } = await supabaseClient.auth.getUser();
       if (!active) return;
       if (!data.user) {
-        router.replace("/login");
+        router.replace("/acesso-interno");
         return;
       }
       setUserEmail(data.user.email ?? null);
@@ -77,7 +77,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    router.push("/login");
+    router.push("/acesso-interno");
   }
 
   async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {

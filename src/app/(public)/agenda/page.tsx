@@ -122,7 +122,7 @@ export default function AgendaPage() {
             </div>
           </div>
           <Link
-            href="/login"
+            href="/acesso-interno"
             className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
           >
             Acesso interno

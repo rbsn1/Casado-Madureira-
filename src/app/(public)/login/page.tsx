@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 
@@ -24,8 +23,6 @@ type ScheduleLine = {
   date: Date;
   updatedAt?: Date | null;
 };
-
-type LoginStatus = "idle" | "loading" | "error";
 
 type ScheduleStatus = "idle" | "loading" | "error";
 
@@ -137,27 +134,7 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
-function formatTime(value: unknown) {
-  if (!value) return "";
-  if (typeof value === "string") {
-    if (/^\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    }
-    return value;
-  }
-  if (value instanceof Date) {
-    return value.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  }
-  return String(value);
-}
-
 export default function LoginPage() {
-  const router = useRouter();
-  const [status, setStatus] = useState<LoginStatus>("idle");
-  const [message, setMessage] = useState("");
-  const [emailValue, setEmailValue] = useState("");
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatus>("loading");
   const [scheduleEvents, setScheduleEvents] = useState<WeeklyEvent[]>([]);
 
@@ -195,58 +172,6 @@ export default function LoginPage() {
       active = false;
     };
   }, []);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("loading");
-    setMessage("");
-
-    if (!supabaseClient) {
-      setStatus("error");
-      setMessage("Supabase não configurado. Verifique o arquivo .env.local.");
-      return;
-    }
-
-    const formData = new FormData(event.currentTarget);
-    const email = emailValue || String(formData.get("email") ?? "");
-    const password = String(formData.get("password") ?? "");
-
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
-      return;
-    }
-
-    setStatus("idle");
-    router.push("/");
-  }
-
-  async function handlePasswordReset() {
-    if (!supabaseClient) {
-      setStatus("error");
-      setMessage("Supabase não configurado. Verifique o arquivo .env.local.");
-      return;
-    }
-    if (!emailValue) {
-      setStatus("error");
-      setMessage("Digite seu e-mail para receber o link de recuperação.");
-      return;
-    }
-    setStatus("loading");
-    setMessage("");
-    const { error } = await supabaseClient.auth.resetPasswordForEmail(emailValue, {
-      redirectTo: `${window.location.origin}/reset`
-    });
-    if (error) {
-      setStatus("error");
-      setMessage(error.message);
-      return;
-    }
-    setStatus("idle");
-    setMessage("Enviamos um link de recuperação para o seu e-mail.");
-  }
 
   const scheduleFallback = useMemo(() => {
     if (scheduleStatus === "loading") return "Carregando agenda...";
@@ -295,7 +220,7 @@ export default function LoginPage() {
               </Link>
             </nav>
             <Link
-              href="/login"
+              href="/acesso-interno"
               className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
             >
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
@@ -316,7 +241,7 @@ export default function LoginPage() {
           </div>
         </header>
 
-        <section className="grid items-center gap-10 pt-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <section className="grid items-center gap-10 pt-12 lg:grid-cols-1">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
               Bem-vindos
@@ -343,6 +268,12 @@ export default function LoginPage() {
               >
                 Ver agenda
               </Link>
+              <Link
+                href="/acesso-interno"
+                className="rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300"
+              >
+                Acesso interno
+              </Link>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-slate-600">
               <div className="flex items-center gap-2">
@@ -356,71 +287,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className={`${cardClass} p-6`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Acesso interno</p>
-            <h2 className="mt-2 text-2xl font-semibold text-emerald-900">Entre no painel</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Utilize seu e-mail institucional para acompanhar cadastros, relatórios e times.
-            </p>
-            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="email">
-                  E-mail
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="voce@casados.com"
-                  value={emailValue}
-                  onChange={(event) => setEmailValue(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="password">
-                  Senha
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
-                  Manter conectado
-                </label>
-                <button
-                  type="button"
-                  onClick={handlePasswordReset}
-                  className="font-semibold text-emerald-800 hover:text-emerald-900"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={status === "loading"}
-              >
-                {status === "loading" ? "Entrando..." : "Entrar"}
-              </button>
-              {status === "error" ? (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  {message || "Nao foi possivel entrar. Verifique suas credenciais."}
-                </p>
-              ) : null}
-              {status === "idle" && message ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-                  {message}
-                </p>
-              ) : null}
-            </form>
-          </div>
         </section>
 
         <section className="mt-16">
@@ -431,7 +297,7 @@ export default function LoginPage() {
             </div>
             <p className="text-sm text-slate-600">Acesse recursos essenciais do portal CCM.</p>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             <Link href="/cadastro" className={`${cardClass} transition hover:-translate-y-0.5`}>
               <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rapido</p>
               <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rapido do casal</p>
@@ -443,8 +309,9 @@ export default function LoginPage() {
               </span>
             </Link>
 
-            <div
-              className={`${cardClass} agenda-card border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-xl hover:shadow-black/10`}
+            <Link
+              href="/agenda"
+              className={`${cardClass} agenda-card block border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-xl hover:shadow-black/10`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -483,24 +350,11 @@ export default function LoginPage() {
                 )}
               </div>
 
-              <Link
-                href="/agenda"
-                className="mt-5 inline-flex items-center text-sm font-semibold text-emerald-800"
-              >
+              <span className="mt-5 inline-flex items-center text-sm font-semibold text-emerald-800">
                 Ver agenda completa →
-              </Link>
-            </div>
-
-            <Link href="/login" className={`${cardClass} transition hover:-translate-y-0.5`}>
-              <p className="text-xs font-semibold uppercase text-emerald-600">Painel interno</p>
-              <p className="mt-3 text-lg font-semibold text-slate-900">Acesso interno</p>
-              <p className="mt-2 text-sm text-slate-600">
-                Controle completo de cadastros, relatórios e equipes em um unico painel.
-              </p>
-              <span className="mt-4 inline-flex items-center text-sm font-semibold text-emerald-800">
-                Entrar no painel →
               </span>
             </Link>
+
           </div>
         </section>
 
