@@ -34,7 +34,7 @@ export function PortalBackground({
 
       {/* Symbolic pattern overlay (rings/olive/cross) */}
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.05] portal-pattern"
         style={{
           backgroundImage:
             "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"240\" height=\"240\" viewBox=\"0 0 240 240\"><g fill=\"none\" stroke=\"%23000000\" stroke-width=\"1\"><circle cx=\"44\" cy=\"52\" r=\"18\"/><circle cx=\"68\" cy=\"52\" r=\"18\"/><path d=\"M120 44v28M106 58h28\"/><path d=\"M170 60c10 10 22 10 32 0\"/><path d=\"M170 60c2 8 6 14 12 18\"/><path d=\"M202 60c-2 8-6 14-12 18\"/></g></svg>')",
@@ -43,9 +43,9 @@ export function PortalBackground({
       />
 
       {/* Glows */}
-      <div className="absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[150px]" />
-      <div className="absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-sky-200/25 blur-[140px]" />
-      <div className="absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-emerald-200/25 blur-[140px]" />
+      <div className="absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[150px] portal-glow-main" />
+      <div className="absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-sky-200/25 blur-[140px] portal-glow-side" />
+      <div className="absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-emerald-200/25 blur-[140px] portal-glow-lower" />
 
       {/* Vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0)_45%,_rgba(12,20,14,0.06)_100%)]" />
