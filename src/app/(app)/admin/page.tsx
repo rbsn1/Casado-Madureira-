@@ -28,11 +28,11 @@ const roleOptions = [
 const weekdayOptions = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda" },
-  { value: 2, label: "Terca" },
+  { value: 2, label: "Terça" },
   { value: 3, label: "Quarta" },
   { value: 4, label: "Quinta" },
   { value: 5, label: "Sexta" },
-  { value: 6, label: "Sabado" }
+  { value: 6, label: "Sábado" }
 ];
 
 async function apiFetch(path: string, options: RequestInit = {}) {
@@ -391,7 +391,7 @@ export default function AdminPage() {
 
         <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={handleCreateAgendaEvent}>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Titulo</span>
+            <span className="text-slate-700">Título</span>
             <input
               name="title"
               required
@@ -418,7 +418,7 @@ export default function AdminPage() {
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Horario</span>
+            <span className="text-slate-700">Horário</span>
             <input
               name="start_time"
               type="time"
@@ -438,7 +438,7 @@ export default function AdminPage() {
             />
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Observacoes</span>
+            <span className="text-slate-700">Observações</span>
             <input
               name="notes"
               value={agendaForm.notes}
@@ -472,7 +472,7 @@ export default function AdminPage() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["Evento", "Dia/Horario", "Local", "Observacoes", "Status", "Acoes"].map((col) => (
+                {["Evento", "Dia/Horário", "Local", "Observações", "Status", "Ações"].map((col) => (
                   <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
                     {col}
                   </th>

@@ -88,7 +88,7 @@ function getNextEvents(events: WeeklyEvent[], now: Date, count = 4) {
     const date = new Date(base.date.getTime() + weekOffset * 7 * 24 * 60 * 60 * 1000);
 
     results.push({
-      label: results.length === 0 ? "Proximo" : "Seguinte",
+      label: results.length === 0 ? "Próximo" : "Seguinte",
       title: base.event.title || "Encontro",
       meta: formatEventLine(base.event),
       date,
@@ -288,7 +288,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-4">
               <h1 className="text-4xl font-semibold tracking-tight text-emerald-900/90 sm:text-5xl">
-                Portal de apoio aos casados com Madureira
+                Portal de apoio aos casados com a Madureira
               </h1>
               <p className="max-w-xl text-base leading-relaxed text-slate-600/90">
                 O Portal CCM centraliza cadastros, agenda e acesso interno. Tudo em um ambiente leve,
@@ -300,7 +300,7 @@ export default function LoginPage() {
                 href="/cadastro"
                 className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
               >
-                Cadastro rapido
+                Cadastro rápido
               </Link>
               <Link
                 href="/agenda"
@@ -318,7 +318,7 @@ export default function LoginPage() {
             <div className="flex flex-wrap gap-4 text-sm text-slate-600/90">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                Cadastro rapido em ate 1 minuto
+                Cadastro rápido em até 1 minuto
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-sky-400" />
@@ -335,7 +335,7 @@ export default function LoginPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">Acessos</p>
-              <h3 className="mt-2 text-2xl font-semibold text-emerald-900">Tudo o que voce precisa</h3>
+              <h3 className="mt-2 text-2xl font-semibold text-emerald-900">Tudo o que você precisa</h3>
             </div>
             <p className="text-sm leading-relaxed text-slate-600/90">
               Acesse recursos essenciais do portal CCM.
@@ -346,8 +346,8 @@ export default function LoginPage() {
               href="/cadastro"
               className={`${cardClass} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10`}
             >
-              <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rapido</p>
-              <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rapido do membro</p>
+              <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rápido</p>
+              <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rápido do membro</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-600/90">
                 Envie os dados do casal em menos de 1 minuto e acompanhe o contato da equipe.
               </p>
@@ -367,7 +367,7 @@ export default function LoginPage() {
                   </span>
                   <p className="mt-3 text-lg font-semibold text-slate-900">Agenda semanal</p>
                   <p className="mt-1 text-sm leading-relaxed text-slate-600/90">
-                    Programacao da semana na igreja
+                    Programação da semana na igreja
                   </p>
                 </div>
                 <MiniCalendar date={nextEvents[0]?.date} />
@@ -393,7 +393,7 @@ export default function LoginPage() {
                       <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-                            {index === 0 ? "Proximo" : "Seguinte"}
+                            {index === 0 ? "Próximo" : "Seguinte"}
                           </span>
                           {index === 0 ? (
                             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
@@ -425,7 +425,7 @@ export default function LoginPage() {
         <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-slate-500">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>Portal CCM • Casados com a Madureira</p>
-            <p>Central de apoio e integracao aos casados com a madureira</p>
+            <p>Central de apoio e integração aos casados com a Madureira</p>
           </div>
         </footer>
       </div>

@@ -19,11 +19,11 @@ type WeeklyEvent = {
 const weekdayOptions = [
   { value: 0, label: "Domingo" },
   { value: 1, label: "Segunda" },
-  { value: 2, label: "Terca" },
+  { value: 2, label: "Terça" },
   { value: 3, label: "Quarta" },
   { value: 4, label: "Quinta" },
   { value: 5, label: "Sexta" },
-  { value: 6, label: "Sabado" }
+  { value: 6, label: "Sábado" }
 ];
 
 export default function AdminAgendaSemanalPage() {
@@ -216,7 +216,7 @@ export default function AdminAgendaSemanalPage() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["Dia", "Hora", "Titulo", "Ativo", "Acoes"].map((col) => (
+                {["Dia", "Hora", "Título", "Ativo", "Ações"].map((col) => (
                   <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
                     {col}
                   </th>
@@ -298,7 +298,7 @@ export default function AdminAgendaSemanalPage() {
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <label className="space-y-1 text-sm md:col-span-2">
-                <span className="text-slate-700">Titulo</span>
+                <span className="text-slate-700">Título</span>
                 <input
                   value={form.title}
                   onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
@@ -322,7 +322,7 @@ export default function AdminAgendaSemanalPage() {
                 </select>
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Horario</span>
+                <span className="text-slate-700">Horário</span>
                 <input
                   type="time"
                   value={form.start_time}
@@ -339,7 +339,7 @@ export default function AdminAgendaSemanalPage() {
                 />
               </label>
               <label className="space-y-1 text-sm md:col-span-2">
-                <span className="text-slate-700">Observacoes</span>
+                <span className="text-slate-700">Observações</span>
                 <input
                   value={form.notes}
                   onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}

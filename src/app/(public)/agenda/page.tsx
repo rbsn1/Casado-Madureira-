@@ -15,7 +15,7 @@ type WeeklyEvent = {
   is_active: boolean;
 };
 
-const weekdayLabels = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
+const weekdayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
@@ -66,7 +66,7 @@ export default function AgendaPage() {
 
   const emptyMessage = useMemo(() => {
     if (status === "loading") return "Carregando agenda...";
-    return "Programacao sera publicada em breve.";
+    return "Programação será publicada em breve.";
   }, [status]);
 
   const filteredItems = useMemo(() => {
@@ -115,13 +115,13 @@ export default function AgendaPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
-                Programacao
+                Programação
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-emerald-900 sm:text-4xl">
                 Agenda da semana
               </h1>
               <p className="mt-2 max-w-xl text-sm text-slate-600">
-                Programacao completa da igreja, organizada por dia da semana.
+                Programação completa da igreja, organizada por dia da semana.
               </p>
             </div>
             <Link
@@ -143,7 +143,7 @@ export default function AgendaPage() {
               Mostrar apenas eventos ativos
             </label>
             <input
-              placeholder="Buscar por titulo"
+              placeholder="Buscar por título"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               className="w-full max-w-sm rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm focus:border-emerald-300 focus:outline-none"
@@ -188,9 +188,9 @@ export default function AgendaPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                              <p className="text-xs text-slate-500">
-                                {event.location ? event.location : "Local a confirmar"}
-                              </p>
+                          <p className="text-xs text-slate-500">
+                            {event.location ? event.location : "Local a confirmar"}
+                          </p>
                             </div>
                             <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
                               {formatTime(event.start_time)}
@@ -203,7 +203,7 @@ export default function AgendaPage() {
                       ))
                     ) : (
                       <p className="text-xs text-slate-500">
-                        Ainda nao temos encontros definidos para este dia.
+                        Ainda não temos encontros definidos para este dia.
                       </p>
                     )}
                   </div>
