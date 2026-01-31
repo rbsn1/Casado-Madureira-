@@ -181,7 +181,7 @@ export default function LoginPage() {
 
       if (error) {
         setScheduleStatus("error");
-        setScheduleItems([]);
+        setScheduleEvents([]);
         return;
       }
 
