@@ -28,7 +28,7 @@ type ScheduleLine = {
 type ScheduleStatus = "idle" | "loading" | "error";
 
 const cardClass =
-  "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-lg shadow-black/5 backdrop-blur";
+  "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
 
 const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"] as const;
 
@@ -287,10 +287,10 @@ export default function LoginPage() {
               Bem-vindos
             </div>
             <div className="space-y-4">
-              <h1 className="text-4xl font-semibold text-emerald-900 sm:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-tight text-emerald-900/90 sm:text-5xl">
                 Portal de apoio aos casados com Madureira
               </h1>
-              <p className="max-w-xl text-base text-slate-600">
+              <p className="max-w-xl text-base leading-relaxed text-slate-600/90">
                 O Portal CCM centraliza cadastros, agenda e acesso interno. Tudo em um ambiente leve,
                 organizado e pronto para apoiar os departamentos.
               </p>
@@ -315,7 +315,7 @@ export default function LoginPage() {
                 Acesso interno
               </Link>
             </div>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-600">
+            <div className="flex flex-wrap gap-4 text-sm text-slate-600/90">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Cadastro rapido em ate 1 minuto
@@ -329,19 +329,26 @@ export default function LoginPage() {
 
         </section>
 
+        <div className="mt-12 h-px w-full bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+
         <section className="mt-16">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">Acessos</p>
               <h3 className="mt-2 text-2xl font-semibold text-emerald-900">Tudo o que voce precisa</h3>
             </div>
-            <p className="text-sm text-slate-600">Acesse recursos essenciais do portal CCM.</p>
+            <p className="text-sm leading-relaxed text-slate-600/90">
+              Acesse recursos essenciais do portal CCM.
+            </p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <Link href="/cadastro" className={`${cardClass} transition hover:-translate-y-0.5`}>
+            <Link
+              href="/cadastro"
+              className={`${cardClass} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10`}
+            >
               <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rapido</p>
               <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rapido do casal</p>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600/90">
                 Envie os dados do casal em menos de 1 minuto e acompanhe o contato da equipe.
               </p>
               <span className="mt-4 inline-flex items-center text-sm font-semibold text-emerald-800">
@@ -351,7 +358,7 @@ export default function LoginPage() {
 
             <Link
               href="/agenda"
-              className={`${cardClass} agenda-card block border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-xl hover:shadow-black/10`}
+              className={`${cardClass} agenda-card block border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-2xl hover:shadow-black/10`}
             >
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -359,7 +366,9 @@ export default function LoginPage() {
                     {badgeLabel}
                   </span>
                   <p className="mt-3 text-lg font-semibold text-slate-900">Agenda semanal</p>
-                  <p className="mt-1 text-sm text-slate-600">Programacao da semana na igreja</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600/90">
+                    Programacao da semana na igreja
+                  </p>
                 </div>
                 <MiniCalendar date={nextEvents[0]?.date} />
               </div>
@@ -370,7 +379,9 @@ export default function LoginPage() {
                     {todayEvent ? (
                       <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase text-emerald-700">Hoje</span>
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                            Hoje
+                          </span>
                           <span className="text-xs text-emerald-700">⏰</span>
                         </div>
                         <p className="mt-1 text-sm font-semibold text-emerald-900">
@@ -381,7 +392,7 @@ export default function LoginPage() {
                     {filteredNextEvents.map((item, index) => (
                       <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold uppercase text-emerald-600">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
                             {index === 0 ? "Proximo" : "Seguinte"}
                           </span>
                           {index === 0 ? (
