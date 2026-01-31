@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { useAuth } from "@/hooks/useAuth";
 
 type WeeklyEvent = {
   id?: string | number;
@@ -135,6 +136,7 @@ function isSameDay(a: Date, b: Date) {
 }
 
 export default function LoginPage() {
+  const { user, role, loading: authLoading } = useAuth();
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatus>("loading");
   const [scheduleEvents, setScheduleEvents] = useState<WeeklyEvent[]>([]);
 
@@ -219,25 +221,41 @@ export default function LoginPage() {
                 Novos convertidos
               </Link>
             </nav>
-            <Link
-              href="/acesso-interno"
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
-            >
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                <svg
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                  <rect x="5" y="11" width="14" height="10" rx="2" />
-                </svg>
-              </span>
-              Acesso interno
-            </Link>
+            {authLoading ? (
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-emerald-900">
+                Carregando...
+              </div>
+            ) : user ? (
+              <Link
+                href={role === "admin" ? "/admin" : "/conta"}
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
+              >
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
+                  {(user.email?.[0] ?? "U").toUpperCase()}
+                </span>
+                {role === "admin" ? "Ir para o painel" : "Minha conta"}
+              </Link>
+            ) : (
+              <Link
+                href="/acesso-interno"
+                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
+              >
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                  <svg
+                    aria-hidden="true"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                  </svg>
+                </span>
+                Acesso interno
+              </Link>
+            )}
           </div>
         </header>
 

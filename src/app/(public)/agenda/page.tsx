@@ -5,65 +5,30 @@ import { useEffect, useMemo, useState } from "react";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 
-type ScheduleItem = {
+type WeeklyEvent = {
+  id: string;
   title: string;
-  meta: string;
-  description?: string;
+  weekday: number;
+  start_time: string;
+  location: string | null;
+  notes: string | null;
+  is_active: boolean;
 };
 
-type WeeklyEvent = Record<string, any>;
+const weekdayLabels = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
 
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-lg shadow-black/5 backdrop-blur";
 
-function formatTime(value: unknown) {
-  if (!value) return "";
-  if (typeof value === "string") {
-    if (/^\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    }
-    return value;
-  }
-  if (value instanceof Date) {
-    return value.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  }
-  return String(value);
-}
-
-function formatScheduleItem(event: WeeklyEvent): ScheduleItem {
-  const title =
-    event.title ||
-    event.titulo ||
-    event.nome ||
-    event.name ||
-    event.evento ||
-    "Encontro";
-  const day =
-    event.day ||
-    event.dia ||
-    event.dia_semana ||
-    event.weekday ||
-    event.week_day ||
-    "";
-  const time = formatTime(
-    event.time || event.horario || event.starts_at || event.start_time || event.startTime
-  );
-  const location = event.location || event.local || event.endereco || event.place || "";
-  const description = event.description || event.descricao || event.obs || event.observacoes || "";
-  const meta = [day, time, location].filter(Boolean).join(" • ");
-
-  return {
-    title,
-    meta: meta || "Agenda semanal atualizada pela equipe.",
-    description: description || undefined
-  };
+function formatTime(value: string) {
+  return value ? value.slice(0, 5) : "--:--";
 }
 
 export default function AgendaPage() {
   const [status, setStatus] = useState<"loading" | "idle" | "error">("loading");
-  const [items, setItems] = useState<ScheduleItem[]>([]);
+  const [items, setItems] = useState<WeeklyEvent[]>([]);
+  const [onlyActive, setOnlyActive] = useState(true);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -77,7 +42,6 @@ export default function AgendaPage() {
       const { data, error } = await supabaseClient
         .from("weekly_schedule_events")
         .select("*")
-        .eq("is_active", true)
         .order("weekday", { ascending: true })
         .order("start_time", { ascending: true });
 
@@ -89,8 +53,7 @@ export default function AgendaPage() {
         return;
       }
 
-      const formatted = (data ?? []).map((item) => formatScheduleItem(item as WeeklyEvent));
-      setItems(formatted);
+      setItems((data ?? []) as WeeklyEvent[]);
       setStatus("idle");
     }
 
@@ -103,12 +66,29 @@ export default function AgendaPage() {
 
   const emptyMessage = useMemo(() => {
     if (status === "loading") return "Carregando agenda...";
-    return "Agenda em atualização";
+    return "Programacao sera publicada em breve.";
   }, [status]);
+
+  const filteredItems = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return items.filter((item) => {
+      if (onlyActive && !item.is_active) return false;
+      if (normalizedQuery && !item.title.toLowerCase().includes(normalizedQuery)) return false;
+      return true;
+    });
+  }, [items, onlyActive, query]);
+
+  const grouped = useMemo(() => {
+    return weekdayLabels.map((label, weekday) => ({
+      label,
+      weekday,
+      events: filteredItems.filter((item) => item.weekday === weekday)
+    }));
+  }, [filteredItems]);
 
   return (
     <PortalBackground heroImageSrc="/portal-hero.jpg" heroHeight="420px">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
         <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600/90 text-xs font-semibold text-white">
@@ -136,11 +116,10 @@ export default function AgendaPage() {
                 Programacao
               </p>
               <h1 className="mt-2 text-3xl font-semibold text-emerald-900 sm:text-4xl">
-                Agenda semanal CCM
+                Agenda da semana
               </h1>
               <p className="mt-2 max-w-xl text-sm text-slate-600">
-                Confira os encontros e eventos ativos. Caso nao apareca, a agenda esta em
-                atualizacao.
+                Programacao completa da igreja, organizada por dia da semana.
               </p>
             </div>
             <Link
@@ -151,22 +130,58 @@ export default function AgendaPage() {
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {items.length ? (
-              items.map((item, index) => (
-                <div key={`${item.title}-${index}`} className={cardClass}>
-                  <p className="text-xs font-semibold uppercase text-emerald-600">Encontro</p>
-                  <p className="mt-3 text-lg font-semibold text-slate-900">{item.title}</p>
-                  <p className="mt-2 text-sm text-slate-600">{item.meta}</p>
-                  {item.description ? (
-                    <p className="mt-3 text-sm text-slate-500">{item.description}</p>
-                  ) : null}
-                </div>
-              ))
-            ) : (
-              <div className={`${cardClass} md:col-span-2`}>
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={onlyActive}
+                onChange={(event) => setOnlyActive(event.target.checked)}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Mostrar apenas eventos ativos
+            </label>
+            <input
+              placeholder="Buscar por titulo"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="w-full max-w-sm rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm focus:border-emerald-300 focus:outline-none"
+            />
+          </div>
+
+          <div className="mt-8 space-y-6">
+            {grouped.every((group) => group.events.length === 0) ? (
+              <div className={cardClass}>
                 <p className="text-sm text-slate-500">{emptyMessage}</p>
               </div>
+            ) : (
+              grouped.map((group) => (
+                <div key={group.weekday} className={cardClass}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-emerald-900">{group.label}</p>
+                    <span className="text-xs text-slate-500">
+                      {group.events.length ? `${group.events.length} evento(s)` : "Sem eventos"}
+                    </span>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    {group.events.length ? (
+                      group.events.map((event) => (
+                        <div key={event.id} className="rounded-xl bg-white/70 px-3 py-2">
+                          <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                          <p className="text-xs text-slate-500">
+                            {formatTime(event.start_time)}
+                            {event.location ? ` • ${event.location}` : ""}
+                          </p>
+                          {event.notes ? (
+                            <p className="text-xs text-slate-500">{event.notes}</p>
+                          ) : null}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-500">Nenhum evento para este dia.</p>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </section>
