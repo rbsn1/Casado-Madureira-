@@ -288,7 +288,7 @@ export default function LoginPage() {
             </div>
             <div className="space-y-4">
               <h1 className="text-4xl font-semibold text-emerald-900 sm:text-5xl">
-                Conecte o Igreja de Madureira, fortaleça nossa família
+                Portal de apoio aos casados com Madureira
               </h1>
               <p className="max-w-xl text-base text-slate-600">
                 O Portal CCM centraliza cadastros, agenda e acesso interno. Tudo em um ambiente leve,
@@ -414,7 +414,7 @@ export default function LoginPage() {
         <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-slate-500">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>Portal CCM • Casados com a Madureira</p>
-            <p>Central de apoio e integracao de casados com a madureira</p>
+            <p>Central de apoio e integracao aos casados com a madureira</p>
           </div>
         </footer>
       </div>
