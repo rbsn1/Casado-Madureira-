@@ -6,12 +6,24 @@ import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 
-type ScheduleItem = {
-  title: string;
-  meta: string;
+type WeeklyEvent = {
+  id?: string | number;
+  title?: string;
+  weekday?: number;
+  start_time?: string;
+  location?: string | null;
+  notes?: string | null;
+  updated_at?: string | null;
+  [key: string]: any;
 };
 
-type WeeklyEvent = Record<string, any>;
+type ScheduleLine = {
+  label: string;
+  title: string;
+  meta: string;
+  date: Date;
+  updatedAt?: Date | null;
+};
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -19,6 +31,111 @@ type ScheduleStatus = "idle" | "loading" | "error";
 
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-lg shadow-black/5 backdrop-blur";
+
+const weekdayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"] as const;
+
+function parseTimeToMinutes(value?: string | null) {
+  if (!value) return null;
+  const [hours, minutes] = value.split(":").map((part) => Number(part));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function formatEventLine(event: WeeklyEvent) {
+  const weekday = Number(event.weekday ?? 0);
+  const weekdayLabel = weekdayLabels[weekday] ?? "Dom";
+  const time = event.start_time ? event.start_time.slice(0, 5) : "";
+  const title = event.title || "Encontro";
+  return `${weekdayLabel} • ${time || "--:--"} — ${title}`;
+}
+
+function getNextOccurrenceDate(event: WeeklyEvent, now: Date) {
+  const weekday = Number(event.weekday ?? 0);
+  const targetMinutes = parseTimeToMinutes(event.start_time);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentWeekday = now.getDay();
+  let delta = (weekday - currentWeekday + 7) % 7;
+
+  if (delta === 0 && targetMinutes !== null && targetMinutes < nowMinutes) {
+    delta = 7;
+  }
+
+  const date = new Date(now);
+  date.setDate(now.getDate() + delta);
+  if (targetMinutes !== null) {
+    const hours = Math.floor(targetMinutes / 60);
+    const minutes = targetMinutes % 60;
+    date.setHours(hours, minutes, 0, 0);
+  } else {
+    date.setHours(0, 0, 0, 0);
+  }
+  return date;
+}
+
+function getNextEvents(events: WeeklyEvent[], now: Date, count = 4) {
+  if (!events.length) return [];
+  const withNextDate = events.map((event) => ({
+    event,
+    date: getNextOccurrenceDate(event, now)
+  }));
+  const sorted = withNextDate
+    .slice()
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const results: ScheduleLine[] = [];
+  while (results.length < count && sorted.length) {
+    const index = results.length % sorted.length;
+    const weekOffset = Math.floor(results.length / sorted.length);
+    const base = sorted[index];
+    const date = new Date(base.date.getTime() + weekOffset * 7 * 24 * 60 * 60 * 1000);
+
+    results.push({
+      label: results.length === 0 ? "Proximo" : "Seguinte",
+      title: base.event.title || "Encontro",
+      meta: formatEventLine(base.event),
+      date,
+      updatedAt: base.event.updated_at ? new Date(base.event.updated_at) : null
+    });
+  }
+  return results;
+}
+
+function MiniCalendar({ date }: { date?: Date | null }) {
+  if (!date) {
+    return (
+      <div className="flex h-20 w-20 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/80 shadow-sm">
+        <div className="h-2 bg-emerald-500" />
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <span className="text-2xl font-semibold text-slate-400">—</span>
+          <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400"> </span>
+        </div>
+      </div>
+    );
+  }
+
+  const day = date.getDate();
+  const month = date.toLocaleDateString("pt-BR", { month: "short" }).toUpperCase();
+
+  return (
+    <div className="flex h-20 w-20 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/90 shadow-sm">
+      <div className="h-2 bg-gradient-to-r from-emerald-500 to-sky-400" />
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <span className="text-2xl font-semibold text-emerald-900">{day}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-700">
+          {month}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
 
 function formatTime(value: unknown) {
   if (!value) return "";
@@ -69,7 +186,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [emailValue, setEmailValue] = useState("");
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatus>("loading");
-  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [scheduleEvents, setScheduleEvents] = useState<WeeklyEvent[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -84,7 +201,8 @@ export default function LoginPage() {
         .from("weekly_schedule_events")
         .select("*")
         .eq("is_active", true)
-        .limit(4);
+        .order("weekday", { ascending: true })
+        .order("start_time", { ascending: true });
 
       if (!active) return;
 
@@ -94,8 +212,7 @@ export default function LoginPage() {
         return;
       }
 
-      const items = (data ?? []).map((item) => formatScheduleItem(item as WeeklyEvent));
-      setScheduleItems(items.slice(0, 4));
+      setScheduleEvents((data ?? []) as WeeklyEvent[]);
       setScheduleStatus("idle");
     }
 
@@ -160,9 +277,21 @@ export default function LoginPage() {
 
   const scheduleFallback = useMemo(() => {
     if (scheduleStatus === "loading") return "Carregando agenda...";
-    if (scheduleStatus === "error") return "Agenda em atualização";
     return "Agenda em atualização";
   }, [scheduleStatus]);
+
+  const nextEvents = useMemo(() => {
+    if (!scheduleEvents.length) return [];
+    return getNextEvents(scheduleEvents, new Date(), 4);
+  }, [scheduleEvents]);
+
+  const badgeLabel = useMemo(() => {
+    const updatedAt = nextEvents[0]?.updatedAt;
+    if (updatedAt && isSameDay(updatedAt, new Date())) {
+      return "Atualizado hoje";
+    }
+    return "Esta semana";
+  }, [nextEvents]);
 
   return (
     <PortalBackground heroImageSrc="/portal-hero.jpg" heroHeight="560px">
@@ -341,25 +470,52 @@ export default function LoginPage() {
               </span>
             </Link>
 
-            <div className={cardClass}>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase text-emerald-600">Agenda semanal</p>
-                <Link href="/agenda" className="text-xs font-semibold text-emerald-800">
-                  Ver agenda completa →
-                </Link>
+            <div
+              className={`${cardClass} agenda-card border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-xl hover:shadow-black/10`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    {badgeLabel}
+                  </span>
+                  <p className="mt-3 text-lg font-semibold text-slate-900">Agenda semanal</p>
+                  <p className="mt-1 text-sm text-slate-600">Programacao da semana na igreja</p>
+                </div>
+                <MiniCalendar date={nextEvents[0]?.date} />
               </div>
-              <div className="mt-4 space-y-3">
-                {scheduleItems.length ? (
-                  scheduleItems.map((item, index) => (
+
+              <div className="mt-5 space-y-3">
+                {nextEvents.length ? (
+                  nextEvents.map((item, index) => (
                     <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
-                      <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase text-emerald-600">
+                          {index === 0 ? "Proximo" : "Seguinte"}
+                        </span>
+                        {index === 0 ? (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                            Destaque
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
                       <p className="text-xs text-slate-500">{item.meta}</p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-slate-500">{scheduleFallback}</p>
+                  <div className="rounded-xl bg-white/70 px-3 py-3">
+                    <p className="text-sm text-slate-500">{scheduleFallback}</p>
+                    <p className="mt-1 text-xs text-slate-400">—</p>
+                  </div>
                 )}
               </div>
+
+              <Link
+                href="/agenda"
+                className="mt-5 inline-flex items-center text-sm font-semibold text-emerald-800"
+              >
+                Ver agenda completa →
+              </Link>
             </div>
 
             <Link href="/login" className={`${cardClass} transition hover:-translate-y-0.5`}>

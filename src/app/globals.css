@@ -37,3 +37,35 @@ body {
 .pill {
   @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
 }
+
+.agenda-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.agenda-card::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  left: -60%;
+  width: 40%;
+  height: 160%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  transform: rotate(10deg);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.agenda-card:hover::after {
+  opacity: 1;
+  animation: agendaShine 900ms ease-in-out 1;
+}
+
+@keyframes agendaShine {
+  from {
+    left: -60%;
+  }
+  to {
+    left: 120%;
+  }
+}
