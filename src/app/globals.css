@@ -72,19 +72,15 @@ body {
 
 @media (prefers-reduced-motion: no-preference) {
   .portal-glow-main {
-    animation: portalFloatMain 52s ease-in-out infinite;
+    animation: portalFloatMain 50s ease-in-out infinite;
   }
 
   .portal-glow-side {
-    animation: portalFloatSide 60s ease-in-out infinite;
+    animation: portalFloatSide 56s ease-in-out infinite;
   }
 
   .portal-glow-lower {
-    animation: portalFloatLower 48s ease-in-out infinite;
-  }
-
-  .portal-pattern {
-    animation: portalPatternDrift 70s ease-in-out infinite;
+    animation: portalFloatLower 46s ease-in-out infinite;
   }
 }
 
@@ -95,8 +91,8 @@ body {
     opacity: 0.36;
   }
   50% {
-    transform: translate3d(calc(-50% + 14px), -12px, 0);
-    opacity: 0.42;
+    transform: translate3d(calc(-50% + 22px), -18px, 0);
+    opacity: 0.46;
   }
 }
 
@@ -107,8 +103,8 @@ body {
     opacity: 0.24;
   }
   50% {
-    transform: translate3d(-12px, 10px, 0);
-    opacity: 0.3;
+    transform: translate3d(-18px, 14px, 0);
+    opacity: 0.34;
   }
 }
 
@@ -119,17 +115,7 @@ body {
     opacity: 0.22;
   }
   50% {
-    transform: translate3d(10px, -14px, 0);
-    opacity: 0.28;
-  }
-}
-
-@keyframes portalPatternDrift {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  50% {
-    transform: translate3d(2px, -2px, 0);
+    transform: translate3d(16px, -20px, 0);
+    opacity: 0.32;
   }
 }
