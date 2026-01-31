@@ -1,0 +1,13 @@
+# dependencies
+node_modules/
+
+# build output
+.next/
+
+# local env / logs
+.env.local
+.devserver.log
+
+# local bins and archives
+.bin/
+supabase_linux_amd64.tar.gz
