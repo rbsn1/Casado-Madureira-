@@ -107,7 +107,7 @@ function getTodayEvent(events: WeeklyEvent[], now: Date) {
     .slice()
     .sort((a, b) => (parseTimeToMinutes(a.start_time) ?? 0) - (parseTimeToMinutes(b.start_time) ?? 0));
   const upcoming = sorted.find((event) => (parseTimeToMinutes(event.start_time) ?? 0) >= nowMinutes);
-  return upcoming ?? sorted[0];
+  return upcoming ?? sorted[0] ?? null;
 }
 
 function MiniCalendar({ date }: { date?: Date | null }) {
@@ -374,7 +374,7 @@ export default function LoginPage() {
                           <span className="text-xs text-emerald-700">⏰</span>
                         </div>
                         <p className="mt-1 text-sm font-semibold text-emerald-900">
-                          Hoje • {todayEvent.start_time.slice(0, 5)} — {todayEvent.title}
+                          Hoje • {(todayEvent.start_time ?? "--:--").slice(0, 5)} — {todayEvent.title}
                         </p>
                       </div>
                     ) : null}
