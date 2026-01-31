@@ -347,7 +347,7 @@ export default function LoginPage() {
               className={`${cardClass} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10`}
             >
               <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rapido</p>
-              <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rapido do casal</p>
+              <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rapido do membro</p>
               <p className="mt-2 text-sm leading-relaxed text-slate-600/90">
                 Envie os dados do casal em menos de 1 minuto e acompanhe o contato da equipe.
               </p>
