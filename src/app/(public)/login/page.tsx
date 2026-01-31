@@ -98,6 +98,18 @@ function getNextEvents(events: WeeklyEvent[], now: Date, count = 4) {
   return results;
 }
 
+function getTodayEvent(events: WeeklyEvent[], now: Date) {
+  const today = now.getDay();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const todayEvents = events.filter((event) => Number(event.weekday ?? 0) === today);
+  if (!todayEvents.length) return null;
+  const sorted = todayEvents
+    .slice()
+    .sort((a, b) => (parseTimeToMinutes(a.start_time) ?? 0) - (parseTimeToMinutes(b.start_time) ?? 0));
+  const upcoming = sorted.find((event) => (parseTimeToMinutes(event.start_time) ?? 0) >= nowMinutes);
+  return upcoming ?? sorted[0];
+}
+
 function MiniCalendar({ date }: { date?: Date | null }) {
   if (!date) {
     return (
@@ -184,6 +196,16 @@ export default function LoginPage() {
     if (!scheduleEvents.length) return [];
     return getNextEvents(scheduleEvents, new Date(), 4);
   }, [scheduleEvents]);
+
+  const todayEvent = useMemo(() => {
+    if (!scheduleEvents.length) return null;
+    return getTodayEvent(scheduleEvents, new Date());
+  }, [scheduleEvents]);
+
+  const filteredNextEvents = useMemo(() => {
+    if (!todayEvent) return nextEvents;
+    return nextEvents.filter((item) => item.meta !== formatEventLine(todayEvent));
+  }, [nextEvents, todayEvent]);
 
   const badgeLabel = useMemo(() => {
     const updatedAt = nextEvents[0]?.updatedAt;
@@ -343,23 +365,36 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-5 space-y-3">
-                {nextEvents.length ? (
-                  nextEvents.map((item, index) => (
-                    <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase text-emerald-600">
-                          {index === 0 ? "Proximo" : "Seguinte"}
-                        </span>
-                        {index === 0 ? (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                            Destaque
-                          </span>
-                        ) : null}
+                {filteredNextEvents.length ? (
+                  <>
+                    {todayEvent ? (
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase text-emerald-700">Hoje</span>
+                          <span className="text-xs text-emerald-700">⏰</span>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-emerald-900">
+                          Hoje • {todayEvent.start_time.slice(0, 5)} — {todayEvent.title}
+                        </p>
                       </div>
-                      <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
-                      <p className="text-xs text-slate-500">{item.meta}</p>
-                    </div>
-                  ))
+                    ) : null}
+                    {filteredNextEvents.map((item, index) => (
+                      <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase text-emerald-600">
+                            {index === 0 ? "Proximo" : "Seguinte"}
+                          </span>
+                          {index === 0 ? (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                              Destaque
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="text-xs text-slate-500">{item.meta}</p>
+                      </div>
+                    ))}
+                  </>
                 ) : (
                   <div className="rounded-xl bg-white/70 px-3 py-3">
                     <p className="text-sm text-slate-500">{scheduleFallback}</p>
