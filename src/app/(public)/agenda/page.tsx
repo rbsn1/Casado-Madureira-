@@ -18,7 +18,7 @@ type WeeklyEvent = {
 const weekdayLabels = ["Domingo", "Segunda", "Terca", "Quarta", "Quinta", "Sexta", "Sabado"];
 
 const cardClass =
-  "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-lg shadow-black/5 backdrop-blur";
+  "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
 
 function formatTime(value: string) {
   return value ? value.slice(0, 5) : "--:--";
@@ -85,6 +85,8 @@ export default function AgendaPage() {
       events: filteredItems.filter((item) => item.weekday === weekday)
     }));
   }, [filteredItems]);
+
+  const todayIndex = new Date().getDay();
 
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
@@ -155,29 +157,54 @@ export default function AgendaPage() {
               </div>
             ) : (
               grouped.map((group) => (
-                <div key={group.weekday} className={cardClass}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-emerald-900">{group.label}</p>
-                    <span className="text-xs text-slate-500">
-                      {group.events.length ? `${group.events.length} evento(s)` : "Sem eventos"}
-                    </span>
+                <div
+                  key={group.weekday}
+                  className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10 ${
+                    group.weekday === todayIndex ? "border-emerald-200 bg-emerald-50/40" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between border-b border-emerald-100/70 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-emerald-900">{group.label}</p>
+                        {group.weekday === todayIndex ? (
+                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                            Hoje
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {group.events.length
+                          ? `${group.events.length} evento(s)`
+                          : "Sem eventos programados"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-400">{group.weekday === todayIndex ? "Destaque" : ""}</span>
                   </div>
                   <div className="mt-4 space-y-3">
                     {group.events.length ? (
                       group.events.map((event) => (
-                        <div key={event.id} className="rounded-xl bg-white/70 px-3 py-2">
-                          <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                          <p className="text-xs text-slate-500">
-                            {formatTime(event.start_time)}
-                            {event.location ? ` • ${event.location}` : ""}
-                          </p>
+                        <div key={event.id} className="rounded-xl bg-white/80 px-3 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                              <p className="text-xs text-slate-500">
+                                {event.location ? event.location : "Local a confirmar"}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                              {formatTime(event.start_time)}
+                            </span>
+                          </div>
                           {event.notes ? (
-                            <p className="text-xs text-slate-500">{event.notes}</p>
+                            <p className="mt-2 text-xs text-slate-500">{event.notes}</p>
                           ) : null}
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-500">Nenhum evento para este dia.</p>
+                      <p className="text-xs text-slate-500">
+                        Ainda nao temos encontros definidos para este dia.
+                      </p>
                     )}
                   </div>
                 </div>
