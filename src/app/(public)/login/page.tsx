@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
+import { HelpChatWidget } from "@/components/shared/HelpChatWidget";
 
 type WeeklyEvent = {
   id?: string | number;
@@ -429,6 +430,7 @@ export default function LoginPage() {
           </div>
         </footer>
       </div>
+      <HelpChatWidget />
     </PortalBackground>
   );
 }
