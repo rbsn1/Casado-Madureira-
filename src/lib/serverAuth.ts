@@ -26,14 +26,13 @@ export async function requireAdmin(request: Request) {
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: roles, error: roleError } = await supabaseAdmin
-    .from("usuarios_perfis")
-    .select("role, active")
-    .eq("user_id", data.user.id)
-    .eq("active", true);
+  const { data: profile, error: roleError } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .maybeSingle();
 
-  const typedRoles = (roles ?? []) as { role: string }[];
-  if (roleError || !typedRoles.some((item) => item.role === "ADMIN_MASTER")) {
+  if (roleError || profile?.role !== "admin") {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 

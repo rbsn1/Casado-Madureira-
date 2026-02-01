@@ -5,10 +5,20 @@ import { supabaseClient } from "@/lib/supabaseClient";
 
 type PublicDept = {
   id: string;
-  nome: string;
-  responsavel: string | null;
-  contato: string | null;
-  ativo: boolean;
+  name: string;
+  slug: string;
+  type: string;
+  parent_id: string | null;
+  is_active: boolean;
+};
+
+type PublicContact = {
+  department_id: string;
+  display_name: string;
+  whatsapp: string | null;
+  phone: string | null;
+  email: string | null;
+  is_active: boolean;
 };
 
 type ChatMessage = {
@@ -36,12 +46,12 @@ function normalizeText(value: string) {
 function matchDepartment(departments: PublicDept[], input: string) {
   const normalized = normalizeText(input);
   if (!normalized) return null;
-  const candidates = departments.filter((dept) => dept.ativo);
-  const direct = candidates.find((dept) => normalizeText(dept.nome).includes(normalized));
+  const candidates = departments.filter((dept) => dept.is_active);
+  const direct = candidates.find((dept) => normalizeText(dept.name).includes(normalized));
   if (direct) return direct;
   const words = normalized.split(/\s+/).filter(Boolean);
   if (!words.length) return null;
-  return candidates.find((dept) => words.some((word) => normalizeText(dept.nome).includes(word))) ?? null;
+  return candidates.find((dept) => words.some((word) => normalizeText(dept.name).includes(word))) ?? null;
 }
 
 export function HelpChatWidget() {
@@ -49,6 +59,7 @@ export function HelpChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [departments, setDepartments] = useState<PublicDept[]>([]);
+  const [contacts, setContacts] = useState<PublicContact[]>([]);
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   const [visitorName, setVisitorName] = useState<string | null>(null);
@@ -60,17 +71,29 @@ export function HelpChatWidget() {
     async function loadDepartments() {
       if (!supabaseClient) return;
       const { data, error } = await supabaseClient
-        .from("departamentos_publicos")
-        .select("id, nome, responsavel, contato, ativo")
-        .eq("ativo", true)
-        .order("nome");
+        .from("departments")
+        .select("id, name, slug, type, parent_id, is_active")
+        .eq("is_active", true)
+        .order("name");
       if (!active) return;
       if (error) return;
       setDepartments((data ?? []) as PublicDept[]);
     }
 
+    async function loadContacts() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from("department_contacts")
+        .select("department_id, display_name, whatsapp, phone, email, is_active")
+        .eq("is_active", true);
+      if (!active) return;
+      if (error) return;
+      setContacts((data ?? []) as PublicContact[]);
+    }
+
     if (open) {
       loadDepartments();
+      loadContacts();
     }
 
     if (!open) {
@@ -120,13 +143,22 @@ export function HelpChatWidget() {
 
     const match = matchDepartment(departments, value);
     if (match) {
-      const contact = match.contato ? `Contato: ${match.contato}` : "Contato: secretaria do CCM.";
+      const deptContacts = contacts.filter((item) => item.department_id === match.id);
+      const contactLines = deptContacts.length
+        ? deptContacts
+            .slice(0, 2)
+            .map((item) => {
+              const channel = item.whatsapp ?? item.phone ?? item.email ?? "Contato indisponível";
+              return `• ${item.display_name}: ${channel}`;
+            })
+            .join("\n")
+        : "• Contato: secretaria do CCM.";
       setMessages((prev) => [
         ...prev,
         {
           id: `${id}-bot`,
           from: "bot",
-          text: `Entendi. Para o departamento ${match.nome}, procure ${match.responsavel ?? "o(a) responsável"}.\n${contact}\nSe precisar de outro setor, pode me falar.`
+          text: `Entendi. Para o departamento ${match.name}, procure:\n${contactLines}\nSe precisar de outro setor, pode me falar.`
         }
       ]);
       setLoading(false);

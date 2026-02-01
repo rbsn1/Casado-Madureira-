@@ -38,11 +38,11 @@ export function useAuth(): AuthState {
         return;
       }
 
-      const { data: roles, error } = await supabaseClient
-        .from("usuarios_perfis")
-        .select("role, active")
-        .eq("user_id", currentUser.id)
-        .eq("active", true);
+      const { data: profile, error } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("id", currentUser.id)
+        .maybeSingle();
 
       if (!active) return;
       if (error) {
@@ -51,8 +51,7 @@ export function useAuth(): AuthState {
         return;
       }
 
-      const hasAdmin = (roles ?? []).some((item: { role: string }) => item.role === "ADMIN_MASTER");
-      setRole(hasAdmin ? "admin" : "user");
+      setRole(profile?.role === "admin" ? "admin" : "user");
       setLoading(false);
     }
 
