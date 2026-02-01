@@ -32,6 +32,13 @@ type PublicContact = {
   is_active: boolean;
 };
 
+type PublicDeptContact = {
+  nome: string;
+  responsavel: string | null;
+  contato: string | null;
+  ativo: boolean;
+};
+
 type PublicFaq = {
   department_id: string;
   intent: "about" | "contact" | "schedule" | "participate" | "location";
@@ -81,6 +88,8 @@ export function HelpChatWidget() {
   const [departments, setDepartments] = useState<PublicDept[]>([]);
   const [roles, setRoles] = useState<PublicRole[]>([]);
   const [contacts, setContacts] = useState<PublicContact[]>([]);
+  const [publicDeptContacts, setPublicDeptContacts] = useState<PublicDeptContact[]>([]);
+  const [publicContactError, setPublicContactError] = useState<string | null>(null);
   const [faqs, setFaqs] = useState<PublicFaq[]>([]);
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
@@ -125,6 +134,21 @@ export function HelpChatWidget() {
       setContacts((data ?? []) as PublicContact[]);
     }
 
+    async function loadPublicContacts() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from("departamentos_publicos")
+        .select("nome, responsavel, contato, ativo")
+        .eq("ativo", true);
+      if (!active) return;
+      if (error) {
+        setPublicContactError(error.message);
+        return;
+      }
+      setPublicContactError(null);
+      setPublicDeptContacts((data ?? []) as PublicDeptContact[]);
+    }
+
     async function loadRoles() {
       if (!supabaseClient) return;
       const { data, error } = await supabaseClient
@@ -154,6 +178,7 @@ export function HelpChatWidget() {
       setLastInteractionAt(Date.now());
       loadDepartments();
       loadContacts();
+      loadPublicContacts();
       loadRoles();
       loadFaqs();
     }
@@ -240,6 +265,14 @@ export function HelpChatWidget() {
     const deptContacts = contacts.filter(
       (item) => item.department_id === deptId && (!roleId || item.role_id === roleId)
     );
+    const dept = departments.find((item) => item.id === deptId);
+    const publicContact = dept
+      ? publicDeptContacts.find((item) => {
+          const deptName = normalizeText(dept.name);
+          const publicName = normalizeText(item.nome);
+          return deptName === publicName || deptName.includes(publicName) || publicName.includes(deptName);
+        })
+      : null;
     const contactLines = deptContacts.length
       ? deptContacts
           .slice(0, 3)
@@ -248,7 +281,11 @@ export function HelpChatWidget() {
             return `• ${item.display_name}: ${channel}`;
           })
           .join("\n")
-      : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
+      : publicContact?.contato
+        ? `• ${publicContact.responsavel ?? "Contato"}: ${publicContact.contato}`
+        : publicContactError
+          ? "Não consegui acessar os contatos públicos agora. Tente novamente em instantes."
+          : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
     pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
   }
 
