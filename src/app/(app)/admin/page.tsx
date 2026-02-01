@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type UserRole = { role: string; active: boolean };
-type UserItem = { id: string; email: string | null; created_at: string; roles: UserRole[] };
+type UserItem = { id: string; email: string | null; created_at: string; roles: UserRole[]; whatsapp?: string | null };
 type WeeklyScheduleEvent = {
   id: string;
   title: string;
@@ -650,7 +650,7 @@ export default function AdminPage() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["E-mail", "Criado em", "Roles", "Ações"].map((col) => (
+                {["E-mail", "WhatsApp", "Criado em", "Roles", "Ações"].map((col) => (
                   <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
                     {col}
                   </th>
@@ -660,14 +660,14 @@ export default function AdminPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
                     Carregando usuários...
                   </td>
                 </tr>
               ) : null}
               {!loading && !users.length ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
                     Nenhum usuário encontrado.
                   </td>
                 </tr>
@@ -675,6 +675,7 @@ export default function AdminPage() {
               {users.map((user) => (
                 <tr key={user.id}>
                   <td className="px-4 py-3 text-slate-700">{user.email ?? "Sem e-mail"}</td>
+                  <td className="px-4 py-3 text-slate-700">{user.whatsapp ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-700">
                     {new Date(user.created_at).toLocaleDateString("pt-BR")}
                   </td>

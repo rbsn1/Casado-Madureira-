@@ -24,6 +24,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: roleError.message }, { status: 500 });
   }
 
+  const { data: contacts, error: contactError } = await supabaseAdmin
+    .from("user_contacts")
+    .select("user_id, whatsapp")
+    .in("user_id", ids);
+
+  if (contactError) {
+    return NextResponse.json({ error: contactError.message }, { status: 500 });
+  }
+
+  const contactByUser = ((contacts ?? []) as { user_id: string; whatsapp: string | null }[]).reduce<
+    Record<string, { whatsapp: string | null }>
+  >((acc, item) => {
+    acc[item.user_id] = { whatsapp: item.whatsapp };
+    return acc;
+  }, {});
+
   const rolesByUser = ((roles ?? []) as { user_id: string; role: string; active: boolean }[]).reduce<
     Record<string, { role: string; active: boolean }[]>
   >(
@@ -39,7 +55,8 @@ export async function GET(request: Request) {
     id: user.id,
     email: user.email,
     created_at: user.created_at,
-    roles: rolesByUser[user.id] ?? []
+    roles: rolesByUser[user.id] ?? [],
+    whatsapp: contactByUser[user.id]?.whatsapp ?? null
   }));
 
   return NextResponse.json({ users });
