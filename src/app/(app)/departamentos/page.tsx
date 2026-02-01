@@ -113,6 +113,18 @@ export default function DepartamentosPage() {
     await loadData();
   }
 
+  async function handleDelete(dept: DepartamentoItem) {
+    if (!supabaseClient) return;
+    const confirmDelete = window.confirm(`Excluir o departamento "${dept.nome}"?`);
+    if (!confirmDelete) return;
+    const { error } = await supabaseClient.from("departamentos").delete().eq("id", dept.id);
+    if (error) {
+      setStatusMessage(error.message);
+      return;
+    }
+    await loadData();
+  }
+
   async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabaseClient || !selectedDept) return;
@@ -220,6 +232,12 @@ export default function DepartamentosPage() {
                   className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
                 >
                   {dept.ativo ? "Desativar" : "Ativar"}
+                </button>
+                <button
+                  onClick={() => handleDelete(dept)}
+                  className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                >
+                  Excluir
                 </button>
               </div>
             </div>

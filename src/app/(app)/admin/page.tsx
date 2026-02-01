@@ -143,11 +143,12 @@ export default function AdminPage() {
     const formData = new FormData(form);
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
+    const whatsapp = String(formData.get("whatsapp") ?? "");
     const role = String(formData.get("role") ?? "");
     try {
       await apiFetch("/api/admin/users", {
         method: "POST",
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ email, password, role, whatsapp })
       });
       form.reset();
       await loadUsers();
@@ -293,7 +294,7 @@ export default function AdminPage() {
         <h2 className="text-xl font-semibold text-emerald-900">Usuários e Permissões</h2>
       </div>
 
-      <form className="card grid gap-3 p-4 md:grid-cols-3" onSubmit={handleCreateUser}>
+      <form className="card grid gap-3 p-4 md:grid-cols-4" onSubmit={handleCreateUser}>
         <label className="space-y-1 text-sm">
           <span className="text-slate-700">E-mail</span>
           <input
@@ -313,6 +314,15 @@ export default function AdminPage() {
           />
         </label>
         <label className="space-y-1 text-sm">
+          <span className="text-slate-700">WhatsApp</span>
+          <input
+            name="whatsapp"
+            type="text"
+            placeholder="(99) 99999-9999"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+          />
+        </label>
+        <label className="space-y-1 text-sm">
           <span className="text-slate-700">Role</span>
           <select
             name="role"
@@ -326,7 +336,7 @@ export default function AdminPage() {
             ))}
           </select>
         </label>
-        <div className="md:col-span-3">
+        <div className="md:col-span-4">
           <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
             Criar usuário
           </button>

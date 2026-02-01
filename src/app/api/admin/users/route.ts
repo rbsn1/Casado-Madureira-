@@ -54,6 +54,7 @@ export async function POST(request: Request) {
   const email = String(body.email ?? "");
   const password = String(body.password ?? "");
   const role = body.role ? String(body.role) : null;
+  const whatsapp = body.whatsapp ? String(body.whatsapp) : null;
 
   if (!email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
@@ -76,6 +77,15 @@ export async function POST(request: Request) {
       .upsert(payload);
     if (roleError) {
       return NextResponse.json({ error: roleError.message }, { status: 500 });
+    }
+  }
+
+  if (whatsapp) {
+    const { error: contactError } = await (supabaseAdmin as any)
+      .from("user_contacts")
+      .upsert({ user_id: data.user.id, whatsapp });
+    if (contactError) {
+      return NextResponse.json({ error: contactError.message }, { status: 500 });
     }
   }
 
