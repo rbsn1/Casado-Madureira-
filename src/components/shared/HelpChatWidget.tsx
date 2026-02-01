@@ -173,7 +173,7 @@ export function HelpChatWidget() {
     if (!open || !visitorName || pendingDept || chips.length) return;
     if (!departments.length) return;
     setChips(getDepartmentChips());
-  }, [open, visitorName, pendingDept, chips.length, departments.length, contacts.length]);
+  }, [open, visitorName, pendingDept, chips.length, departments.length]);
 
   const canSend = useMemo(() => input.trim().length > 1, [input]);
 
@@ -189,11 +189,7 @@ export function HelpChatWidget() {
   }
 
   function getEligibleDepartments() {
-    if (!contacts.length) return departments.filter((dept) => dept.is_active);
-    const withContacts = new Set(
-      contacts.filter((contact) => contact.is_active).map((contact) => contact.department_id)
-    );
-    return departments.filter((dept) => dept.is_active && withContacts.has(dept.id));
+    return departments.filter((dept) => dept.is_active);
   }
 
   function getDepartmentChips() {
