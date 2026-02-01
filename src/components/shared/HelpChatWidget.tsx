@@ -88,6 +88,7 @@ export function HelpChatWidget() {
   const [chips, setChips] = useState<string[]>([]);
   const [pendingDept, setPendingDept] = useState<PublicDept | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PublicFaq["intent"] | null>(null);
+  const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -150,6 +151,7 @@ export function HelpChatWidget() {
     }
 
     if (open) {
+      setLastInteractionAt(Date.now());
       loadDepartments();
       loadContacts();
       loadRoles();
@@ -165,12 +167,30 @@ export function HelpChatWidget() {
       setChips([]);
       setPendingDept(null);
       setPendingIntent(null);
+      setLastInteractionAt(null);
     }
 
     return () => {
       active = false;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !lastInteractionAt) return;
+    const timeoutId = setTimeout(() => {
+      setMessages(initialMessages);
+      setInput("");
+      setLoading(false);
+      setTyping(false);
+      setVisitorName(null);
+      setChips([]);
+      setPendingDept(null);
+      setPendingIntent(null);
+      setLastInteractionAt(Date.now());
+    }, 60000);
+
+    return () => clearTimeout(timeoutId);
+  }, [open, lastInteractionAt]);
 
   useEffect(() => {
     if (!open) return;
@@ -193,7 +213,7 @@ export function HelpChatWidget() {
   }
 
   function getIntentChips() {
-    return ["Sobre", "Contato", "Agenda", "Participar", "Local"];
+    return ["Contato", "Participar"];
   }
 
   function getEligibleDepartments() {
@@ -206,11 +226,8 @@ export function HelpChatWidget() {
 
   function mapIntent(label: string): PublicFaq["intent"] | null {
     const normalized = normalizeText(label);
-    if (normalized.includes("sobre")) return "about";
     if (normalized.includes("contato")) return "contact";
-    if (normalized.includes("agenda")) return "schedule";
-    if (normalized.includes("participar")) return "participate";
-    if (normalized.includes("local")) return "location";
+    if (normalized.includes("participar")) return "contact";
     return null;
   }
 
@@ -231,13 +248,14 @@ export function HelpChatWidget() {
             return `• ${item.display_name}: ${channel}`;
           })
           .join("\n")
-      : "• Contato: secretaria do CCM.";
+      : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
     pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
   }
 
   async function processMessage(rawValue: string) {
     const value = rawValue.trim();
     if (value.length < 2) return;
+    setLastInteractionAt(Date.now());
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setMessages((prev) => [...prev, { id, from: "user", text: value }]);
     setInput("");
@@ -344,7 +362,7 @@ export function HelpChatWidget() {
         return;
       }
 
-      pushBotMessage("Posso ajudar com: Sobre, Contato, Agenda, Participar ou Local.");
+      pushBotMessage("Posso ajudar com: Contato ou Participar.");
       setChips(getIntentChips());
       setLoading(false);
       setTyping(false);
@@ -360,7 +378,7 @@ export function HelpChatWidget() {
         pushBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
       } else {
         setChips(getIntentChips());
-        pushBotMessage(`Entendi. Sobre ${match.name}, o que você deseja saber?`);
+        pushBotMessage(`Entendi. ${match.name}: deseja Contato ou Participar?`);
       }
       setLoading(false);
       setTyping(false);
