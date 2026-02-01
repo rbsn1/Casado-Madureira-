@@ -169,6 +169,12 @@ export function HelpChatWidget() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, typing, open]);
 
+  useEffect(() => {
+    if (!open || !visitorName || pendingDept || chips.length) return;
+    if (!departments.length) return;
+    setChips(getDepartmentChips());
+  }, [open, visitorName, pendingDept, chips.length, departments.length]);
+
   const canSend = useMemo(() => input.trim().length > 1, [input]);
 
   function pushBotMessage(text: string) {
@@ -180,6 +186,10 @@ export function HelpChatWidget() {
 
   function getIntentChips() {
     return ["Sobre", "Contato", "Agenda", "Participar", "Local"];
+  }
+
+  function getDepartmentChips() {
+    return departments.filter((dept) => dept.is_active).map((dept) => dept.name);
   }
 
   function mapIntent(label: string): PublicFaq["intent"] | null {
@@ -229,9 +239,15 @@ export function HelpChatWidget() {
         {
           id: `${id}-bot`,
           from: "bot",
-          text: `Prazer, ${value}! Agora me diga o nome do departamento e eu informo quem procurar.`
+          text: `Prazer, ${value}! Qual área você procura?`
         }
       ]);
+      const departmentChips = getDepartmentChips();
+      if (departmentChips.length) {
+        setChips(departmentChips);
+      } else {
+        pushBotMessage("Carregando as áreas disponíveis...");
+      }
       setLoading(false);
       setTyping(false);
       return;
@@ -408,7 +424,7 @@ export function HelpChatWidget() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="Ex: Louvor, Casais, Intercessão..."
-              className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs focus:border-emerald-300 focus:outline-none"
+              className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-base sm:text-xs focus:border-emerald-300 focus:outline-none"
             />
             <button
               type="submit"
