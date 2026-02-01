@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type PublicDept = {
@@ -21,7 +21,7 @@ const initialMessages: ChatMessage[] = [
   {
     id: "welcome",
     from: "bot",
-    text: "Ola! Quer entrar em algum departamento? Diga o nome e eu informo quem procurar."
+    text: "Oi! Antes de começarmos, qual é o seu nome?"
   }
 ];
 
@@ -50,6 +50,9 @@ export function HelpChatWidget() {
   const [input, setInput] = useState("");
   const [departments, setDepartments] = useState<PublicDept[]>([]);
   const [loading, setLoading] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [visitorName, setVisitorName] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -70,10 +73,23 @@ export function HelpChatWidget() {
       loadDepartments();
     }
 
+    if (!open) {
+      setMessages(initialMessages);
+      setInput("");
+      setLoading(false);
+      setTyping(false);
+      setVisitorName(null);
+    }
+
     return () => {
       active = false;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, typing, open]);
 
   const canSend = useMemo(() => input.trim().length > 1, [input]);
 
@@ -85,6 +101,22 @@ export function HelpChatWidget() {
     setMessages((prev) => [...prev, { id, from: "user", text: value }]);
     setInput("");
     setLoading(true);
+    setTyping(true);
+
+    if (!visitorName) {
+      setVisitorName(value);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${id}-bot`,
+          from: "bot",
+          text: `Prazer, ${value}! Agora me diga o nome do departamento e eu informo quem procurar.`
+        }
+      ]);
+      setLoading(false);
+      setTyping(false);
+      return;
+    }
 
     const match = matchDepartment(departments, value);
     if (match) {
@@ -94,10 +126,11 @@ export function HelpChatWidget() {
         {
           id: `${id}-bot`,
           from: "bot",
-          text: `Para o departamento ${match.nome}, procure ${match.responsavel ?? "o(a) responsavel"}.\n${contact}`
+          text: `Entendi. Para o departamento ${match.nome}, procure ${match.responsavel ?? "o(a) responsável"}.\n${contact}\nSe precisar de outro setor, pode me falar.`
         }
       ]);
       setLoading(false);
+      setTyping(false);
       return;
     }
 
@@ -106,10 +139,11 @@ export function HelpChatWidget() {
       {
         id: `${id}-bot`,
         from: "bot",
-        text: "Nao encontrei esse departamento. Informe o nome completo ou fale com a secretaria para direcionamento."
+        text: "Não encontrei esse departamento. Pode me dizer o nome completo? Se preferir, fale com a secretaria para direcionamento."
       }
     ]);
     setLoading(false);
+    setTyping(false);
   }
 
   return (
@@ -144,13 +178,14 @@ export function HelpChatWidget() {
                 ))}
               </div>
             ))}
-            {loading ? <p className="text-xs text-slate-400">Consultando...</p> : null}
+            {typing ? <p className="text-xs text-slate-400">Digitando...</p> : null}
+            <div ref={endRef} />
           </div>
           <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-emerald-100 bg-white/80 px-3 py-3">
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Ex: Louvor, Casais, Intercessao..."
+              placeholder="Ex: Louvor, Casais, Intercessão..."
               className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs focus:border-emerald-300 focus:outline-none"
             />
             <button
@@ -161,6 +196,9 @@ export function HelpChatWidget() {
               Enviar
             </button>
           </form>
+          <div className="border-t border-emerald-100 px-4 py-2 text-[11px] text-slate-500">
+            Este chat informa apenas sobre departamentos e contatos.
+          </div>
         </div>
       ) : null}
 
@@ -169,7 +207,7 @@ export function HelpChatWidget() {
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700"
       >
-        Tirar duvidas
+        Tirar dúvidas
       </button>
     </div>
   );
