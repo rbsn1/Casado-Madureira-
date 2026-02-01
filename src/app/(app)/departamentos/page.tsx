@@ -12,6 +12,14 @@ type DepartamentoItem = {
   ativo: boolean;
 };
 
+type DepartamentoPublico = {
+  id: string;
+  nome: string;
+  responsavel: string | null;
+  contato: string | null;
+  ativo: boolean;
+};
+
 type PessoaItem = {
   id: string;
   nome_completo: string;
@@ -30,9 +38,16 @@ export default function DepartamentosPage() {
   const [departamentos, setDepartamentos] = useState<DepartamentoItem[]>([]);
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
   const [pessoaDepto, setPessoaDepto] = useState<PessoaDepto[]>([]);
+  const [deptPublicos, setDeptPublicos] = useState<DepartamentoPublico[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedDept, setSelectedDept] = useState<DepartamentoItem | null>(null);
+  const [selectedPublicDept, setSelectedPublicDept] = useState<DepartamentoItem | null>(null);
+  const [publicForm, setPublicForm] = useState({
+    responsavel: "",
+    contato: "",
+    ativo: true
+  });
 
   async function loadData() {
     if (!supabaseClient) {
@@ -40,18 +55,20 @@ export default function DepartamentosPage() {
       return;
     }
     setStatusMessage("");
-    const [deptResult, pessoasResult, pessoaDeptoResult] = await Promise.all([
+    const [deptResult, pessoasResult, pessoaDeptoResult, publicDeptResult] = await Promise.all([
       supabaseClient.from("departamentos").select("id, nome, descricao, responsavel_id, ativo").order("nome"),
       supabaseClient.from("pessoas").select("id, nome_completo").order("nome_completo"),
-      supabaseClient.from("pessoa_departamento").select("id, pessoa_id, departamento_id, funcao, status, desde")
+      supabaseClient.from("pessoa_departamento").select("id, pessoa_id, departamento_id, funcao, status, desde"),
+      supabaseClient.from("departamentos_publicos").select("id, nome, responsavel, contato, ativo").order("nome")
     ]);
-    if (deptResult.error || pessoasResult.error || pessoaDeptoResult.error) {
+    if (deptResult.error || pessoasResult.error || pessoaDeptoResult.error || publicDeptResult.error) {
       setStatusMessage("Não foi possível carregar os departamentos.");
       return;
     }
     setDepartamentos(deptResult.data ?? []);
     setPessoas(pessoasResult.data ?? []);
     setPessoaDepto(pessoaDeptoResult.data ?? []);
+    setDeptPublicos(publicDeptResult.data ?? []);
   }
 
   useEffect(() => {
@@ -122,6 +139,50 @@ export default function DepartamentosPage() {
       setStatusMessage(error.message);
       return;
     }
+    await loadData();
+  }
+
+  function handleOpenPublic(dept: DepartamentoItem) {
+    const existing = deptPublicos.find((item) => item.nome === dept.nome);
+    setSelectedPublicDept(dept);
+    setPublicForm({
+      responsavel: existing?.responsavel ?? "",
+      contato: existing?.contato ?? "",
+      ativo: existing?.ativo ?? true
+    });
+  }
+
+  async function handleSavePublic(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabaseClient || !selectedPublicDept) return;
+    setStatusMessage("");
+    const existing = deptPublicos.find((item) => item.nome === selectedPublicDept.nome);
+    if (existing) {
+      const { error } = await supabaseClient
+        .from("departamentos_publicos")
+        .update({
+          responsavel: publicForm.responsavel.trim() || null,
+          contato: publicForm.contato.trim() || null,
+          ativo: publicForm.ativo
+        })
+        .eq("id", existing.id);
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabaseClient.from("departamentos_publicos").insert({
+        nome: selectedPublicDept.nome,
+        responsavel: publicForm.responsavel.trim() || null,
+        contato: publicForm.contato.trim() || null,
+        ativo: publicForm.ativo
+      });
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+    }
+    setSelectedPublicDept(null);
     await loadData();
   }
 
@@ -209,6 +270,10 @@ export default function DepartamentosPage() {
               <div>
                 <p className="text-lg font-semibold text-slate-900">{dept.nome}</p>
                 <p className="text-sm text-slate-600">Responsável: {dept.responsavel_id ?? "A definir"}</p>
+                <p className="text-xs text-slate-500">
+                  Contato público:{" "}
+                  {deptPublicos.find((item) => item.nome === dept.nome)?.contato ?? "Não informado"}
+                </p>
               </div>
               <StatusBadge value={dept.ativo ? "ATIVO" : "INATIVO"} />
             </div>
@@ -232,6 +297,12 @@ export default function DepartamentosPage() {
                   className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
                 >
                   {dept.ativo ? "Desativar" : "Ativar"}
+                </button>
+                <button
+                  onClick={() => handleOpenPublic(dept)}
+                  className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+                >
+                  Contato público
                 </button>
                 <button
                   onClick={() => handleDelete(dept)}
@@ -304,6 +375,63 @@ export default function DepartamentosPage() {
                   </div>
                 ))}
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectedPublicDept ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-emerald-900">
+                Contato público • {selectedPublicDept.nome}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setSelectedPublicDept(null)}
+                className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
+              >
+                Fechar
+              </button>
+            </div>
+            <form className="mt-4 grid gap-3" onSubmit={handleSavePublic}>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-700">Responsável</span>
+                <input
+                  value={publicForm.responsavel}
+                  onChange={(event) =>
+                    setPublicForm((prev) => ({ ...prev, responsavel: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-700">Contato (WhatsApp ou e-mail)</span>
+                <input
+                  value={publicForm.contato}
+                  onChange={(event) =>
+                    setPublicForm((prev) => ({ ...prev, contato: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={publicForm.ativo}
+                  onChange={(event) =>
+                    setPublicForm((prev) => ({ ...prev, ativo: event.target.checked }))
+                  }
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Ativo
+              </label>
+              <div className="flex items-center gap-2">
+                <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                  Salvar contato
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       ) : null}
