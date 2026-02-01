@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { slugify } from "@/lib/slugify";
@@ -91,7 +91,7 @@ export default function AdminDepartamentoDetalhePage() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  async function loadAll() {
+  const loadAll = useCallback(async () => {
     setStatus("loading");
     setMessage("");
     try {
@@ -120,11 +120,11 @@ export default function AdminDepartamentoDetalhePage() {
       setStatus("error");
       setMessage((error as Error).message);
     }
-  }
+  }, [departmentId]);
 
   useEffect(() => {
     if (role === "admin") loadAll();
-  }, [role]);
+  }, [role, loadAll]);
 
   async function handleSaveDepartment(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

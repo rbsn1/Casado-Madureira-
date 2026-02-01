@@ -30,10 +30,10 @@ export async function requireAdmin(request: Request) {
     .from("profiles")
     .select("role")
     .eq("id", data.user.id)
-    .returns<{ role: string }>()
     .maybeSingle();
 
-  if (roleError || profile?.role !== "admin") {
+  const profileRole = (profile as { role?: string } | null)?.role;
+  if (roleError || profileRole !== "admin") {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 
