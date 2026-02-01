@@ -12,13 +12,33 @@ type PublicDept = {
   is_active: boolean;
 };
 
+type PublicRole = {
+  id: string;
+  department_id: string;
+  role_name: string;
+  role_key: string;
+  role_priority: number;
+  is_public: boolean;
+  is_active: boolean;
+};
+
 type PublicContact = {
   department_id: string;
+  role_id: string | null;
   display_name: string;
   whatsapp: string | null;
   phone: string | null;
   email: string | null;
   is_active: boolean;
+};
+
+type PublicFaq = {
+  department_id: string;
+  intent: "about" | "contact" | "schedule" | "participate" | "location";
+  answer_title: string;
+  answer_body: string;
+  is_active: boolean;
+  created_at: string;
 };
 
 type ChatMessage = {
@@ -59,10 +79,15 @@ export function HelpChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [departments, setDepartments] = useState<PublicDept[]>([]);
+  const [roles, setRoles] = useState<PublicRole[]>([]);
   const [contacts, setContacts] = useState<PublicContact[]>([]);
+  const [faqs, setFaqs] = useState<PublicFaq[]>([]);
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   const [visitorName, setVisitorName] = useState<string | null>(null);
+  const [chips, setChips] = useState<string[]>([]);
+  const [pendingDept, setPendingDept] = useState<PublicDept | null>(null);
+  const [pendingIntent, setPendingIntent] = useState<PublicFaq["intent"] | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -84,16 +109,43 @@ export function HelpChatWidget() {
       if (!supabaseClient) return;
       const { data, error } = await supabaseClient
         .from("department_contacts")
-        .select("department_id, display_name, whatsapp, phone, email, is_active")
+        .select("department_id, role_id, display_name, whatsapp, phone, email, is_active")
         .eq("is_active", true);
       if (!active) return;
       if (error) return;
       setContacts((data ?? []) as PublicContact[]);
     }
 
+    async function loadRoles() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from("department_roles")
+        .select("id, department_id, role_name, role_key, role_priority, is_public, is_active")
+        .eq("is_active", true)
+        .eq("is_public", true)
+        .order("role_priority", { ascending: true });
+      if (!active) return;
+      if (error) return;
+      setRoles((data ?? []) as PublicRole[]);
+    }
+
+    async function loadFaqs() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from("department_faq")
+        .select("department_id, intent, answer_title, answer_body, is_active, created_at")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (!active) return;
+      if (error) return;
+      setFaqs((data ?? []) as PublicFaq[]);
+    }
+
     if (open) {
       loadDepartments();
       loadContacts();
+      loadRoles();
+      loadFaqs();
     }
 
     if (!open) {
@@ -102,6 +154,9 @@ export function HelpChatWidget() {
       setLoading(false);
       setTyping(false);
       setVisitorName(null);
+      setChips([]);
+      setPendingDept(null);
+      setPendingIntent(null);
     }
 
     return () => {
@@ -116,10 +171,51 @@ export function HelpChatWidget() {
 
   const canSend = useMemo(() => input.trim().length > 1, [input]);
 
-  async function handleSend(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canSend) return;
-    const value = input.trim();
+  function pushBotMessage(text: string) {
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: "bot", text }
+    ]);
+  }
+
+  function getIntentChips() {
+    return ["Sobre", "Contato", "Agenda", "Participar", "Local"];
+  }
+
+  function mapIntent(label: string): PublicFaq["intent"] | null {
+    const normalized = normalizeText(label);
+    if (normalized.includes("sobre")) return "about";
+    if (normalized.includes("contato")) return "contact";
+    if (normalized.includes("agenda")) return "schedule";
+    if (normalized.includes("participar")) return "participate";
+    if (normalized.includes("local")) return "location";
+    return null;
+  }
+
+  function getFaqAnswer(deptId: string, intent: PublicFaq["intent"]) {
+    const list = faqs.filter((item) => item.department_id === deptId && item.intent === intent);
+    return list[0] ?? null;
+  }
+
+  function replyWithContacts(deptId: string, roleId?: string | null) {
+    const deptContacts = contacts.filter(
+      (item) => item.department_id === deptId && (!roleId || item.role_id === roleId)
+    );
+    const contactLines = deptContacts.length
+      ? deptContacts
+          .slice(0, 3)
+          .map((item) => {
+            const channel = item.whatsapp ?? item.phone ?? item.email ?? "Contato indisponível";
+            return `• ${item.display_name}: ${channel}`;
+          })
+          .join("\n")
+      : "• Contato: secretaria do CCM.";
+    pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
+  }
+
+  async function processMessage(rawValue: string) {
+    const value = rawValue.trim();
+    if (value.length < 2) return;
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setMessages((prev) => [...prev, { id, from: "user", text: value }]);
     setInput("");
@@ -141,41 +237,119 @@ export function HelpChatWidget() {
       return;
     }
 
-    const match = matchDepartment(departments, value);
-    if (match) {
-      const deptContacts = contacts.filter((item) => item.department_id === match.id);
-      const contactLines = deptContacts.length
-        ? deptContacts
-            .slice(0, 2)
-            .map((item) => {
-              const channel = item.whatsapp ?? item.phone ?? item.email ?? "Contato indisponível";
-              return `• ${item.display_name}: ${channel}`;
-            })
-            .join("\n")
-        : "• Contato: secretaria do CCM.";
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `${id}-bot`,
-          from: "bot",
-          text: `Entendi. Para o departamento ${match.name}, procure:\n${contactLines}\nSe precisar de outro setor, pode me falar.`
-        }
-      ]);
+    if (pendingDept && (pendingDept.type === "umbrella" || pendingDept.type === "mixed")) {
+      const subs = departments.filter((dept) => dept.parent_id === pendingDept.id);
+      const normalizedValue = normalizeText(value);
+      if (normalizedValue.includes("coordenacao") || normalizedValue.includes("coordenação")) {
+        setChips(getIntentChips());
+        pushBotMessage(`Perfeito. Sobre ${pendingDept.name}, o que você deseja saber?`);
+        setLoading(false);
+        setTyping(false);
+        return;
+      }
+      const matchedSub = subs.find((item) =>
+        normalizeText(item.name).includes(normalizeText(value))
+      );
+      if (matchedSub) {
+        setPendingDept(matchedSub);
+        setChips(getIntentChips());
+        pushBotMessage(`Certo! Sobre ${matchedSub.name}, o que você deseja saber?`);
+        setLoading(false);
+        setTyping(false);
+        return;
+      }
+      pushBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
+      setChips(["Coordenação geral", ...subs.map((item) => item.name)]);
       setLoading(false);
       setTyping(false);
       return;
     }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `${id}-bot`,
-        from: "bot",
-        text: "Não encontrei esse departamento. Pode me dizer o nome completo? Se preferir, fale com a secretaria para direcionamento."
+    if (pendingDept && pendingDept.type === "colegiado" && pendingIntent === "contact") {
+      const deptRoles = roles.filter((item) => item.department_id === pendingDept.id);
+      const matchedRole = deptRoles.find((item) =>
+        normalizeText(item.role_name).includes(normalizeText(value))
+      );
+      if (matchedRole) {
+        replyWithContacts(pendingDept.id, matchedRole.id);
+        setPendingIntent(null);
+        setChips(getIntentChips());
+        setLoading(false);
+        setTyping(false);
+        return;
       }
-    ]);
+      pushBotMessage("Qual liderança você procura?");
+      setChips(deptRoles.map((item) => item.role_name));
+      setLoading(false);
+      setTyping(false);
+      return;
+    }
+
+    if (pendingDept) {
+      const mappedIntent = mapIntent(value);
+      if (mappedIntent) {
+        if (mappedIntent === "contact" && pendingDept.type === "colegiado") {
+          const deptRoles = roles.filter((item) => item.department_id === pendingDept.id);
+          if (deptRoles.length) {
+            setPendingIntent("contact");
+            setChips(deptRoles.map((item) => item.role_name));
+            pushBotMessage("Qual liderança você procura?");
+            setLoading(false);
+            setTyping(false);
+            return;
+          }
+        }
+
+        const answer = getFaqAnswer(pendingDept.id, mappedIntent);
+        if (answer) {
+          pushBotMessage(`${answer.answer_title}\n${answer.answer_body}`);
+        } else {
+          pushBotMessage("Ainda não tenho uma resposta pronta para isso. Posso ajudar com contatos.");
+        }
+        if (mappedIntent === "contact") {
+          replyWithContacts(pendingDept.id);
+        }
+        setPendingIntent(null);
+        setChips(getIntentChips());
+        setLoading(false);
+        setTyping(false);
+        return;
+      }
+
+      pushBotMessage("Posso ajudar com: Sobre, Contato, Agenda, Participar ou Local.");
+      setChips(getIntentChips());
+      setLoading(false);
+      setTyping(false);
+      return;
+    }
+
+    const match = matchDepartment(departments, value);
+    if (match) {
+      setPendingDept(match);
+      if (match.type === "umbrella" || match.type === "mixed") {
+        const subs = departments.filter((dept) => dept.parent_id === match.id);
+        setChips(["Coordenação geral", ...subs.map((item) => item.name)]);
+        pushBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
+      } else {
+        setChips(getIntentChips());
+        pushBotMessage(`Entendi. Sobre ${match.name}, o que você deseja saber?`);
+      }
+      setLoading(false);
+      setTyping(false);
+      return;
+    }
+
+    pushBotMessage(
+      "Não encontrei esse departamento. Pode me dizer o nome completo? Se preferir, fale com a secretaria para direcionamento."
+    );
     setLoading(false);
     setTyping(false);
+  }
+
+  async function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSend) return;
+    await processMessage(input);
   }
 
   return (
@@ -211,6 +385,22 @@ export function HelpChatWidget() {
               </div>
             ))}
             {typing ? <p className="text-xs text-slate-400">Digitando...</p> : null}
+            {chips.length ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {chips.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      processMessage(chip);
+                    }}
+                    className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div ref={endRef} />
           </div>
           <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-emerald-100 bg-white/80 px-3 py-3">
