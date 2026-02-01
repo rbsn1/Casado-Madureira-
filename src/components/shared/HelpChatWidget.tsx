@@ -147,9 +147,9 @@ export function HelpChatWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
+    <div className="fixed bottom-5 left-4 right-4 z-50 flex flex-col items-stretch gap-2 sm:left-auto sm:right-5 sm:items-end">
       {open ? (
-        <div className="w-[320px] overflow-hidden rounded-2xl border border-black/10 bg-white/90 shadow-2xl shadow-black/10 backdrop-blur-lg">
+        <div className="w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-black/10 bg-white/90 shadow-2xl shadow-black/10 backdrop-blur-lg sm:w-[320px]">
           <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-4 py-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Ajuda CCM</p>
@@ -163,7 +163,7 @@ export function HelpChatWidget() {
               Fechar
             </button>
           </div>
-          <div className="max-h-72 space-y-3 overflow-y-auto px-4 py-3 text-sm text-slate-700">
+          <div className="max-h-64 space-y-3 overflow-y-auto px-4 py-3 text-sm text-slate-700 sm:max-h-72">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -205,7 +205,7 @@ export function HelpChatWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 sm:w-auto"
       >
         Tirar dúvidas
       </button>

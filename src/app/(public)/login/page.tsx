@@ -245,13 +245,13 @@ export default function LoginPage() {
               </Link>
             </nav>
             {authLoading ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-emerald-900">
+              <div className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-2 text-sm font-semibold text-emerald-900 sm:w-auto">
                 Carregando...
               </div>
             ) : user ? (
               <Link
                 href={role === "admin" ? "/admin" : "/conta"}
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 sm:w-auto"
               >
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
                   {(user.email?.[0] ?? "U").toUpperCase()}
@@ -261,7 +261,7 @@ export default function LoginPage() {
             ) : (
               <Link
                 href="/acesso-interno"
-                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700 sm:w-auto"
               >
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
                   <svg
@@ -296,22 +296,22 @@ export default function LoginPage() {
                 organizado e pronto para apoiar os departamentos.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/cadastro"
-                className="rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                className="w-full rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
               >
                 Cadastro rápido
               </Link>
               <Link
                 href="/agenda"
-                className="rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300"
+                className="w-full rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300 sm:w-auto"
               >
                 Ver agenda
               </Link>
               <Link
                 href="/acesso-interno"
-                className="rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300"
+                className="w-full rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300 sm:w-auto"
               >
                 Acesso interno
               </Link>
