@@ -10,6 +10,8 @@ type DepartamentoItem = {
   descricao: string | null;
   responsavel_id: string | null;
   ativo: boolean;
+  type: "simple" | "colegiado" | "umbrella" | "mixed";
+  parent_id: string | null;
 };
 
 type DepartamentoPublico = {
@@ -34,6 +36,13 @@ type PessoaDepto = {
   desde: string | null;
 };
 
+const typeLabels: Record<DepartamentoItem["type"], string> = {
+  simple: "Simples",
+  colegiado: "Colegiado",
+  umbrella: "Guarda-chuva",
+  mixed: "Misto"
+};
+
 export default function DepartamentosPage() {
   const [departamentos, setDepartamentos] = useState<DepartamentoItem[]>([]);
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
@@ -56,7 +65,10 @@ export default function DepartamentosPage() {
     }
     setStatusMessage("");
     const [deptResult, pessoasResult, pessoaDeptoResult, publicDeptResult] = await Promise.all([
-      supabaseClient.from("departamentos").select("id, nome, descricao, responsavel_id, ativo").order("nome"),
+      supabaseClient
+        .from("departamentos")
+        .select("id, nome, descricao, responsavel_id, ativo, type, parent_id")
+        .order("nome"),
       supabaseClient.from("pessoas").select("id, nome_completo").order("nome_completo"),
       supabaseClient.from("pessoa_departamento").select("id, pessoa_id, departamento_id, funcao, status, desde"),
       supabaseClient.from("departamentos_publicos").select("id, nome, responsavel, contato, ativo").order("nome")
@@ -89,7 +101,9 @@ export default function DepartamentosPage() {
     const payload = {
       nome: String(formData.get("nome") ?? ""),
       descricao: String(formData.get("descricao") ?? ""),
-      ativo: formData.get("ativo") === "on"
+      ativo: formData.get("ativo") === "on",
+      type: String(formData.get("type") ?? "simple"),
+      parent_id: String(formData.get("parent_id") ?? "") || null
     };
     const { error } = await supabaseClient.from("departamentos").insert(payload);
     if (error) {
@@ -238,11 +252,40 @@ export default function DepartamentosPage() {
             />
           </label>
           <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Tipo</span>
+            <select
+              name="type"
+              defaultValue="simple"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            >
+              {Object.entries(typeLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
             <span className="text-slate-700">Descrição</span>
             <input
               name="descricao"
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Departamento pai</span>
+            <select
+              name="parent_id"
+              defaultValue=""
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="">Nenhum</option>
+              {departamentos.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.nome}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" name="ativo" defaultChecked className="h-4 w-4 rounded border-slate-300" />
@@ -269,6 +312,10 @@ export default function DepartamentosPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-lg font-semibold text-slate-900">{dept.nome}</p>
+                <p className="text-xs text-slate-500">
+                  Tipo: {typeLabels[dept.type]} • Pai:{" "}
+                  {dept.parent_id ? departamentos.find((item) => item.id === dept.parent_id)?.nome ?? "-" : "-"}
+                </p>
                 <p className="text-sm text-slate-600">Responsável: {dept.responsavel_id ?? "A definir"}</p>
                 <p className="text-xs text-slate-500">
                   Contato público:{" "}

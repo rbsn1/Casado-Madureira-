@@ -173,7 +173,7 @@ export function HelpChatWidget() {
     if (!open || !visitorName || pendingDept || chips.length) return;
     if (!departments.length) return;
     setChips(getDepartmentChips());
-  }, [open, visitorName, pendingDept, chips.length, departments.length]);
+  }, [open, visitorName, pendingDept, chips.length, departments.length, contacts.length]);
 
   const canSend = useMemo(() => input.trim().length > 1, [input]);
 
@@ -188,8 +188,16 @@ export function HelpChatWidget() {
     return ["Sobre", "Contato", "Agenda", "Participar", "Local"];
   }
 
+  function getEligibleDepartments() {
+    if (!contacts.length) return departments.filter((dept) => dept.is_active);
+    const withContacts = new Set(
+      contacts.filter((contact) => contact.is_active).map((contact) => contact.department_id)
+    );
+    return departments.filter((dept) => dept.is_active && withContacts.has(dept.id));
+  }
+
   function getDepartmentChips() {
-    return departments.filter((dept) => dept.is_active).map((dept) => dept.name);
+    return getEligibleDepartments().map((dept) => dept.name);
   }
 
   function mapIntent(label: string): PublicFaq["intent"] | null {
@@ -339,7 +347,7 @@ export function HelpChatWidget() {
       return;
     }
 
-    const match = matchDepartment(departments, value);
+    const match = matchDepartment(getEligibleDepartments(), value);
     if (match) {
       setPendingDept(match);
       if (match.type === "umbrella" || match.type === "mixed") {
