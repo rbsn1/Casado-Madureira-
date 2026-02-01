@@ -30,6 +30,7 @@ export async function requireAdmin(request: Request) {
     .from("profiles")
     .select("role")
     .eq("id", data.user.id)
+    .returns<{ role: string }>()
     .maybeSingle();
 
   if (roleError || profile?.role !== "admin") {
