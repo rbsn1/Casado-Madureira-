@@ -96,13 +96,21 @@ export function HelpChatWidget() {
     async function loadDepartments() {
       if (!supabaseClient) return;
       const { data, error } = await supabaseClient
-        .from("departments")
-        .select("id, name, slug, type, parent_id, is_active")
-        .eq("is_active", true)
-        .order("name");
+        .from("departamentos")
+        .select("id, nome, type, parent_id, ativo")
+        .eq("ativo", true)
+        .order("nome");
       if (!active) return;
       if (error) return;
-      setDepartments((data ?? []) as PublicDept[]);
+      const mapped = (data ?? []).map((item) => ({
+        id: item.id,
+        name: item.nome,
+        slug: item.nome,
+        type: item.type ?? "simple",
+        parent_id: item.parent_id ?? null,
+        is_active: item.ativo ?? true
+      })) as PublicDept[];
+      setDepartments(mapped);
     }
 
     async function loadContacts() {
