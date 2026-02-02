@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatDateBR } from "@/lib/date";
 
 type UserRole = { role: string; active: boolean };
 type UserItem = { id: string; email: string | null; created_at: string; roles: UserRole[]; whatsapp?: string | null };
@@ -677,7 +678,7 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-slate-700">{user.email ?? "Sem e-mail"}</td>
                   <td className="px-4 py-3 text-slate-700">{user.whatsapp ?? "—"}</td>
                   <td className="px-4 py-3 text-slate-700">
-                    {new Date(user.created_at).toLocaleDateString("pt-BR")}
+                    {formatDateBR(user.created_at)}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
                     {user.roles.length

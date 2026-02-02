@@ -6,6 +6,7 @@ import { StatCard } from "@/components/cards/StatCard";
 import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatDateBR } from "@/lib/date";
 
 type InsightEntry = { label: string; count: number };
 type GrowthEntry = {
@@ -21,7 +22,7 @@ type MonthlyEntry = {
 };
 
 function formatDate(value: Date) {
-  return value.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  return formatDateBR(value);
 }
 
 function getPeriodRange(period: string, customStart?: string, customEnd?: string) {

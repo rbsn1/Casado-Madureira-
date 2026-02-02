@@ -6,6 +6,7 @@ import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
 import { HelpChatWidget } from "@/components/shared/HelpChatWidget";
+import { formatDateBR } from "@/lib/date";
 
 type WeeklyEvent = {
   id?: string | number;
@@ -147,8 +148,8 @@ function MiniCalendar({ date }: { date?: Date | null }) {
     );
   }
 
-  const day = date.getDate();
-  const month = date.toLocaleDateString("pt-BR", { month: "short" }).toUpperCase();
+  const formatted = formatDateBR(date);
+  const [day = "--", month = "--", year = "----"] = formatted.split("/");
 
   return (
     <div className="flex h-20 w-20 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/90 shadow-sm">
@@ -156,7 +157,7 @@ function MiniCalendar({ date }: { date?: Date | null }) {
       <div className="flex flex-1 flex-col items-center justify-center">
         <span className="text-2xl font-semibold text-emerald-900">{day}</span>
         <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-700">
-          {month}
+          {month}/{year}
         </span>
       </div>
     </div>

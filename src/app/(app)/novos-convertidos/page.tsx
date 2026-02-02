@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatDateBR } from "@/lib/date";
 
 type IntegracaoItem = {
   id: string;
@@ -165,7 +166,7 @@ function NovosConvertidosContent() {
                 <p className="text-sm font-semibold text-slate-900">{item.nome_completo}</p>
                 <p className="text-xs text-slate-600">
                   Última atualização:{" "}
-                  {item.ultima_interacao ? new Date(item.ultima_interacao).toLocaleDateString("pt-BR") : "-"}
+                  {item.ultima_interacao ? formatDateBR(item.ultima_interacao) : "-"}
                 </p>
               </div>
               <StatusBadge value={item.status} />

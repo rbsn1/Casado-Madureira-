@@ -8,6 +8,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { downloadCsv, parseCsv } from "@/lib/csv";
 import * as XLSX from "xlsx";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
+import { formatDateBR } from "@/lib/date";
 
 type PessoaItem = {
   id: string;
@@ -16,6 +17,8 @@ type PessoaItem = {
   origem: string | null;
   igreja_origem?: string | null;
   bairro?: string | null;
+  data?: string | null;
+  observacoes?: string | null;
   created_at: string;
   status?: string;
   responsavel_id?: string | null;
@@ -29,9 +32,15 @@ function CadastrosContent() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [showCreate, setShowCreate] = useState(false);
+  const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [telefone, setTelefone] = useState("");
+  const [nome, setNome] = useState("");
+  const [origem, setOrigem] = useState("");
+  const [bairro, setBairro] = useState("");
+  const [data, setData] = useState("");
+  const [observacoes, setObservacoes] = useState("");
   const [igrejaSelecionada, setIgrejaSelecionada] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [showIgreja, setShowIgreja] = useState(true);
@@ -55,7 +64,7 @@ function CadastrosContent() {
 
     let pessoasQuery = supabaseClient
       .from("pessoas")
-      .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, created_at")
+      .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at")
       .order("created_at", { ascending: false });
 
     if (igrejaFiltro) {
@@ -163,15 +172,50 @@ function CadastrosContent() {
 
   const columnCount = 7 + (showIgreja ? 1 : 0) + (showBairro ? 1 : 0);
 
-  async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
+  function resetForm() {
+    setNome("");
+    setTelefone("");
+    setOrigem("");
+    setIgrejaSelecionada("Sede");
+    setIgrejaOutra("");
+    setBairro("");
+    setData("");
+    setObservacoes("");
+  }
+
+  function openCreate() {
+    setEditingPessoa(null);
+    resetForm();
+    setShowCreate(true);
+  }
+
+  function openEdit(pessoa: PessoaItem) {
+    setEditingPessoa(pessoa);
+    setNome(pessoa.nome_completo ?? "");
+    setTelefone(formatBrazilPhoneInput(pessoa.telefone_whatsapp ?? ""));
+    setOrigem(pessoa.origem ?? "");
+    const igrejaAtual = pessoa.igreja_origem ?? "Sede";
+    if (igrejaOptions.includes(igrejaAtual)) {
+      setIgrejaSelecionada(igrejaAtual);
+      setIgrejaOutra("");
+    } else {
+      setIgrejaSelecionada("Outra");
+      setIgrejaOutra(igrejaAtual);
+    }
+    setBairro(pessoa.bairro ?? "");
+    setData(pessoa.data ?? "");
+    setObservacoes(pessoa.observacoes ?? "");
+    setShowCreate(true);
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabaseClient) return;
     setStatusMessage("");
-    const formData = new FormData(event.currentTarget);
-    const bairro = String(formData.get("bairro") ?? "");
-    const telefoneRaw = String(formData.get("telefone_whatsapp") ?? "");
+    const bairroInput = bairro;
+    const telefoneRaw = telefone;
     const telefoneParsed = parseBrazilPhone(telefoneRaw);
-    if (bairro && bairro.trim().length < 2) {
+    if (bairroInput && bairroInput.trim().length < 2) {
       setStatusMessage("O bairro precisa ter ao menos 2 caracteres.");
       return;
     }
@@ -185,22 +229,30 @@ function CadastrosContent() {
     }
     const igrejaOrigem = igrejaSelecionada === "Outra" ? igrejaOutra : igrejaSelecionada;
     const payload = {
-      nome_completo: String(formData.get("nome_completo") ?? ""),
+      nome_completo: nome.trim(),
       telefone_whatsapp: telefoneParsed.formatted,
-      origem: String(formData.get("origem") ?? ""),
+      origem: origem.trim(),
       igreja_origem: igrejaOrigem || null,
-      bairro: bairro || null,
-      data: formData.get("data") ? String(formData.get("data")) : null,
-      observacoes: String(formData.get("observacoes") ?? "")
+      bairro: bairroInput || null,
+      data: data || null,
+      observacoes: observacoes.trim()
     };
-    const { error } = await supabaseClient.from("pessoas").insert(payload);
-    if (error) {
-      setStatusMessage(error.message);
-      return;
+    if (editingPessoa) {
+      const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabaseClient.from("pessoas").insert(payload);
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
     }
-    event.currentTarget.reset();
     setShowCreate(false);
-    setTelefone("");
+    setEditingPessoa(null);
+    resetForm();
     await loadPessoas();
   }
 
@@ -319,7 +371,7 @@ function CadastrosContent() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setShowCreate((prev) => !prev)}
+            onClick={openCreate}
             className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             Novo cadastro
@@ -353,12 +405,14 @@ function CadastrosContent() {
       </div>
 
       {showCreate ? (
-        <form className="card grid gap-3 p-4 md:grid-cols-2" onSubmit={handleCreate}>
+        <form className="card grid gap-3 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Nome completo</span>
             <input
               name="nome_completo"
               required
+              value={nome}
+              onChange={(event) => setNome(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
           </label>
@@ -377,6 +431,8 @@ function CadastrosContent() {
             <span className="text-slate-700">Origem</span>
             <input
               name="origem"
+              value={origem}
+              onChange={(event) => setOrigem(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
           </label>
@@ -410,6 +466,8 @@ function CadastrosContent() {
             <span className="text-slate-700">Bairro</span>
             <input
               name="bairro"
+              value={bairro}
+              onChange={(event) => setBairro(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
           </label>
@@ -418,6 +476,8 @@ function CadastrosContent() {
             <input
               name="data"
               type="date"
+              value={data}
+              onChange={(event) => setData(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
           </label>
@@ -426,16 +486,22 @@ function CadastrosContent() {
             <textarea
               name="observacoes"
               rows={2}
+              value={observacoes}
+              onChange={(event) => setObservacoes(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
             />
           </label>
           <div className="flex items-center gap-2 md:col-span-2">
             <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-              Salvar cadastro
+              {editingPessoa ? "Salvar alterações" : "Salvar cadastro"}
             </button>
             <button
               type="button"
-              onClick={() => setShowCreate(false)}
+              onClick={() => {
+                setShowCreate(false);
+                setEditingPessoa(null);
+                resetForm();
+              }}
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
             >
               Cancelar
@@ -545,7 +611,7 @@ function CadastrosContent() {
                   </td>
                   <td className="px-4 py-3 text-slate-700">{pessoa.responsavel_id ?? "A definir"}</td>
                   <td className="px-4 py-3 text-slate-700">
-                    {pessoa.updated_at ? new Date(pessoa.updated_at).toLocaleDateString("pt-BR") : "-"}
+                    {pessoa.updated_at ? formatDateBR(pessoa.updated_at) : "-"}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
@@ -555,6 +621,13 @@ function CadastrosContent() {
                       >
                         Timeline
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => openEdit(pessoa)}
+                        className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                      >
+                        Editar
+                      </button>
                       <button
                         type="button"
                         onClick={() => handleDelete(pessoa)}

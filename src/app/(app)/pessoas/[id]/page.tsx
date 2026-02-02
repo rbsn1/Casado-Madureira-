@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatDateBR } from "@/lib/date";
 
 type Pessoa = {
   id: string;
@@ -266,7 +267,7 @@ export default function PessoaPerfilPage() {
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
               <dt className="text-xs text-slate-500">Data</dt>
               <dd className="text-sm font-semibold text-slate-900">
-                {pessoa?.data ? new Date(pessoa.data).toLocaleDateString("pt-BR") : "-"}
+                {pessoa?.data ? formatDateBR(pessoa.data) : "-"}
               </dd>
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
@@ -287,14 +288,14 @@ export default function PessoaPerfilPage() {
               <p className="text-xs text-slate-500">
                 Última interação:{" "}
                 {integracao?.ultima_interacao
-                  ? new Date(integracao.ultima_interacao).toLocaleDateString("pt-BR")
+                  ? formatDateBR(integracao.ultima_interacao)
                   : "-"}
               </p>
             </div>
             <div className="card-muted card p-3">
               <p className="text-xs font-semibold text-emerald-900">Batismo</p>
               <p className="text-sm text-slate-700">
-                {batismos[0]?.data ? new Date(batismos[0].data).toLocaleDateString("pt-BR") : "Sem registro"}
+                {batismos[0]?.data ? formatDateBR(batismos[0].data) : "Sem registro"}
               </p>
               <p className="text-xs text-slate-500">{batismos[0]?.responsavel_id ?? "Secretaria"}</p>
             </div>
@@ -389,7 +390,7 @@ export default function PessoaPerfilPage() {
             {timeline.map((event) => (
               <li key={event.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
                 <div className="flex items-center justify-between text-xs text-slate-600">
-                  <span>{new Date(event.created_at).toLocaleDateString("pt-BR")}</span>
+                  <span>{formatDateBR(event.created_at)}</span>
                   <StatusBadge value={event.tipo} />
                 </div>
                 <p className="mt-1 text-sm font-semibold text-slate-900">{event.descricao}</p>
