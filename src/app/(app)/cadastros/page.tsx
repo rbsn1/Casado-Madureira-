@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { downloadCsv, parseCsv } from "@/lib/csv";
 import * as XLSX from "xlsx";
+import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
 type PessoaItem = {
   id: string;
@@ -30,6 +31,7 @@ function CadastrosContent() {
   const [showCreate, setShowCreate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [telefone, setTelefone] = useState("");
   const [igrejaSelecionada, setIgrejaSelecionada] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [showIgreja, setShowIgreja] = useState(true);
@@ -167,8 +169,14 @@ function CadastrosContent() {
     setStatusMessage("");
     const formData = new FormData(event.currentTarget);
     const bairro = String(formData.get("bairro") ?? "");
+    const telefoneRaw = String(formData.get("telefone_whatsapp") ?? "");
+    const telefoneParsed = parseBrazilPhone(telefoneRaw);
     if (bairro && bairro.trim().length < 2) {
       setStatusMessage("O bairro precisa ter ao menos 2 caracteres.");
+      return;
+    }
+    if (!telefoneParsed) {
+      setStatusMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
       return;
     }
     if (igrejaSelecionada === "Outra" && !igrejaOutra.trim()) {
@@ -178,7 +186,7 @@ function CadastrosContent() {
     const igrejaOrigem = igrejaSelecionada === "Outra" ? igrejaOutra : igrejaSelecionada;
     const payload = {
       nome_completo: String(formData.get("nome_completo") ?? ""),
-      telefone_whatsapp: String(formData.get("telefone_whatsapp") ?? ""),
+      telefone_whatsapp: telefoneParsed.formatted,
       origem: String(formData.get("origem") ?? ""),
       igreja_origem: igrejaOrigem || null,
       bairro: bairro || null,
@@ -192,6 +200,7 @@ function CadastrosContent() {
     }
     event.currentTarget.reset();
     setShowCreate(false);
+    setTelefone("");
     await loadPessoas();
   }
 
@@ -245,15 +254,27 @@ function CadastrosContent() {
       acc[header.toLowerCase()] = index;
       return acc;
     }, {});
-    const payload = parsed.rows.map((row) => ({
-      nome_completo: row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "",
-      telefone_whatsapp: row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? "",
-      origem: row[headerIndex.origem] ?? "",
-      igreja_origem: row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "",
-      bairro: row[headerIndex.bairro] ?? "",
-      data: row[headerIndex.data] ? String(row[headerIndex.data]) : null,
-      observacoes: row[headerIndex.observacoes] ?? ""
-    }));
+    const invalidRows: number[] = [];
+    const payload = parsed.rows.map((row, index) => {
+      const telefoneRaw = row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? "";
+      const telefoneParsed = parseBrazilPhone(String(telefoneRaw));
+      if (!telefoneParsed) invalidRows.push(index + 2);
+      return {
+        nome_completo: row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "",
+        telefone_whatsapp: telefoneParsed?.formatted ?? "",
+        origem: row[headerIndex.origem] ?? "",
+        igreja_origem: row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "",
+        bairro: row[headerIndex.bairro] ?? "",
+        data: row[headerIndex.data] ? String(row[headerIndex.data]) : null,
+        observacoes: row[headerIndex.observacoes] ?? ""
+      };
+    });
+    if (invalidRows.length) {
+      setStatusMessage(
+        `Telefone sem DDD ou inválido nas linhas: ${invalidRows.slice(0, 8).join(", ")}.`
+      );
+      return;
+    }
     const { error } = await supabaseClient.from("pessoas").insert(payload);
     if (error) {
       setStatusMessage(error.message);
@@ -345,7 +366,11 @@ function CadastrosContent() {
             <span className="text-slate-700">Telefone (WhatsApp)</span>
             <input
               name="telefone_whatsapp"
+              required
+              value={telefone}
+              onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="(92) 99227-0057"
             />
           </label>
           <label className="space-y-1 text-sm">

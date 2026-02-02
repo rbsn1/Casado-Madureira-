@@ -2,11 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
 export default function PublicCadastroPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [origem, setOrigem] = useState("Culto da Manhã");
+  const [telefone, setTelefone] = useState("");
   const [igreja, setIgreja] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [bairro, setBairro] = useState("Adrianópolis");
@@ -71,11 +73,18 @@ export default function PublicCadastroPage() {
       setMessage("Informe o bairro.");
       return;
     }
+    const telefoneRaw = String(formData.get("telefone_whatsapp") ?? "");
+    const telefoneParsed = parseBrazilPhone(telefoneRaw);
+    if (!telefoneParsed) {
+      setStatus("error");
+      setMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
+      return;
+    }
     const igrejaOrigem = igreja === "Outra" ? igrejaOutra : igreja;
     const bairroFinal = bairro === "Outro" ? bairroOutro : bairro;
     const payload = {
       nome_completo: String(formData.get("nome_completo") ?? ""),
-      telefone_whatsapp: String(formData.get("telefone_whatsapp") ?? ""),
+      telefone_whatsapp: telefoneParsed.formatted,
       origem,
       igreja_origem: igrejaOrigem || null,
       bairro: bairroFinal || null,
@@ -99,6 +108,7 @@ export default function PublicCadastroPage() {
     setIgrejaOutra("");
     setBairro("Adrianópolis");
     setBairroOutro("");
+    setTelefone("");
   }
 
   return (
@@ -127,8 +137,10 @@ export default function PublicCadastroPage() {
             <input
               required
               name="telefone_whatsapp"
+              value={telefone}
+              onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="(21) 99999-0000"
+              placeholder="(92) 99227-0057"
             />
           </label>
           <label className="space-y-1 text-sm">

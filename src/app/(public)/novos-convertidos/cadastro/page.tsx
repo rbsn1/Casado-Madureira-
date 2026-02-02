@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
 const igrejaOptions = [
   "Sede",
@@ -43,6 +44,7 @@ export default function NovoConvertidoCadastroPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [igreja, setIgreja] = useState(igrejaOptions[0]);
+  const [telefone, setTelefone] = useState("");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [bairro, setBairro] = useState(bairroOptions[0]);
   const [bairroOutro, setBairroOutro] = useState("");
@@ -70,12 +72,19 @@ export default function NovoConvertidoCadastroPage() {
     }
 
     const formData = new FormData(event.currentTarget);
+    const telefoneRaw = String(formData.get("telefone_whatsapp") ?? "");
+    const telefoneParsed = parseBrazilPhone(telefoneRaw);
+    if (!telefoneParsed) {
+      setStatus("error");
+      setMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
+      return;
+    }
     const igrejaOrigem = igreja === "Outra" ? igrejaOutra : igreja;
     const bairroFinal = bairro === "Outro" ? bairroOutro : bairro;
 
     const payload = {
       nome_completo: String(formData.get("nome_completo") ?? ""),
-      telefone_whatsapp: String(formData.get("telefone_whatsapp") ?? ""),
+      telefone_whatsapp: telefoneParsed.formatted,
       origem: "Novos Convertidos",
       igreja_origem: igrejaOrigem || null,
       bairro: bairroFinal || null,
@@ -96,6 +105,7 @@ export default function NovoConvertidoCadastroPage() {
     setIgrejaOutra("");
     setBairro(bairroOptions[0]);
     setBairroOutro("");
+    setTelefone("");
     setStatus("success");
     setMessage("Cadastro enviado com sucesso. Aguarde o contato da equipe.");
   }
@@ -126,8 +136,10 @@ export default function NovoConvertidoCadastroPage() {
             <input
               required
               name="telefone_whatsapp"
+              value={telefone}
+              onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="(92) 9xxxx-xxxx"
+              placeholder="(92) 99227-0057"
             />
           </label>
           <label className="space-y-1 text-sm">
