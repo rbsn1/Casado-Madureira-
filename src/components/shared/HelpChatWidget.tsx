@@ -223,7 +223,7 @@ export function HelpChatWidget() {
     setChips(getDepartmentChips());
   }, [open, visitorName, pendingDept, chips.length, departments.length]);
 
-  const canSend = useMemo(() => input.trim().length > 1, [input]);
+  const canSend = useMemo(() => !visitorName && input.trim().length > 1, [input, visitorName]);
 
   function pushBotMessage(text: string) {
     setMessages((prev) => [
@@ -285,9 +285,10 @@ export function HelpChatWidget() {
     setChips([...postContactChips]);
   }
 
-  async function processMessage(rawValue: string) {
+  async function processMessage(rawValue: string, source: "chip" | "text" = "text") {
     const value = rawValue.trim();
     if (value.length < 2) return;
+    if (visitorName && source === "text") return;
     setLastInteractionAt(Date.now());
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setMessages((prev) => [...prev, { id, from: "user", text: value }]);
@@ -422,7 +423,7 @@ export function HelpChatWidget() {
         const answer = getFaqAnswer(pendingDept.id, mappedIntent);
         if (answer) {
           pushBotMessage(`${answer.answer_title}\n${answer.answer_body}`);
-        } else {
+        } else if (source === "text") {
           pushBotMessage("Ainda não tenho uma resposta pronta para isso. Posso ajudar com contatos.");
         }
         if (mappedIntent === "contact") {
@@ -468,7 +469,7 @@ export function HelpChatWidget() {
   async function handleSend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSend) return;
-    await processMessage(input);
+    await processMessage(input, "text");
   }
 
   return (
@@ -511,7 +512,7 @@ export function HelpChatWidget() {
                     key={chip}
                     type="button"
                     onClick={() => {
-                      processMessage(chip);
+                      processMessage(chip, "chip");
                     }}
                     className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
                   >
@@ -526,7 +527,8 @@ export function HelpChatWidget() {
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Ex: Louvor, Casais, Intercessão..."
+              placeholder={visitorName ? "Use os botões abaixo" : "Ex: Louvor, Casais, Intercessão..."}
+              disabled={!!visitorName}
               className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-base sm:text-xs focus:border-emerald-300 focus:outline-none"
             />
             <button
