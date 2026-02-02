@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { downloadCsv, parseCsv } from "@/lib/csv";
+import * as XLSX from "xlsx";
 
 type PessoaItem = {
   id: string;
@@ -28,6 +29,7 @@ function CadastrosContent() {
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [showCreate, setShowCreate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [igrejaSelecionada, setIgrejaSelecionada] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [showIgreja, setShowIgreja] = useState(true);
@@ -215,10 +217,28 @@ function CadastrosContent() {
     const file = event.target.files?.[0];
     if (!file || !supabaseClient) return;
     setStatusMessage("");
-    const text = await file.text();
-    const parsed = parseCsv(text);
+    const isExcel = file.name.toLowerCase().endsWith(".xlsx");
+    let parsed: { headers: string[]; rows: string[][] };
+    if (isExcel) {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+      if (!sheet) {
+        setStatusMessage("Arquivo Excel inválido.");
+        return;
+      }
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
+      const rows = data
+        .map((row) => row.map((cell) => String(cell ?? "").trim()))
+        .filter((row) => row.some((cell) => cell.length > 0));
+      parsed = { headers: rows[0] ?? [], rows: rows.slice(1) };
+    } else {
+      const text = await file.text();
+      parsed = parseCsv(text);
+    }
     if (!parsed.headers.length) {
-      setStatusMessage("Arquivo CSV vazio ou inválido.");
+      setStatusMessage("Arquivo de importação vazio ou inválido.");
       return;
     }
     const headerIndex = parsed.headers.reduce<Record<string, number>>((acc, header, index) => {
@@ -240,6 +260,33 @@ function CadastrosContent() {
       return;
     }
     await loadPessoas();
+  }
+
+  async function handleDelete(pessoa: PessoaItem) {
+    if (!supabaseClient) return;
+    const confirmed = window.confirm(
+      `Excluir o cadastro de "${pessoa.nome_completo}"? Essa ação não poderá ser desfeita.`
+    );
+    if (!confirmed) return;
+    setStatusMessage("");
+    setDeletingId(pessoa.id);
+    const { error: integracaoError } = await supabaseClient
+      .from("integracao_novos_convertidos")
+      .delete()
+      .eq("pessoa_id", pessoa.id);
+    if (integracaoError) {
+      setStatusMessage(integracaoError.message);
+      setDeletingId(null);
+      return;
+    }
+    const { error } = await supabaseClient.from("pessoas").delete().eq("id", pessoa.id);
+    if (error) {
+      setStatusMessage(error.message);
+      setDeletingId(null);
+      return;
+    }
+    await loadPessoas();
+    setDeletingId(null);
   }
 
   return (
@@ -271,7 +318,7 @@ function CadastrosContent() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx"
             className="hidden"
             onChange={handleImportFile}
           />
@@ -477,6 +524,14 @@ function CadastrosContent() {
                       >
                         Timeline
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(pessoa)}
+                        disabled={deletingId === pessoa.id}
+                        className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        Excluir
+                      </button>
                     </div>
                   </td>
                 </tr>
