@@ -60,6 +60,7 @@ const namePromptMessage: ChatMessage = {
   from: "bot",
   text: "Antes de começarmos, qual é o seu nome?"
 };
+const BOT_DELAY_MS = 2000;
 const satisfactionChips = ["Sim", "Não"] as const;
 const postContactChips = ["Voltar ao início", "Finalizar", "Outro contato"] as const;
 
@@ -244,6 +245,15 @@ export function HelpChatWidget() {
     ]);
   }
 
+  function wait(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function sendBotMessage(text: string) {
+    await wait(BOT_DELAY_MS);
+    pushBotMessage(text);
+  }
+
   function getIntentChips() {
     return ["Contato", "Participar"];
   }
@@ -268,7 +278,7 @@ export function HelpChatWidget() {
     return list[0] ?? null;
   }
 
-  function replyWithContacts(deptId: string, roleId?: string | null) {
+  async function replyWithContacts(deptId: string, roleId?: string | null) {
     const deptContacts = contacts.filter(
       (item) => item.department_id === deptId && (!roleId || item.role_id === roleId)
     );
@@ -293,8 +303,8 @@ export function HelpChatWidget() {
         : publicContactError
           ? "Não consegui acessar os contatos públicos agora. Tente novamente em instantes."
           : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
-    pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
-    pushBotMessage("Você ficou satisfeito com a resposta?");
+    await sendBotMessage(`Aqui estão os contatos:\n${contactLines}`);
+    await sendBotMessage("Você ficou satisfeito com a resposta?");
     setAwaitingSatisfaction(true);
     setChips([...satisfactionChips]);
   }
@@ -321,7 +331,7 @@ export function HelpChatWidget() {
 
     if (awaitingSatisfaction && (normalizedValue === "nao" || normalizedValue === "não")) {
       if (chips.includes("Não")) {
-        pushBotMessage("Tudo bem! Como posso ajudar melhor?");
+        await sendBotMessage("Tudo bem! Como posso ajudar melhor?");
         setAwaitingSatisfaction(false);
         setChips([...postContactChips]);
         setLoading(false);
@@ -390,7 +400,7 @@ export function HelpChatWidget() {
       if (departmentChips.length) {
         setChips(departmentChips);
       } else {
-        pushBotMessage("Carregando as áreas disponíveis...");
+        await sendBotMessage("Carregando as áreas disponíveis...");
       }
       setLoading(false);
       setTyping(false);
@@ -401,7 +411,7 @@ export function HelpChatWidget() {
       const subs = departments.filter((dept) => dept.parent_id === pendingDept.id);
       if (normalizedValue.includes("coordenacao") || normalizedValue.includes("coordenação")) {
         setChips(getIntentChips());
-        pushBotMessage(`Perfeito. Sobre ${pendingDept.name}, o que você deseja saber?`);
+        await sendBotMessage(`Perfeito. Sobre ${pendingDept.name}, o que você deseja saber?`);
         setLoading(false);
         setTyping(false);
         return;
@@ -412,12 +422,12 @@ export function HelpChatWidget() {
       if (matchedSub) {
         setPendingDept(matchedSub);
         setChips(getIntentChips());
-        pushBotMessage(`Certo! Sobre ${matchedSub.name}, o que você deseja saber?`);
+        await sendBotMessage(`Certo! Sobre ${matchedSub.name}, o que você deseja saber?`);
         setLoading(false);
         setTyping(false);
         return;
       }
-      pushBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
+      await sendBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
       setChips(["Coordenação geral", ...subs.map((item) => item.name)]);
       setLoading(false);
       setTyping(false);
@@ -430,14 +440,14 @@ export function HelpChatWidget() {
         normalizeText(item.role_name).includes(normalizeText(value))
       );
       if (matchedRole) {
-        replyWithContacts(pendingDept.id, matchedRole.id);
+        await replyWithContacts(pendingDept.id, matchedRole.id);
         setPendingIntent(null);
         setChips(getIntentChips());
         setLoading(false);
         setTyping(false);
         return;
       }
-      pushBotMessage("Qual liderança você procura?");
+      await sendBotMessage("Qual liderança você procura?");
       setChips(deptRoles.map((item) => item.role_name));
       setLoading(false);
       setTyping(false);
@@ -452,7 +462,7 @@ export function HelpChatWidget() {
           if (deptRoles.length) {
             setPendingIntent("contact");
             setChips(deptRoles.map((item) => item.role_name));
-            pushBotMessage("Qual liderança você procura?");
+            await sendBotMessage("Qual liderança você procura?");
             setLoading(false);
             setTyping(false);
             return;
@@ -461,12 +471,12 @@ export function HelpChatWidget() {
 
         const answer = getFaqAnswer(pendingDept.id, mappedIntent);
         if (answer) {
-          pushBotMessage(`${answer.answer_title}\n${answer.answer_body}`);
+          await sendBotMessage(`${answer.answer_title}\n${answer.answer_body}`);
         } else if (source === "text") {
-          pushBotMessage("Ainda não tenho uma resposta pronta para isso. Posso ajudar com contatos.");
+          await sendBotMessage("Ainda não tenho uma resposta pronta para isso. Posso ajudar com contatos.");
         }
         if (mappedIntent === "contact") {
-          replyWithContacts(pendingDept.id);
+          await replyWithContacts(pendingDept.id);
           setPendingIntent(null);
           setLoading(false);
           setTyping(false);
@@ -479,7 +489,7 @@ export function HelpChatWidget() {
         return;
       }
 
-      pushBotMessage("Posso ajudar com: Contato ou Participar.");
+      await sendBotMessage("Posso ajudar com: Contato ou Participar.");
       setChips(getIntentChips());
       setLoading(false);
       setTyping(false);
@@ -492,17 +502,17 @@ export function HelpChatWidget() {
       if (match.type === "umbrella" || match.type === "mixed") {
         const subs = departments.filter((dept) => dept.parent_id === match.id);
         setChips(["Coordenação geral", ...subs.map((item) => item.name)]);
-        pushBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
+        await sendBotMessage("Você deseja falar com a coordenação geral ou com um subdepartamento?");
       } else {
         setChips(getIntentChips());
-        pushBotMessage(`Entendi. ${match.name}: deseja Contato ou Participar?`);
+        await sendBotMessage(`Entendi. ${match.name}: deseja Contato ou Participar?`);
       }
       setLoading(false);
       setTyping(false);
       return;
     }
 
-    pushBotMessage("Não encontrei esse departamento. Vamos recomeçar?");
+    await sendBotMessage("Não encontrei esse departamento. Vamos recomeçar?");
     setMessages(initialMessages);
     setInput("");
     setLoading(false);
