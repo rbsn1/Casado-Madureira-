@@ -16,6 +16,29 @@ type WeeklyEvent = {
 };
 
 const weekdayLabels = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const MANAUS_TIMEZONE = "America/Manaus";
+
+function getNowInTimeZone(timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+  const parts = formatter.formatToParts(new Date());
+  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const year = Number(map.year);
+  const month = Number(map.month);
+  const day = Number(map.day);
+  const hour = Number(map.hour);
+  const minute = Number(map.minute);
+  const second = Number(map.second);
+  return new Date(year, month - 1, day, hour, minute, second);
+}
 
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
@@ -86,7 +109,7 @@ export default function AgendaPage() {
     }));
   }, [filteredItems]);
 
-  const todayIndex = new Date().getDay();
+  const todayIndex = getNowInTimeZone(MANAUS_TIMEZONE).getDay();
 
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
