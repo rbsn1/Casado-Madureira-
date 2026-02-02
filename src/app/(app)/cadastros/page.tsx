@@ -313,8 +313,14 @@ function CadastrosContent() {
             onClick={() => fileInputRef.current?.click()}
             className="rounded-lg border border-dashed border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
           >
-            Importar CSV
+            Importar CSV/XLSX
           </button>
+          <Link
+            href="/cadastros_import_modelo.xlsx"
+            className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+          >
+            Baixar modelo
+          </Link>
           <input
             ref={fileInputRef}
             type="file"
