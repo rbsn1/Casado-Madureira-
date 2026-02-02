@@ -55,6 +55,7 @@ type ChatMessage = {
 };
 
 const initialMessages: ChatMessage[] = [];
+const satisfactionChips = ["Sim", "Não"] as const;
 const postContactChips = ["Voltar ao início", "Finalizar", "Outro contato"] as const;
 
 function normalizeText(value: string) {
@@ -282,7 +283,8 @@ export function HelpChatWidget() {
           ? "Não consegui acessar os contatos públicos agora. Tente novamente em instantes."
           : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
     pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
-    setChips([...postContactChips]);
+    pushBotMessage("Você ficou satisfeito com a resposta?");
+    setChips([...satisfactionChips]);
   }
 
   async function processMessage(rawValue: string, source: "chip" | "text" = "text") {
@@ -297,6 +299,23 @@ export function HelpChatWidget() {
     setTyping(true);
 
     const normalizedValue = normalizeText(value);
+    if (normalizedValue === "sim" && chips.includes("Sim")) {
+      setLoading(false);
+      setTyping(false);
+      setOpen(false);
+      return;
+    }
+
+    if (normalizedValue === "nao" || normalizedValue === "não") {
+      if (chips.includes("Não")) {
+        pushBotMessage("Tudo bem! Como posso ajudar melhor?");
+        setChips([...postContactChips]);
+        setLoading(false);
+        setTyping(false);
+        return;
+      }
+    }
+
     if (normalizedValue === "finalizar") {
       setLoading(false);
       setTyping(false);
@@ -459,11 +478,16 @@ export function HelpChatWidget() {
       return;
     }
 
-    pushBotMessage(
-      "Não encontrei esse departamento. Pode me dizer o nome completo? Se preferir, fale com a secretaria para direcionamento."
-    );
+    pushBotMessage("Não encontrei esse departamento. Vamos recomeçar?");
+    setMessages(initialMessages);
+    setInput("");
     setLoading(false);
     setTyping(false);
+    setVisitorName(null);
+    setChips([]);
+    setPendingDept(null);
+    setPendingIntent(null);
+    setLastInteractionAt(Date.now());
   }
 
   async function handleSend(event: FormEvent<HTMLFormElement>) {
