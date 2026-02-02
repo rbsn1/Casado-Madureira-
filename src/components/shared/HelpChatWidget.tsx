@@ -55,6 +55,11 @@ type ChatMessage = {
 };
 
 const initialMessages: ChatMessage[] = [];
+const namePromptMessage: ChatMessage = {
+  id: "welcome",
+  from: "bot",
+  text: "Antes de começarmos, qual é o seu nome?"
+};
 const satisfactionChips = ["Sim", "Não"] as const;
 const postContactChips = ["Voltar ao início", "Finalizar", "Outro contato"] as const;
 
@@ -93,6 +98,7 @@ export function HelpChatWidget() {
   const [chips, setChips] = useState<string[]>([]);
   const [pendingDept, setPendingDept] = useState<PublicDept | null>(null);
   const [pendingIntent, setPendingIntent] = useState<PublicFaq["intent"] | null>(null);
+  const [awaitingSatisfaction, setAwaitingSatisfaction] = useState(false);
   const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -172,6 +178,9 @@ export function HelpChatWidget() {
 
     if (open) {
       setLastInteractionAt(Date.now());
+      if (!messages.length) {
+        setMessages([namePromptMessage]);
+      }
       loadDepartments();
       loadContacts();
       loadPublicContacts();
@@ -188,6 +197,7 @@ export function HelpChatWidget() {
       setChips([]);
       setPendingDept(null);
       setPendingIntent(null);
+      setAwaitingSatisfaction(false);
       setLastInteractionAt(null);
     }
 
@@ -207,6 +217,7 @@ export function HelpChatWidget() {
       setChips([]);
       setPendingDept(null);
       setPendingIntent(null);
+      setAwaitingSatisfaction(false);
       setLastInteractionAt(Date.now());
     }, 60000);
 
@@ -284,6 +295,7 @@ export function HelpChatWidget() {
           : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
     pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
     pushBotMessage("Você ficou satisfeito com a resposta?");
+    setAwaitingSatisfaction(true);
     setChips([...satisfactionChips]);
   }
 
@@ -299,21 +311,29 @@ export function HelpChatWidget() {
     setTyping(true);
 
     const normalizedValue = normalizeText(value);
-    if (normalizedValue === "sim" && chips.includes("Sim")) {
+    if (awaitingSatisfaction && normalizedValue === "sim" && chips.includes("Sim")) {
       setLoading(false);
       setTyping(false);
+      setAwaitingSatisfaction(false);
       setOpen(false);
       return;
     }
 
-    if (normalizedValue === "nao" || normalizedValue === "não") {
+    if (awaitingSatisfaction && (normalizedValue === "nao" || normalizedValue === "não")) {
       if (chips.includes("Não")) {
         pushBotMessage("Tudo bem! Como posso ajudar melhor?");
+        setAwaitingSatisfaction(false);
         setChips([...postContactChips]);
         setLoading(false);
         setTyping(false);
         return;
       }
+    }
+
+    if (awaitingSatisfaction) {
+      setLoading(false);
+      setTyping(false);
+      return;
     }
 
     if (normalizedValue === "finalizar") {
@@ -447,6 +467,10 @@ export function HelpChatWidget() {
         }
         if (mappedIntent === "contact") {
           replyWithContacts(pendingDept.id);
+          setPendingIntent(null);
+          setLoading(false);
+          setTyping(false);
+          return;
         }
         setPendingIntent(null);
         setChips(getIntentChips());
