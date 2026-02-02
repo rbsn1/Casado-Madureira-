@@ -54,13 +54,8 @@ type ChatMessage = {
   text: string;
 };
 
-const initialMessages: ChatMessage[] = [
-  {
-    id: "welcome",
-    from: "bot",
-    text: "Oi! Antes de começarmos, qual é o seu nome?"
-  }
-];
+const initialMessages: ChatMessage[] = [];
+const postContactChips = ["Voltar ao início", "Finalizar", "Outro contato"] as const;
 
 function normalizeText(value: string) {
   return value
@@ -287,6 +282,7 @@ export function HelpChatWidget() {
           ? "Não consegui acessar os contatos públicos agora. Tente novamente em instantes."
           : "No momento estamos sem o contato do líder do departamento, mas logo será adicionado.";
     pushBotMessage(`Aqui estão os contatos:\n${contactLines}`);
+    setChips([...postContactChips]);
   }
 
   async function processMessage(rawValue: string) {
@@ -298,6 +294,47 @@ export function HelpChatWidget() {
     setInput("");
     setLoading(true);
     setTyping(true);
+
+    const normalizedValue = normalizeText(value);
+    if (normalizedValue === "finalizar") {
+      setLoading(false);
+      setTyping(false);
+      setOpen(false);
+      return;
+    }
+
+    if (normalizedValue === "voltar ao inicio" || normalizedValue === "voltar ao início") {
+      setMessages(initialMessages);
+      setInput("");
+      setLoading(false);
+      setTyping(false);
+      setVisitorName(null);
+      setChips([]);
+      setPendingDept(null);
+      setPendingIntent(null);
+      setLastInteractionAt(Date.now());
+      return;
+    }
+
+    if (normalizedValue === "outro contato") {
+      setPendingDept(null);
+      setPendingIntent(null);
+      if (visitorName) {
+        const departmentChips = getDepartmentChips();
+        if (departmentChips.length) {
+          setChips(departmentChips);
+        } else {
+          setChips([]);
+          pushBotMessage("Carregando as áreas disponíveis...");
+        }
+        pushBotMessage("Qual área você procura?");
+      } else {
+        setChips([]);
+      }
+      setLoading(false);
+      setTyping(false);
+      return;
+    }
 
     if (!visitorName) {
       setVisitorName(value);
@@ -322,7 +359,6 @@ export function HelpChatWidget() {
 
     if (pendingDept && (pendingDept.type === "umbrella" || pendingDept.type === "mixed")) {
       const subs = departments.filter((dept) => dept.parent_id === pendingDept.id);
-      const normalizedValue = normalizeText(value);
       if (normalizedValue.includes("coordenacao") || normalizedValue.includes("coordenação")) {
         setChips(getIntentChips());
         pushBotMessage(`Perfeito. Sobre ${pendingDept.name}, o que você deseja saber?`);
