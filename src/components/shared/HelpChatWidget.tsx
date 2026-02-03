@@ -358,11 +358,22 @@ export function HelpChatWidget() {
       setInput("");
       setLoading(false);
       setTyping(false);
-      setVisitorName(null);
       setChips([]);
       setPendingDept(null);
       setPendingIntent(null);
+      setAwaitingSatisfaction(false);
       setLastInteractionAt(Date.now());
+      if (visitorName) {
+        await sendBotMessage(`Prazer, ${visitorName}! Qual área você procura?`);
+        const departmentChips = getDepartmentChips();
+        if (departmentChips.length) {
+          setChips(departmentChips);
+        } else {
+          await sendBotMessage("Carregando as áreas disponíveis...");
+        }
+      } else {
+        setMessages([namePromptMessage]);
+      }
       return;
     }
 
