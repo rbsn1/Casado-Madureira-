@@ -71,6 +71,10 @@ body {
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .portal-ambient-glow {
+    animation: portalAmbientGlow 24s ease-in-out infinite;
+  }
+
   .portal-glow-main {
     animation: portalFloatMain 50s ease-in-out infinite;
   }
@@ -117,5 +121,15 @@ body {
   50% {
     transform: translate3d(16px, -20px, 0);
     opacity: 0.32;
+  }
+}
+
+@keyframes portalAmbientGlow {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  50% {
+    opacity: 1;
   }
 }

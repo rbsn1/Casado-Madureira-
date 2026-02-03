@@ -14,7 +14,7 @@ export function PortalBackground({
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#F7FBF7] text-slate-900">
       {/* Base gradient (more presence) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#f9fbfa] via-emerald-100/60 to-emerald-200/40" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#f9fbfa] via-emerald-100/60 to-emerald-200/40 portal-ambient-glow" />
 
       {/* Hero image backdrop (more anchor) */}
       {heroImageSrc ? (

@@ -1,9 +1,34 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
+import { supabaseClient } from "@/lib/supabaseClient";
 
 export default function ContaPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkRoles() {
+      if (!supabaseClient) return;
+      const { data } = await supabaseClient.rpc("get_my_roles");
+      if (!active) return;
+      const roles = (data ?? []) as string[];
+      if (roles.length === 1 && roles.includes("CADASTRADOR")) {
+        router.replace("/cadastro");
+      }
+    }
+
+    checkRoles();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="360px">
       {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
