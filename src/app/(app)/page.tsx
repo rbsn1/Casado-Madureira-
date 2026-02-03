@@ -7,6 +7,7 @@ import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { formatDateBR } from "@/lib/date";
+import { useRouter } from "next/navigation";
 
 type InsightEntry = { label: string; count: number };
 type GrowthEntry = {
@@ -59,6 +60,7 @@ function formatDelta(delta: number, pct: number | null) {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const currentYear = new Date().getFullYear();
   const [kpi, setKpi] = useState({
     totalCasados: 0,
@@ -77,9 +79,39 @@ export default function DashboardPage() {
   const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
   const [anoSelecionado, setAnoSelecionado] = useState<number>(currentYear);
   const [mensal, setMensal] = useState<MonthlyEntry[]>([]);
+  const [checkingRoles, setCheckingRoles] = useState(true);
+  const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
   useEffect(() => {
+    let active = true;
+
+    async function checkRoles() {
+      if (!supabaseClient) {
+        if (active) setCheckingRoles(false);
+        return;
+      }
+      const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
+      if (!active) return;
+      const roles = (rolesData ?? []) as string[];
+      const onlyCadastrador = roles.length === 1 && roles.includes("CADASTRADOR");
+      setIsCadastradorOnly(onlyCadastrador);
+      setCheckingRoles(false);
+      if (onlyCadastrador) {
+        router.replace("/cadastro");
+      }
+    }
+
+    checkRoles();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  useEffect(() => {
+    if (checkingRoles || isCadastradorOnly) return;
+
     async function loadDashboard() {
       if (!supabaseClient) {
         setStatusMessage("Supabase não configurado.");
@@ -120,7 +152,7 @@ export default function DashboardPage() {
     }
 
     loadDashboard();
-  }, [period, customStart, customEnd, anoSelecionado]);
+  }, [period, customStart, customEnd, anoSelecionado, checkingRoles, isCadastradorOnly]);
 
   function handleMonthClick(year: number, month: number) {
     const monthValue = String(month).padStart(2, "0");
