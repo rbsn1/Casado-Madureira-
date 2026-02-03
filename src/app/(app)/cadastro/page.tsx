@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
@@ -10,12 +10,42 @@ export default function CadastroInternoPage() {
   const [origem, setOrigem] = useState("Culto da Manhã");
   const [igreja, setIgreja] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
+  const [igrejaBusca, setIgrejaBusca] = useState("");
   const [bairro, setBairro] = useState("Adrianópolis");
   const [bairroOutro, setBairroOutro] = useState("");
   const [telefone, setTelefone] = useState("");
 
   const origemOptions = ["Culto da Manhã", "Culto da Tarde", "Culto da Noite"];
-  const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
+  const igrejaOptions = [
+    "Sede",
+    "Congregação Cidade Nova",
+    "Congregação Japiim",
+    "Congregação Alvorada",
+    "Assembleia de Deus - Sede",
+    "Igreja Batista da Lagoinha Manaus",
+    "Igreja Batista do Amazonas",
+    "Igreja Adventista Central de Manaus",
+    "Igreja Universal - Alvorada",
+    "Igreja Universal - Centro",
+    "Igreja do Evangelho Quadrangular - Centro",
+    "Igreja do Evangelho Quadrangular - Cidade Nova",
+    "Igreja Presbiteriana de Manaus",
+    "Igreja Metodista de Manaus",
+    "Igreja Crista Maranata - Centro",
+    "Igreja Crista Maranata - Cidade Nova",
+    "Igreja de Deus no Brasil - Centro",
+    "Igreja Batista do Parque Dez",
+    "Igreja Batista de Adrianopolis",
+    "Igreja Batista de Flores",
+    "Igreja Batista de Compensa",
+    "Outra"
+  ];
+
+  const igrejaFilteredOptions = useMemo(() => {
+    const term = igrejaBusca.trim().toLowerCase();
+    if (!term) return igrejaOptions;
+    return igrejaOptions.filter((option) => option.toLowerCase().includes(term));
+  }, [igrejaBusca, igrejaOptions]);
   const bairroOptions = [
     "Adrianópolis",
     "Aleixo",
@@ -106,6 +136,7 @@ export default function CadastroInternoPage() {
     setOrigem("Culto da Manhã");
     setIgreja("Sede");
     setIgrejaOutra("");
+    setIgrejaBusca("");
     setBairro("Adrianópolis");
     setBairroOutro("");
     setTelefone("");
@@ -159,13 +190,19 @@ export default function CadastroInternoPage() {
         </label>
         <label className="space-y-1 text-sm">
           <span className="text-slate-700">Igreja de origem / Congregação</span>
+          <input
+            value={igrejaBusca}
+            onChange={(event) => setIgrejaBusca(event.target.value)}
+            placeholder="Buscar igreja..."
+            className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+          />
           <select
             name="igreja_origem"
             value={igreja}
             onChange={(event) => setIgreja(event.target.value)}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
           >
-            {igrejaOptions.map((option) => (
+            {igrejaFilteredOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>

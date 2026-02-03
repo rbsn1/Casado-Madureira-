@@ -79,7 +79,7 @@ export default function AcessoInternoPage() {
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
       {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
-        <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
+        <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600/90 text-xs font-semibold text-white">
               CCM

@@ -169,14 +169,14 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       ) : null}
       <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-          <header className="mb-6 flex items-center justify-between gap-4">
+          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-text-muted">Casados com a Madureira</p>
               <h1 className="text-2xl font-semibold text-text">
                 {isCadastradorOnly ? "Cadastro" : "Painel Interno"}
               </h1>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {!isCadastradorOnly ? (
                 <button
                   type="button"

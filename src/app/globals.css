@@ -13,6 +13,23 @@ body {
   color: #1f2933;
 }
 
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  .card {
+    @apply rounded-xl;
+  }
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;

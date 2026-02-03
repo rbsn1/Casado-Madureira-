@@ -269,7 +269,7 @@ export default function LoginPage() {
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
       {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
-        <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
+        <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600/90 text-sm font-semibold text-white">
               CCM
@@ -281,7 +281,7 @@ export default function LoginPage() {
               <p className="text-sm font-semibold text-emerald-900">Casados com a Madureira</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <nav className="hidden items-center gap-6 text-sm text-emerald-900/70 md:flex">
               <Link href="/agenda" className="transition hover:text-emerald-900">
                 Agenda
