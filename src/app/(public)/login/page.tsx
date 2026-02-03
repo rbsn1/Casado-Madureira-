@@ -350,93 +350,100 @@ export default function LoginPage() {
         <div className="mt-12 h-px w-full bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
 
         <section className="mt-16">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">Acessos</p>
-              <h3 className="mt-2 text-2xl font-semibold text-emerald-900">Tudo o que você precisa</h3>
-            </div>
-            <p className="text-sm leading-relaxed text-slate-600/90">
-              Acesse recursos essenciais do portal CCM.
-            </p>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <Link
-              href="/cadastro"
-              className={`${cardClass} transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10`}
-            >
-              <p className="text-xs font-semibold uppercase text-emerald-600">Cadastro rápido</p>
-              <p className="mt-3 text-lg font-semibold text-slate-900">Cadastro rápido do membro</p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600/90">
-                Envie os dados do casal em menos de 1 minuto e acompanhe o contato da equipe.
-              </p>
-              <span className="mt-4 inline-flex items-center text-sm font-semibold text-emerald-800">
-                Iniciar cadastro →
-              </span>
-            </Link>
+          <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-6 shadow-2xl shadow-emerald-200/40 sm:p-8">
+            <div className="pointer-events-none absolute -right-8 top-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" />
+            <div className="pointer-events-none absolute -left-10 bottom-6 h-48 w-48 rounded-full bg-sky-200/50 blur-3xl" />
 
-            <Link
-              href="/agenda"
-              className={`${cardClass} agenda-card block border-t border-t-emerald-500/20 transition-all duration-300 hover:-translate-y-0.5 hover:border-black/10 hover:shadow-2xl hover:shadow-black/10`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    {badgeLabel}
-                  </span>
-                  <p className="mt-3 text-lg font-semibold text-slate-900">Agenda semanal</p>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600/90">
-                    Programação da semana na igreja
+            <div className="grid gap-8 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
+              <div className="space-y-5">
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+                  Agenda da semana
+                </div>
+                <div className="space-y-3">
+                  <h2 className="text-3xl font-semibold text-emerald-900 sm:text-4xl">
+                    Programação em destaque
+                  </h2>
+                  <p className="text-sm leading-relaxed text-slate-600/90">
+                    Confira os próximos encontros, horários e destaque do dia para não perder nenhum momento.
                   </p>
                 </div>
-                <MiniCalendar date={nextEvents[0]?.date} />
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {filteredNextEvents.length ? (
-                  <>
-                    {todayEvent ? (
-                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
-                            Hoje
-                          </span>
-                          <span className="text-xs text-emerald-700">⏰</span>
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-emerald-900">
-                          Hoje • {(todayEvent.start_time ?? "--:--").slice(0, 5)} — {todayEvent.title}
-                        </p>
-                      </div>
-                    ) : null}
-                    {filteredNextEvents.map((item, index) => (
-                      <div key={`${item.title}-${index}`} className="rounded-xl bg-white/70 px-3 py-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
-                            {index === 0 ? "Próximo" : "Seguinte"}
-                          </span>
-                          {index === 0 ? (
-                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                              Destaque
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="text-xs text-slate-500">{item.meta}</p>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  <div className="rounded-xl bg-white/70 px-3 py-3">
-                    <p className="text-sm text-slate-500">{scheduleFallback}</p>
-                    <p className="mt-1 text-xs text-slate-400">—</p>
+                {todayEvent ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-white/80 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+                      Hoje
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-emerald-900">
+                      {(todayEvent.start_time ?? "--:--").slice(0, 5)} • {todayEvent.title}
+                    </p>
                   </div>
-                )}
+                ) : null}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href="/agenda"
+                    className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                  >
+                    Ver agenda completa
+                  </Link>
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+                    {badgeLabel}
+                  </span>
+                </div>
               </div>
 
-              <span className="mt-5 inline-flex items-center text-sm font-semibold text-emerald-800">
-                Ver agenda completa →
-              </span>
-            </Link>
+              <div className="rounded-2xl border border-emerald-100 bg-white/85 p-5 shadow-lg shadow-emerald-100/60 backdrop-blur">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+                      Próximos encontros
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-slate-900">Agenda semanal</p>
+                  </div>
+                  <MiniCalendar date={nextEvents[0]?.date} />
+                </div>
 
+                <div className="mt-5 space-y-3">
+                  {filteredNextEvents.length ? (
+                    <>
+                      {filteredNextEvents.map((item, index) => (
+                        <div key={`${item.title}-${index}`} className="rounded-xl bg-emerald-50/60 px-3 py-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600">
+                              {index === 0 ? "Próximo" : "Seguinte"}
+                            </span>
+                            {index === 0 ? (
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                Destaque
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                          <p className="text-xs text-slate-500">{item.meta}</p>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="rounded-xl bg-white/70 px-3 py-3">
+                      <p className="text-sm text-slate-500">{scheduleFallback}</p>
+                      <p className="mt-1 text-xs text-slate-400">—</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10">
+          <div className="rounded-3xl border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/50">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+              Romanos 15:7
+            </p>
+            <p className="mt-3 text-lg font-semibold text-emerald-900">
+              Portanto, acolhei-vos uns aos outros, como também Cristo nos acolheu para a glória de Deus.
+            </p>
+            <p className="mt-2 text-sm text-slate-600/90">
+              Texto base do nosso projeto de acolhimento das pessoas que chegam na igreja.
+            </p>
           </div>
         </section>
 
