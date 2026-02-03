@@ -150,7 +150,7 @@ function getTodayEvent(events: WeeklyEvent[], now: Date) {
 function MiniCalendar({ date }: { date?: Date | null }) {
   if (!date) {
     return (
-      <div className="flex h-20 w-20 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/80 shadow-sm">
+      <div className="flex h-20 w-20 shrink-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/80 shadow-sm">
         <div className="h-2 bg-emerald-500" />
         <div className="flex flex-1 flex-col items-center justify-center">
           <span className="text-2xl font-semibold text-slate-400">—</span>
@@ -164,7 +164,7 @@ function MiniCalendar({ date }: { date?: Date | null }) {
   const [day = "--", month = "--", year = "----"] = formatted.split("/");
 
   return (
-    <div className="flex h-20 w-20 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/90 shadow-sm">
+    <div className="flex h-20 w-20 shrink-0 flex-col overflow-hidden rounded-xl border border-black/5 bg-white/90 shadow-sm">
       <div className="h-2 bg-gradient-to-r from-emerald-500 to-sky-400" />
       <div className="flex flex-1 flex-col items-center justify-center">
         <span className="text-2xl font-semibold text-emerald-900">{day}</span>
