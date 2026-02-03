@@ -427,7 +427,7 @@ export default function LoginPage() {
             <div className="pointer-events-none absolute -left-10 bottom-6 h-48 w-48 rounded-full bg-sky-200/50 blur-3xl" />
 
             <div className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
-              <div className="space-y-5">
+              <div className="min-w-0 space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
                   Agenda da semana
                 </div>
@@ -462,7 +462,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur sm:p-5">
+              <div className="min-w-0 w-full rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur sm:p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
