@@ -28,6 +28,17 @@ type ScheduleLine = {
 };
 
 type ScheduleStatus = "idle" | "loading" | "error";
+type SpecialEventConfig = {
+  is_active: boolean;
+  title: string;
+  subtitle: string;
+  date: string;
+  location: string;
+  cta_label: string;
+  cta_url: string;
+  image_url: string;
+  tag: string;
+};
 
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
@@ -177,6 +188,7 @@ export default function LoginPage() {
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatus>("loading");
   const [scheduleEvents, setScheduleEvents] = useState<WeeklyEvent[]>([]);
   const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [specialEvent, setSpecialEvent] = useState<SpecialEventConfig | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -207,6 +219,41 @@ export default function LoginPage() {
     }
 
     loadSchedule();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadSpecialEvent() {
+      if (!supabaseClient) return;
+      const { data, error } = await supabaseClient
+        .from("app_settings")
+        .select("value")
+        .eq("key", "special_event")
+        .maybeSingle();
+      if (!active) return;
+      if (error) return;
+      if (!data?.value) {
+        setSpecialEvent(null);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(data.value) as SpecialEventConfig;
+        if (!parsed.is_active) {
+          setSpecialEvent(null);
+          return;
+        }
+        setSpecialEvent(parsed);
+      } catch {
+        setSpecialEvent(null);
+      }
+    }
+
+    loadSpecialEvent();
 
     return () => {
       active = false;
@@ -455,6 +502,54 @@ export default function LoginPage() {
             </div>
           </div>
         </section>
+
+        {specialEvent ? (
+          <section className="mt-10">
+            <div className="relative overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-900 p-6 text-white shadow-2xl shadow-emerald-900/30">
+              {specialEvent.image_url ? (
+                <div
+                  className="absolute inset-0 bg-cover bg-center opacity-30"
+                  style={{ backgroundImage: `url(${specialEvent.image_url})` }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 via-emerald-900/70 to-sky-900/70" />
+              <div className="relative z-10 grid gap-6 lg:grid-cols-[1.2fr,0.8fr] lg:items-center">
+                <div className="space-y-4">
+                  <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-100">
+                    {specialEvent.tag || "Evento especial"}
+                  </span>
+                  <div>
+                    <h3 className="text-3xl font-semibold sm:text-4xl">{specialEvent.title}</h3>
+                    {specialEvent.subtitle ? (
+                      <p className="mt-2 text-sm text-emerald-100/90">{specialEvent.subtitle}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-3 text-sm text-emerald-100/90">
+                    {specialEvent.date ? <span>📅 {specialEvent.date}</span> : null}
+                    {specialEvent.location ? <span>📍 {specialEvent.location}</span> : null}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
+                  {specialEvent.cta_url && specialEvent.cta_label ? (
+                    <Link
+                      href={specialEvent.cta_url}
+                      className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2 text-sm font-semibold text-emerald-900 shadow-lg shadow-white/20 transition hover:-translate-y-0.5"
+                    >
+                      {specialEvent.cta_label}
+                    </Link>
+                  ) : null}
+                  <Link
+                    href="/agenda"
+                    className="inline-flex items-center justify-center rounded-full border border-white/40 px-5 py-2 text-sm font-semibold text-white/90 transition hover:border-white"
+                  >
+                    Ver agenda →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-10">
           <div className="rounded-3xl border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/50">

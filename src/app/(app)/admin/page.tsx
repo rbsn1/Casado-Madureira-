@@ -17,6 +17,18 @@ type WeeklyScheduleEvent = {
   updated_at: string;
 };
 
+type SpecialEventConfig = {
+  is_active: boolean;
+  title: string;
+  subtitle: string;
+  date: string;
+  location: string;
+  cta_label: string;
+  cta_url: string;
+  image_url: string;
+  tag: string;
+};
+
 const roleOptions = [
   "ADMIN_MASTER",
   "PASTOR",
@@ -63,6 +75,19 @@ export default function AdminPage() {
   const [bgUrl, setBgUrl] = useState<string | null>(null);
   const [bgStatus, setBgStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [bgMessage, setBgMessage] = useState("");
+  const [specialStatus, setSpecialStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [specialMessage, setSpecialMessage] = useState("");
+  const [specialEvent, setSpecialEvent] = useState<SpecialEventConfig>({
+    is_active: false,
+    title: "",
+    subtitle: "",
+    date: "",
+    location: "",
+    cta_label: "",
+    cta_url: "",
+    image_url: "",
+    tag: ""
+  });
   const [agendaEvents, setAgendaEvents] = useState<WeeklyScheduleEvent[]>([]);
   const [agendaStatus, setAgendaStatus] = useState<"idle" | "loading" | "error">("loading");
   const [agendaMessage, setAgendaMessage] = useState("");
@@ -113,6 +138,35 @@ export default function AdminPage() {
     }
   }
 
+  async function loadSpecialEvent() {
+    try {
+      if (!supabaseClient) throw new Error("Supabase não configurado.");
+      const { data, error } = await supabaseClient
+        .from("app_settings")
+        .select("value")
+        .eq("key", "special_event")
+        .maybeSingle();
+      if (error) throw error;
+      if (data?.value) {
+        const parsed = JSON.parse(data.value) as SpecialEventConfig;
+        setSpecialEvent({
+          is_active: parsed.is_active ?? false,
+          title: parsed.title ?? "",
+          subtitle: parsed.subtitle ?? "",
+          date: parsed.date ?? "",
+          location: parsed.location ?? "",
+          cta_label: parsed.cta_label ?? "",
+          cta_url: parsed.cta_url ?? "",
+          image_url: parsed.image_url ?? "",
+          tag: parsed.tag ?? ""
+        });
+      }
+    } catch (error) {
+      setSpecialMessage((error as Error).message);
+      setSpecialStatus("error");
+    }
+  }
+
   async function loadAgendaEvents() {
     setAgendaStatus("loading");
     setAgendaMessage("");
@@ -135,6 +189,7 @@ export default function AdminPage() {
   useEffect(() => {
     loadUsers();
     loadBackground();
+    loadSpecialEvent();
     loadAgendaEvents();
   }, []);
 
@@ -209,6 +264,26 @@ export default function AdminPage() {
     } catch (error) {
       setBgStatus("error");
       setBgMessage((error as Error).message);
+    }
+  }
+
+  async function handleSaveSpecialEvent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSpecialStatus("loading");
+    setSpecialMessage("");
+    try {
+      if (!supabaseClient) throw new Error("Supabase não configurado.");
+      const payload = {
+        key: "special_event",
+        value: JSON.stringify(specialEvent)
+      };
+      const { error } = await supabaseClient.from("app_settings").upsert(payload);
+      if (error) throw error;
+      setSpecialStatus("success");
+      setSpecialMessage("Evento especial atualizado.");
+    } catch (error) {
+      setSpecialStatus("error");
+      setSpecialMessage((error as Error).message);
     }
   }
 
@@ -382,6 +457,116 @@ export default function AdminPage() {
         {bgStatus === "success" ? (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
             {bgMessage}
+          </p>
+        ) : null}
+      </form>
+
+      <form className="card space-y-4 p-4" onSubmit={handleSaveSpecialEvent}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-emerald-900">Evento especial</p>
+            <p className="text-xs text-slate-500">Destaque eventos anuais como o Conjadem na home.</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={specialEvent.is_active}
+              onChange={(event) =>
+                setSpecialEvent((prev) => ({ ...prev, is_active: event.target.checked }))
+              }
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Ativo
+          </label>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Título</span>
+            <input
+              value={specialEvent.title}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, title: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="Conjadem 2026"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Tag</span>
+            <input
+              value={specialEvent.tag}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, tag: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="Evento anual"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Subtítulo</span>
+            <input
+              value={specialEvent.subtitle}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, subtitle: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="Congresso de Jovens"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Data</span>
+            <input
+              value={specialEvent.date}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, date: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="20 a 23 de Julho"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Local</span>
+            <input
+              value={specialEvent.location}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, location: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="Templo Sede"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Imagem (URL)</span>
+            <input
+              value={specialEvent.image_url}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, image_url: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="https://..."
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">CTA (texto)</span>
+            <input
+              value={specialEvent.cta_label}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, cta_label: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="Saiba mais"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">CTA (link)</span>
+            <input
+              value={specialEvent.cta_url}
+              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, cta_url: event.target.value }))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="https://..."
+            />
+          </label>
+        </div>
+        <button
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          disabled={specialStatus === "loading"}
+        >
+          {specialStatus === "loading" ? "Salvando..." : "Salvar evento"}
+        </button>
+        {specialStatus === "error" ? (
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {specialMessage || "Não foi possível salvar o evento."}
+          </p>
+        ) : null}
+        {specialStatus === "success" ? (
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            {specialMessage}
           </p>
         ) : null}
       </form>
