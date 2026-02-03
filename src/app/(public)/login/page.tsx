@@ -317,7 +317,7 @@ export default function LoginPage() {
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
       {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-10 sm:pb-16">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 pb-10 sm:pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600/90 text-sm font-semibold text-white">
@@ -470,7 +470,9 @@ export default function LoginPage() {
                     </p>
                     <p className="mt-2 text-lg font-semibold text-slate-900">Agenda semanal</p>
                   </div>
-                  <MiniCalendar date={nextEvents[0]?.date} />
+                  <div className="flex justify-start">
+                    <MiniCalendar date={nextEvents[0]?.date} />
+                  </div>
                 </div>
 
                 <div className="mt-4 space-y-3">
