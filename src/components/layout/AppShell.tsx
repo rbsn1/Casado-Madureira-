@@ -16,7 +16,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Casados com a Madureira",
     items: [
-      { href: "/", label: "Dashboard" },
+      { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
@@ -57,7 +57,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       }
       setUserEmail(data.user.email ?? null);
       const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
-      setRoles((rolesData ?? []) as string[]);
+      const nextRoles = (rolesData ?? []) as string[];
+      setRoles(nextRoles);
+      if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
+        router.replace("/cadastro");
+      }
     }
 
     loadUser();
