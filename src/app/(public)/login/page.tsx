@@ -377,20 +377,20 @@ export default function LoginPage() {
           </div>
         </header>
 
-        <section className="grid items-center gap-8 pt-8 sm:pt-12 lg:grid-cols-1">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
-              Bem-vindos
-            </div>
-            <div className="space-y-4">
-              <h1 className="text-4xl font-semibold tracking-tight text-emerald-900/90 sm:text-5xl">
-                Portal de apoio aos casados com a Madureira
-              </h1>
-              <p className="max-w-xl text-base leading-relaxed text-slate-600/90">
-                O Portal CCM centraliza cadastros, agenda e acesso interno. Tudo em um ambiente leve,
-                organizado e pronto para apoiar os departamentos.
-              </p>
-            </div>
+        <section className="grid items-center gap-6 pt-6 sm:pt-10 lg:grid-cols-1">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+                Bem-vindos
+              </div>
+              <div className="space-y-4">
+                <h1 className="text-3xl font-semibold tracking-tight text-emerald-900/90 sm:text-5xl">
+                  Portal de apoio aos casados com a Madureira
+                </h1>
+                <p className="max-w-xl text-base leading-relaxed text-slate-600/90">
+                  O Portal CCM centraliza cadastros, agenda e acesso interno. Tudo em um ambiente leve,
+                  organizado e pronto para apoiar os departamentos.
+                </p>
+              </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/agenda"
@@ -405,7 +405,7 @@ export default function LoginPage() {
                 Acesso interno
               </Link>
             </div>
-            <div className="flex flex-wrap gap-4 text-sm text-slate-600/90">
+            <div className="flex flex-wrap gap-3 text-sm text-slate-600/90">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 Cadastro rápido em até 1 minuto
@@ -421,18 +421,18 @@ export default function LoginPage() {
 
         <div className="mt-8 h-px w-full bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent sm:mt-12" />
 
-        <section className="mt-10 sm:mt-16">
-          <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4 shadow-2xl shadow-emerald-200/40 sm:rounded-3xl sm:p-8">
+        <section className="mt-8 sm:mt-12">
+          <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4 shadow-2xl shadow-emerald-200/40 sm:rounded-3xl sm:p-6">
             <div className="pointer-events-none absolute -right-8 top-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" />
             <div className="pointer-events-none absolute -left-10 bottom-6 h-48 w-48 rounded-full bg-sky-200/50 blur-3xl" />
 
             <div className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
-              <div className="min-w-0 space-y-5">
+              <div className="min-w-0 space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
                   Agenda da semana
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-2xl font-semibold text-emerald-900 sm:text-4xl">
+                  <h2 className="text-2xl font-semibold text-emerald-900 sm:text-3xl">
                     Programação em destaque
                   </h2>
                   <p className="text-sm leading-relaxed text-slate-600/90">
@@ -449,7 +449,7 @@ export default function LoginPage() {
                     </p>
                   </div>
                 ) : null}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Link
                     href="/agenda"
                     className="w-full rounded-full bg-emerald-600 px-5 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
@@ -462,7 +462,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="min-w-0 w-full rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur sm:p-5">
+              <div className="min-w-0 w-full rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur sm:p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
@@ -566,16 +566,18 @@ export default function LoginPage() {
         ) : null}
 
         <section className="mt-6 sm:mt-10">
-          <div className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-lg shadow-emerald-100/50 sm:rounded-3xl sm:p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
-              Romanos 15:7
-            </p>
-            <p className="mt-3 text-lg font-semibold text-emerald-900">
-              Portanto, acolhei-vos uns aos outros, como também Cristo nos acolheu para a glória de Deus.
-            </p>
-            <p className="mt-2 text-sm text-slate-600/90">
-              Texto base do nosso projeto de acolhimento das pessoas que chegam na igreja.
-            </p>
+          <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-white via-emerald-50/70 to-white px-4 py-3 shadow-sm sm:rounded-3xl sm:px-6 sm:py-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+                Romanos 15:7
+              </p>
+              <p className="text-sm font-semibold text-emerald-900 sm:text-base">
+                Portanto, acolhei-vos uns aos outros, como também Cristo nos acolheu para a glória de Deus.
+              </p>
+              <p className="text-xs text-slate-600/90">
+                Texto base do nosso projeto de acolhimento.
+              </p>
+            </div>
           </div>
         </section>
 
