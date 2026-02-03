@@ -10,6 +10,15 @@ const nextConfig = {
     serverActions: {
       allowedOrigins
     }
+  },
+  async redirects() {
+    return [
+      {
+        source: "/cadastro",
+        destination: "/acesso-interno",
+        permanent: false
+      }
+    ];
   }
 };
 
