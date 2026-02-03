@@ -18,17 +18,17 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
-      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
-      { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
-      { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA"] },
+      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
+      { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
+      { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
       { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] }
     ]
   },
   {
     title: "Novos Convertidos",
     items: [
-      { href: "/novos-convertidos/dashboard", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS"] },
-      { href: "/novos-convertidos", label: "Fila", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS"] }
+      { href: "/novos-convertidos/dashboard", label: "Dashboard", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS"] },
+      { href: "/novos-convertidos", label: "Fila", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS"] }
     ]
   }
 ];
