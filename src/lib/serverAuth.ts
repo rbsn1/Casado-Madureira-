@@ -33,7 +33,18 @@ export async function requireAdmin(request: Request) {
     .maybeSingle();
 
   const profileRole = (profile as { role?: string } | null)?.role;
-  if (roleError || profileRole !== "admin") {
+  if (!roleError && profileRole === "admin") {
+    return { user: data.user };
+  }
+
+  const { data: adminRoles, error: adminRoleError } = await supabaseAdmin
+    .from("usuarios_perfis")
+    .select("role, active")
+    .eq("user_id", data.user.id)
+    .eq("role", "ADMIN_MASTER")
+    .eq("active", true);
+
+  if (adminRoleError || !adminRoles?.length) {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 

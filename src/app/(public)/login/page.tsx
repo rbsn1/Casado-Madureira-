@@ -321,12 +321,6 @@ export default function LoginPage() {
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/cadastro"
-                className="w-full rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
-              >
-                Cadastro rápido
-              </Link>
-              <Link
                 href="/agenda"
                 className="w-full rounded-full border border-emerald-200 bg-white/80 px-5 py-3 text-sm font-semibold text-emerald-900 transition hover:border-emerald-300 sm:w-auto"
               >

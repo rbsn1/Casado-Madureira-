@@ -17,7 +17,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Casados com a Madureira",
     items: [
       { href: "/", label: "Dashboard" },
-      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
+      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO","CADASTRADOR"] },
       { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA"] },
       { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] }
@@ -41,6 +41,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordStatus, setPasswordStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [showMobileNav, setShowMobileNav] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -153,7 +154,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
             <p className="text-sm font-semibold text-white">Acesso interno</p>
             <p className="text-xs text-brand-100/90">
-              RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO
+              RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR
             </p>
           </div>
         </div>
@@ -166,6 +167,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <h1 className="text-2xl font-semibold text-text">Painel Interno</h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMobileNav(true)}
+                className="inline-flex items-center justify-center rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900 lg:hidden"
+              >
+                Menu
+              </button>
               <div className="flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-medium text-brand-900">
                 {userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}
               </div>
@@ -192,6 +200,56 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           {children}
         </div>
       </main>
+      {showMobileNav ? (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowMobileNav(false)}
+            aria-hidden="true"
+          />
+          <div className="absolute left-0 top-0 h-full w-72 bg-brand-900 text-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-brand-800 px-4 py-4">
+              <span className="text-sm font-semibold text-brand-100">Menu</span>
+              <button
+                type="button"
+                onClick={() => setShowMobileNav(false)}
+                className="rounded-full border border-brand-700/60 px-3 py-1 text-xs text-brand-100 hover:bg-brand-800"
+              >
+                Fechar
+              </button>
+            </div>
+            <nav className="space-y-6 px-4 py-5">
+              {navSections.map((section) => (
+                <div key={section.title}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
+                    {section.title}
+                  </p>
+                  <ul className="space-y-1">
+                    {section.items
+                      .filter((item) => !item.roles || item.roles.some((role) => roles.includes(role)))
+                      .map((item) => (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            onClick={() => setShowMobileNav(false)}
+                            className={clsx(
+                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-brand-700/80 hover:text-white",
+                              current === item.href
+                                ? "bg-brand-700 text-white shadow-sm"
+                                : "text-brand-100/90"
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+          </div>
+        </div>
+      ) : null}
       {showPasswordModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
