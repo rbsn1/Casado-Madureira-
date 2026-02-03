@@ -45,6 +45,7 @@ function CadastrosContent() {
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [showIgreja, setShowIgreja] = useState(true);
   const [showBairro, setShowBairro] = useState(true);
+  const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
   const searchParams = useSearchParams();
 
   const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
@@ -169,6 +170,30 @@ function CadastrosContent() {
       return matchesSearch && matchesStatus;
     });
   }, [pessoas, search, statusFilter]);
+
+  function getTodayKey() {
+    const now = new Date();
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Manaus",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).format(now);
+  }
+
+  const todayCount = useMemo(() => {
+    const todayKey = getTodayKey();
+    return pessoas.filter((pessoa) => {
+      if (!pessoa.created_at) return false;
+      const key = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Manaus",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(new Date(pessoa.created_at));
+      return key === todayKey;
+    }).length;
+  }, [pessoas]);
 
   const columnCount = 7 + (showIgreja ? 1 : 0) + (showBairro ? 1 : 0);
 
@@ -402,6 +427,28 @@ function CadastrosContent() {
             onChange={handleImportFile}
           />
         </div>
+      </div>
+
+      <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Cadastros feitos hoje
+          </p>
+          <p className="mt-1 text-3xl font-semibold text-emerald-900">{todayCount}</p>
+          {lastConfirmedAt ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Confirmado às{" "}
+              {lastConfirmedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => setLastConfirmedAt(new Date())}
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        >
+          Confirmar
+        </button>
       </div>
 
       {showCreate ? (
