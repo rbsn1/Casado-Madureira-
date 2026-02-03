@@ -17,7 +17,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Casados com a Madureira",
     items: [
       { href: "/", label: "Dashboard" },
-      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO","CADASTRADOR"] },
+      { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
+      { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA"] },
       { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] }
