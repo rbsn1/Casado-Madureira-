@@ -41,6 +41,12 @@ export default function AcessoInternoPage() {
     }
 
     setStatus("idle");
+    const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
+    const roles = (rolesData ?? []) as string[];
+    if (roles.length === 1 && roles.includes("CADASTRADOR")) {
+      router.push("/cadastro");
+      return;
+    }
     router.push("/");
   }
 
