@@ -22,6 +22,7 @@ type SpecialEventConfig = {
   title: string;
   subtitle: string;
   date: string;
+  is_non_recurring: boolean;
   location: string;
   cta_label: string;
   cta_url: string;
@@ -82,6 +83,7 @@ export default function AdminPage() {
     title: "",
     subtitle: "",
     date: "",
+    is_non_recurring: true,
     location: "",
     cta_label: "",
     cta_url: "",
@@ -154,6 +156,7 @@ export default function AdminPage() {
           title: parsed.title ?? "",
           subtitle: parsed.subtitle ?? "",
           date: parsed.date ?? "",
+          is_non_recurring: parsed.is_non_recurring ?? true,
           location: parsed.location ?? "",
           cta_label: parsed.cta_label ?? "",
           cta_url: parsed.cta_url ?? "",
@@ -467,17 +470,30 @@ export default function AdminPage() {
             <p className="text-sm font-semibold text-emerald-900">Evento especial</p>
             <p className="text-xs text-slate-500">Destaque eventos anuais como o Conjadem na home.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={specialEvent.is_active}
-              onChange={(event) =>
-                setSpecialEvent((prev) => ({ ...prev, is_active: event.target.checked }))
-              }
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Ativo
-          </label>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={specialEvent.is_active}
+                onChange={(event) =>
+                  setSpecialEvent((prev) => ({ ...prev, is_active: event.target.checked }))
+                }
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Ativo
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={specialEvent.is_non_recurring}
+                onChange={(event) =>
+                  setSpecialEvent((prev) => ({ ...prev, is_non_recurring: event.target.checked }))
+                }
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              Não recorrente
+            </label>
+          </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
@@ -510,10 +526,10 @@ export default function AdminPage() {
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Data</span>
             <input
+              type="date"
               value={specialEvent.date}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, date: event.target.value }))}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="20 a 23 de Julho"
             />
           </label>
           <label className="space-y-1 text-sm">

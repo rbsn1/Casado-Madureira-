@@ -33,6 +33,7 @@ type SpecialEventConfig = {
   title: string;
   subtitle: string;
   date: string;
+  is_non_recurring: boolean;
   location: string;
   cta_label: string;
   cta_url: string;
@@ -247,6 +248,7 @@ export default function LoginPage() {
           setSpecialEvent(null);
           return;
         }
+        parsed.is_non_recurring = parsed.is_non_recurring ?? true;
         setSpecialEvent(parsed);
       } catch {
         setSpecialEvent(null);
@@ -315,7 +317,7 @@ export default function LoginPage() {
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
       {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
-      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-10 sm:pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600/90 text-sm font-semibold text-white">
@@ -375,7 +377,7 @@ export default function LoginPage() {
           </div>
         </header>
 
-        <section className="grid items-center gap-10 pt-12 lg:grid-cols-1">
+        <section className="grid items-center gap-8 pt-8 sm:pt-12 lg:grid-cols-1">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
               Bem-vindos
@@ -417,20 +419,20 @@ export default function LoginPage() {
 
         </section>
 
-        <div className="mt-12 h-px w-full bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent" />
+        <div className="mt-8 h-px w-full bg-gradient-to-r from-transparent via-emerald-200/60 to-transparent sm:mt-12" />
 
-        <section className="mt-16">
-          <div className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-6 shadow-2xl shadow-emerald-200/40 sm:p-8">
+        <section className="mt-10 sm:mt-16">
+          <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4 shadow-2xl shadow-emerald-200/40 sm:rounded-3xl sm:p-8">
             <div className="pointer-events-none absolute -right-8 top-6 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" />
             <div className="pointer-events-none absolute -left-10 bottom-6 h-48 w-48 rounded-full bg-sky-200/50 blur-3xl" />
 
-            <div className="grid gap-8 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
+            <div className="grid gap-6 lg:grid-cols-[1.05fr,0.95fr] lg:items-center">
               <div className="space-y-5">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
                   Agenda da semana
                 </div>
                 <div className="space-y-3">
-                  <h2 className="text-3xl font-semibold text-emerald-900 sm:text-4xl">
+                  <h2 className="text-2xl font-semibold text-emerald-900 sm:text-4xl">
                     Programação em destaque
                   </h2>
                   <p className="text-sm leading-relaxed text-slate-600/90">
@@ -447,20 +449,20 @@ export default function LoginPage() {
                     </p>
                   </div>
                 ) : null}
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Link
                     href="/agenda"
-                    className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                    className="w-full rounded-full bg-emerald-600 px-5 py-2 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:w-auto"
                   >
                     Ver agenda completa
                   </Link>
-                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+                  <span className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700 sm:text-[11px]">
                     {badgeLabel}
                   </span>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-emerald-100 bg-white/85 p-5 shadow-lg shadow-emerald-100/60 backdrop-blur">
+              <div className="rounded-2xl border border-emerald-100 bg-white/85 p-4 shadow-lg shadow-emerald-100/60 backdrop-blur sm:p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
@@ -471,7 +473,7 @@ export default function LoginPage() {
                   <MiniCalendar date={nextEvents[0]?.date} />
                 </div>
 
-                <div className="mt-5 space-y-3">
+                <div className="mt-4 space-y-3">
                   {filteredNextEvents.length ? (
                     <>
                       {filteredNextEvents.map((item, index) => (
@@ -504,8 +506,8 @@ export default function LoginPage() {
         </section>
 
         {specialEvent ? (
-          <section className="mt-10">
-            <div className="relative overflow-hidden rounded-3xl border border-emerald-200 bg-emerald-900 p-6 text-white shadow-2xl shadow-emerald-900/30">
+          <section className="mt-6 sm:mt-10">
+            <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-900 p-4 text-white shadow-2xl shadow-emerald-900/30 sm:rounded-3xl sm:p-6">
               {specialEvent.image_url ? (
                 <div
                   className="absolute inset-0 bg-cover bg-center opacity-30"
@@ -526,8 +528,20 @@ export default function LoginPage() {
                     ) : null}
                   </div>
                   <div className="flex flex-wrap gap-3 text-sm text-emerald-100/90">
-                    {specialEvent.date ? <span>📅 {specialEvent.date}</span> : null}
+                    {specialEvent.date ? (
+                      <span>
+                        📅{" "}
+                        {formatDateBR(specialEvent.date)
+                          ? formatDateBR(specialEvent.date)
+                          : specialEvent.date}
+                      </span>
+                    ) : null}
                     {specialEvent.location ? <span>📍 {specialEvent.location}</span> : null}
+                    {specialEvent.is_non_recurring ? (
+                      <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-100">
+                        Especial • Não recorrente
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
@@ -551,8 +565,8 @@ export default function LoginPage() {
           </section>
         ) : null}
 
-        <section className="mt-10">
-          <div className="rounded-3xl border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/50">
+        <section className="mt-6 sm:mt-10">
+          <div className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-lg shadow-emerald-100/50 sm:rounded-3xl sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
               Romanos 15:7
             </p>
@@ -566,8 +580,8 @@ export default function LoginPage() {
         </section>
 
         {user && isCadastrador ? (
-          <section className="mt-10">
-            <div className="rounded-3xl border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/50">
+          <section className="mt-6 sm:mt-10">
+            <div className="rounded-2xl border border-emerald-100 bg-white/90 p-4 shadow-lg shadow-emerald-100/50 sm:rounded-3xl sm:p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
                 Acesso interno
               </p>
@@ -585,7 +599,7 @@ export default function LoginPage() {
           </section>
         ) : null}
 
-        <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-slate-500">
+        <footer className="mt-10 border-t border-black/5 pb-8 pt-5 text-sm text-slate-500 sm:mt-16 sm:pb-10 sm:pt-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>Portal CCM • Casados com a Madureira</p>
             <p>Central de apoio e integração aos casados com a Madureira</p>
