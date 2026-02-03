@@ -90,6 +90,7 @@ export default function AdminPage() {
     image_url: "",
     tag: ""
   });
+  const [specialDateInput, setSpecialDateInput] = useState("");
   const [agendaEvents, setAgendaEvents] = useState<WeeklyScheduleEvent[]>([]);
   const [agendaStatus, setAgendaStatus] = useState<"idle" | "loading" | "error">("loading");
   const [agendaMessage, setAgendaMessage] = useState("");
@@ -163,6 +164,7 @@ export default function AdminPage() {
           image_url: parsed.image_url ?? "",
           tag: parsed.tag ?? ""
         });
+        setSpecialDateInput(parsed.date ? formatDateBR(parsed.date) : "");
       }
     } catch (error) {
       setSpecialMessage((error as Error).message);
@@ -276,9 +278,16 @@ export default function AdminPage() {
     setSpecialMessage("");
     try {
       if (!supabaseClient) throw new Error("Supabase não configurado.");
+      const isoDate = toIsoDateFromBr(specialDateInput);
+      if (specialDateInput && !isoDate) {
+        throw new Error("Data inválida. Use o formato dd/MM/aaaa.");
+      }
       const payload = {
         key: "special_event",
-        value: JSON.stringify(specialEvent)
+        value: JSON.stringify({
+          ...specialEvent,
+          date: isoDate ?? ""
+        })
       };
       const { error } = await supabaseClient.from("app_settings").upsert(payload);
       if (error) throw error;
@@ -288,6 +297,24 @@ export default function AdminPage() {
       setSpecialStatus("error");
       setSpecialMessage((error as Error).message);
     }
+  }
+
+  function toIsoDateFromBr(value: string) {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) return null;
+    const [, dd, mm, yyyy] = match;
+    const day = Number(dd);
+    const month = Number(mm);
+    const year = Number(yyyy);
+    if (!day || !month || !year) return null;
+    if (month < 1 || month > 12) return null;
+    if (day < 1 || day > 31) return null;
+    const iso = `${yyyy}-${mm}-${dd}`;
+    const test = new Date(iso);
+    if (Number.isNaN(test.getTime())) return null;
+    return iso;
   }
 
   async function handleCreateAgendaEvent(event: FormEvent<HTMLFormElement>) {
@@ -526,10 +553,10 @@ export default function AdminPage() {
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Data</span>
             <input
-              type="date"
-              value={specialEvent.date}
-              onChange={(event) => setSpecialEvent((prev) => ({ ...prev, date: event.target.value }))}
+              value={specialDateInput}
+              onChange={(event) => setSpecialDateInput(event.target.value)}
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="dd/MM/aaaa"
             />
           </label>
           <label className="space-y-1 text-sm">
