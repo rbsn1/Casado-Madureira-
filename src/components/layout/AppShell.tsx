@@ -43,6 +43,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordStatus, setPasswordStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
+  const isCadastradorOnly = roles.length === 1 && roles.includes("CADASTRADOR");
 
   useEffect(() => {
     let active = true;
@@ -117,82 +118,90 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
 
   return (
     <div className="app-shell">
-      <aside className="hidden lg:block border-r border-brand-900 bg-brand-900 text-white">
-        <div className="sticky top-0 flex h-screen flex-col gap-6 p-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
-              CM
-            </div>
-            <div>
-              <p className="text-sm text-brand-100/90">SaaS</p>
-              <p className="text-lg font-semibold text-white">Casados com a Madureira</p>
-            </div>
-          </Link>
-          <nav className="flex-1 space-y-6">
-            {navSections.map((section) => (
-              <div key={section.title}>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
-                  {section.title}
-                </p>
-                <ul className="space-y-1">
-                  {section.items
-                    .filter((item) => !item.roles || item.roles.some((role) => roles.includes(role)))
-                    .map((item) => (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={clsx(
-                            "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-brand-700/80 hover:text-white",
-                            current === item.href
-                              ? "bg-brand-700 text-white shadow-sm"
-                              : "text-brand-100/90"
-                          )}
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
+      {!isCadastradorOnly ? (
+        <aside className="hidden lg:block border-r border-brand-900 bg-brand-900 text-white">
+          <div className="sticky top-0 flex h-screen flex-col gap-6 p-6">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
+                CM
               </div>
-            ))}
-          </nav>
-          <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
-            <p className="text-sm font-semibold text-white">Acesso interno</p>
-            <p className="text-xs text-brand-100/90">
-              RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR
-            </p>
+              <div>
+                <p className="text-sm text-brand-100/90">SaaS</p>
+                <p className="text-lg font-semibold text-white">Casados com a Madureira</p>
+              </div>
+            </Link>
+            <nav className="flex-1 space-y-6">
+              {navSections.map((section) => (
+                <div key={section.title}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
+                    {section.title}
+                  </p>
+                  <ul className="space-y-1">
+                    {section.items
+                      .filter((item) => !item.roles || item.roles.some((role) => roles.includes(role)))
+                      .map((item) => (
+                        <li key={item.href}>
+                          <Link
+                            href={item.href}
+                            className={clsx(
+                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-brand-700/80 hover:text-white",
+                              current === item.href
+                                ? "bg-brand-700 text-white shadow-sm"
+                                : "text-brand-100/90"
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ))}
+            </nav>
+            <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
+              <p className="text-sm font-semibold text-white">Acesso interno</p>
+              <p className="text-xs text-brand-100/90">
+                RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR
+              </p>
+            </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      ) : null}
       <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
           <header className="mb-6 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm text-text-muted">Casados com a Madureira</p>
-              <h1 className="text-2xl font-semibold text-text">Painel Interno</h1>
+              <h1 className="text-2xl font-semibold text-text">
+                {isCadastradorOnly ? "Cadastro" : "Painel Interno"}
+              </h1>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowMobileNav(true)}
-                className="inline-flex items-center justify-center rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900 lg:hidden"
-              >
-                Menu
-              </button>
+              {!isCadastradorOnly ? (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileNav(true)}
+                  className="inline-flex items-center justify-center rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900 lg:hidden"
+                >
+                  Menu
+                </button>
+              ) : null}
               <div className="flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-medium text-brand-900">
                 {userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordModal(true);
-                  setPasswordStatus("idle");
-                  setPasswordMessage("");
-                }}
-                className="rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900"
-              >
-                Alterar senha
-              </button>
+              {!isCadastradorOnly ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(true);
+                    setPasswordStatus("idle");
+                    setPasswordMessage("");
+                  }}
+                  className="rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900"
+                >
+                  Alterar senha
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={handleLogout}
