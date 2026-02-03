@@ -176,6 +176,7 @@ export default function LoginPage() {
   const { user, role, loading: authLoading } = useAuth();
   const [scheduleStatus, setScheduleStatus] = useState<ScheduleStatus>("loading");
   const [scheduleEvents, setScheduleEvents] = useState<WeeklyEvent[]>([]);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -212,6 +213,26 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadRoles() {
+      if (!supabaseClient || !user) {
+        if (active) setUserRoles([]);
+        return;
+      }
+      const { data } = await supabaseClient.rpc("get_my_roles");
+      if (!active) return;
+      setUserRoles((data ?? []) as string[]);
+    }
+
+    loadRoles();
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   const scheduleFallback = useMemo(() => {
     if (scheduleStatus === "loading") return "Carregando agenda...";
     return "Agenda em atualização";
@@ -241,6 +262,8 @@ export default function LoginPage() {
     }
     return "Esta semana";
   }, [nextEvents]);
+
+  const isCadastrador = userRoles.includes("CADASTRADOR");
 
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
@@ -446,6 +469,26 @@ export default function LoginPage() {
             </p>
           </div>
         </section>
+
+        {user && isCadastrador ? (
+          <section className="mt-10">
+            <div className="rounded-3xl border border-emerald-100 bg-white/90 p-6 shadow-lg shadow-emerald-100/50">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
+                Acesso interno
+              </p>
+              <p className="mt-3 text-lg font-semibold text-emerald-900">Cadastro rápido</p>
+              <p className="mt-2 text-sm text-slate-600/90">
+                Abra o formulário interno para cadastrar as pessoas da sala.
+              </p>
+              <Link
+                href="/cadastro"
+                className="mt-4 inline-flex items-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                Abrir formulário →
+              </Link>
+            </div>
+          </section>
+        ) : null}
 
         <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-slate-500">
           <div className="flex flex-wrap items-center justify-between gap-2">
