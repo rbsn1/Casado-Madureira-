@@ -41,6 +41,28 @@ type SpecialEventConfig = {
   tag: string;
 };
 
+const monthLabels = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+
+function getDateParts(value?: string | null) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-");
+    return { day, monthIndex: Number(month) - 1 };
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    const [datePart] = value.split("T");
+    if (datePart) {
+      const [year, month, day] = datePart.split("-");
+      return { day, monthIndex: Number(month) - 1 };
+    }
+  }
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    const [day, month] = value.split("/");
+    return { day, monthIndex: Number(month) - 1 };
+  }
+  return null;
+}
+
 const cardClass =
   "rounded-2xl border border-black/5 bg-white/85 p-5 shadow-xl shadow-black/10 backdrop-blur-lg ring-1 ring-white/40";
 
@@ -529,7 +551,7 @@ export default function LoginPage() {
                       <p className="mt-2 text-sm text-emerald-100/90">{specialEvent.subtitle}</p>
                     ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-3 text-sm text-emerald-100/90">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-emerald-100/90">
                     {specialEvent.date ? (
                       <span>
                         📅{" "}
@@ -547,6 +569,21 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
+                  {specialEvent.date ? (
+                    <div className="flex items-center justify-start sm:justify-center">
+                      <div className="flex h-16 w-16 flex-col overflow-hidden rounded-xl border border-white/25 bg-white/10 text-white shadow-sm">
+                        <div className="h-2 bg-white/40" />
+                        <div className="flex flex-1 flex-col items-center justify-center">
+                          <span className="text-xl font-semibold">
+                            {getDateParts(specialEvent.date)?.day ?? "--"}
+                          </span>
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/80">
+                            {monthLabels[getDateParts(specialEvent.date)?.monthIndex ?? -1] ?? "--"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   {specialEvent.cta_url && specialEvent.cta_label ? (
                     <Link
                       href={specialEvent.cta_url}
