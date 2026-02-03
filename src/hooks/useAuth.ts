@@ -38,11 +38,7 @@ export function useAuth(): AuthState {
         return;
       }
 
-      const { data: profile, error } = await supabaseClient
-        .from("profiles")
-        .select("role")
-        .eq("id", currentUser.id)
-        .maybeSingle();
+      const { data: rolesData, error } = await supabaseClient.rpc("get_my_roles");
 
       if (!active) return;
       if (error) {
@@ -51,7 +47,8 @@ export function useAuth(): AuthState {
         return;
       }
 
-      setRole(profile?.role === "admin" ? "admin" : "user");
+      const roles = (rolesData ?? []) as string[];
+      setRole(roles.includes("ADMIN_MASTER") ? "admin" : "user");
       setLoading(false);
     }
 
