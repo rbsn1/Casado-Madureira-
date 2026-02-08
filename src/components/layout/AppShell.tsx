@@ -234,13 +234,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               className={clsx(
                 "rounded-xl p-4 shadow-sm ring-1",
                 isDiscipuladoConsole
-                  ? "discipulado-access-card bg-slate-900/60 ring-sky-800/60"
+                  ? "bg-slate-900/60 ring-sky-800/60"
                   : "bg-brand-700/40 ring-brand-700/60"
               )}
             >
-              <p className={clsx("text-sm font-semibold", isDiscipuladoConsole ? "discipulado-access-title" : "text-white")}>
-                Acesso interno
-              </p>
+              <p className="text-sm font-semibold text-white">Acesso interno</p>
               <p className={clsx("text-xs", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>
                 RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO
               </p>
@@ -255,12 +253,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         )}
       >
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-          <header
-            className={clsx(
-              "mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
-              isDiscipuladoConsole && "discipulado-top-header"
-            )}
-          >
+          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
                 {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
@@ -309,7 +302,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   className={clsx(
                     "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
                     isDiscipuladoConsole
-                      ? "border-amber-200 text-amber-800 hover:bg-amber-50"
+                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
                       : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
                   )}
                 >
