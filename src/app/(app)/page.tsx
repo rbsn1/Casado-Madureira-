@@ -73,6 +73,14 @@ function formatDelta(delta: number, pct: number | null) {
   return `${delta >= 0 ? "+" : ""}${delta} (${delta >= 0 ? "+" : ""}${pct}%)`;
 }
 
+function isMissingRpcSignature(message: string | undefined, fnName: string) {
+  if (!message) return false;
+  return (
+    message.includes(`Could not find the function public.${fnName}`) ||
+    message.includes(`function public.${fnName}`)
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const currentYear = new Date().getFullYear();
@@ -155,13 +163,18 @@ export default function DashboardPage() {
       }
 
       const range = getPeriodRange(period, customStart, customEnd);
-      const [casadosResult, discipleshipResult] = await Promise.all([
-        supabaseClient.rpc("get_casados_dashboard", {
-          start_ts: range.start ? range.start.toISOString() : null,
-          end_ts: range.end ? range.end.toISOString() : null,
-          year: anoSelecionado,
-          target_congregation_id: isAdminMaster ? congregationFilter || null : null
-        }),
+      const casadosParams = {
+        start_ts: range.start ? range.start.toISOString() : null,
+        end_ts: range.end ? range.end.toISOString() : null,
+        year: anoSelecionado
+      };
+      const casadosWithCongregation = {
+        ...casadosParams,
+        target_congregation_id: isAdminMaster ? congregationFilter || null : null
+      };
+
+      const [casadosPrimary, discipleshipResult] = await Promise.all([
+        supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation),
         userRoles.includes("ADMIN_MASTER") || userRoles.includes("DISCIPULADOR")
           ? supabaseClient.rpc("get_discipleship_dashboard", {
               stale_days: 14,
@@ -170,6 +183,10 @@ export default function DashboardPage() {
           : Promise.resolve({ data: null, error: null } as any)
       ]);
 
+      const casadosResult =
+        casadosPrimary.error && isMissingRpcSignature(casadosPrimary.error.message, "get_casados_dashboard")
+          ? await supabaseClient.rpc("get_casados_dashboard", casadosParams)
+          : casadosPrimary;
       const data = casadosResult.data;
       const error = casadosResult.error;
 

@@ -20,6 +20,14 @@ type Pendencias = {
   pendente_14d: number;
 };
 
+function isMissingRpcSignature(message: string | undefined, fnName: string) {
+  if (!message) return false;
+  return (
+    message.includes(`Could not find the function public.${fnName}`) ||
+    message.includes(`function public.${fnName}`)
+  );
+}
+
 export default function NovosConvertidosDashboardPage() {
   const currentYear = new Date().getFullYear();
   const [statusMessage, setStatusMessage] = useState("");
@@ -42,11 +50,19 @@ export default function NovosConvertidosDashboardPage() {
         return;
       }
       setStatusMessage("");
-      const { data, error } = await supabaseClient.rpc("get_novos_dashboard", {
+      const params = {
         start_ts: null,
         end_ts: null,
         year: currentYear
+      };
+      const primary = await supabaseClient.rpc("get_novos_dashboard", {
+        ...params,
+        target_congregation_id: null
       });
+      const { data, error } =
+        primary.error && isMissingRpcSignature(primary.error.message, "get_novos_dashboard")
+          ? await supabaseClient.rpc("get_novos_dashboard", params)
+          : primary;
 
       if (error) {
         setStatusMessage(error.message);
