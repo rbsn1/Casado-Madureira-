@@ -37,6 +37,7 @@ export default function DiscipuladoConvertidosPage() {
   const [progressStats, setProgressStats] = useState<Record<string, { done: number; total: number }>>({});
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
+  const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
   const [statusFilter, setStatusFilter] = useState("todos");
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function DiscipuladoConvertidosPage() {
         scope.roles.includes("SUPER_ADMIN") ||
         scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
+      setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
       if (!allowed) return;
 
       const { data: casesData, error: casesError } = await supabaseClient
@@ -154,12 +156,14 @@ export default function DiscipuladoConvertidosPage() {
             <option value="pausado">Pausado</option>
             <option value="concluido">Concluído</option>
           </select>
-          <Link
-            href="/discipulado/convertidos/novo"
-            className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
-          >
-            Novo convertido
-          </Link>
+          {canCreateNovoConvertido ? (
+            <Link
+              href="/discipulado/convertidos/novo"
+              className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Novo convertido
+            </Link>
+          ) : null}
         </div>
       </div>
 

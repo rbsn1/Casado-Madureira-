@@ -21,14 +21,15 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
-      { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] }
+      { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] },
+      { href: "/manual/jornada-completa", label: "Manual do sistema" }
     ]
   },
   {
     title: "Discipulado",
     items: [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR","SM_DISCIPULADO"] },
+      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["CADASTRADOR"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] }
     ]
@@ -53,9 +54,9 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
-  const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
+  const hasCadastradorRole = roles.includes("CADASTRADOR");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
-  const isDiscipuladoAccount = !isGlobalAdmin && (roles.includes("DISCIPULADOR") || hasSmDiscipuladoRole);
+  const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
   const isDiscipuladoConsole = current.startsWith("/discipulado");
 
   const visibleSections = navSections
@@ -66,8 +67,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     .filter((section) => section.items.length > 0);
 
   function canAccessItem(item: NavItem) {
+    if (item.href === "/discipulado/convertidos/novo") {
+      return hasCadastradorRole;
+    }
+    if (item.href.startsWith("/manual")) {
+      return true;
+    }
     if (isGlobalAdmin) return true;
-    if (hasSmDiscipuladoRole) return item.href === "/discipulado/convertidos/novo";
     if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
@@ -96,16 +102,10 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         Boolean(context.is_admin_master) ||
         nextRoles.includes("ADMIN_MASTER") ||
         nextRoles.includes("SUPER_ADMIN");
-      const nextHasSmDiscipuladoRole = nextRoles.includes("SM_DISCIPULADO");
-      const nextIsDiscipuladoAccount =
-        !nextIsGlobalAdmin && (nextRoles.includes("DISCIPULADOR") || nextHasSmDiscipuladoRole);
+      const nextIsDiscipuladoAccount = !nextIsGlobalAdmin && nextRoles.includes("DISCIPULADOR");
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
-      if (nextHasSmDiscipuladoRole && current !== "/discipulado/convertidos/novo") {
-        router.replace("/discipulado/convertidos/novo");
-        return;
-      }
-      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
+      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado") && !current.startsWith("/manual")) {
         router.replace("/discipulado");
         return;
       }
@@ -234,11 +234,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               className={clsx(
                 "rounded-xl p-4 shadow-sm ring-1",
                 isDiscipuladoConsole
-                  ? "bg-slate-900/60 ring-sky-800/60"
+                  ? "discipulado-access-card bg-slate-900/60 ring-sky-800/60"
                   : "bg-brand-700/40 ring-brand-700/60"
               )}
             >
-              <p className="text-sm font-semibold text-white">Acesso interno</p>
+              <p className={clsx("text-sm font-semibold", isDiscipuladoConsole ? "discipulado-access-title" : "text-white")}>
+                Acesso interno
+              </p>
               <p className={clsx("text-xs", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>
                 RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO
               </p>
@@ -253,7 +255,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         )}
       >
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <header
+            className={clsx(
+              "mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between",
+              isDiscipuladoConsole && "discipulado-top-header"
+            )}
+          >
             <div>
               <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
                 {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
@@ -302,7 +309,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   className={clsx(
                     "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
                     isDiscipuladoConsole
-                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
+                      ? "border-amber-200 text-amber-800 hover:bg-amber-50"
                       : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
                   )}
                 >

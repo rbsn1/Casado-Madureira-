@@ -48,7 +48,7 @@ export default function DiscipuladoLoginPage() {
     const context = (contextData ?? {}) as { is_admin_master?: boolean };
     const isGlobalAdmin =
       Boolean(context.is_admin_master) || roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-    if (!isGlobalAdmin && roles.includes("SM_DISCIPULADO")) {
+    if (!isGlobalAdmin && roles.includes("CADASTRADOR")) {
       router.push("/discipulado/convertidos/novo");
       return;
     }

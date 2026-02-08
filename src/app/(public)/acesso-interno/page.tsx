@@ -44,13 +44,7 @@ export default function AcessoInternoPage() {
     const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
     const roles = (rolesData ?? []) as string[];
     const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-    const isSmDiscipulado = !isGlobalAdmin && roles.includes("SM_DISCIPULADO");
     const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
-
-    if (isSmDiscipulado) {
-      router.push("/discipulado/convertidos/novo");
-      return;
-    }
 
     if (isDiscipuladoAccount) {
       router.push("/discipulado");

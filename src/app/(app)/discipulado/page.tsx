@@ -43,6 +43,7 @@ export default function DiscipuladoDashboardPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
   const [canManageDiscipulado, setCanManageDiscipulado] = useState(false);
+  const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
   const [congregations, setCongregations] = useState<Congregation[]>([]);
   const [congregationFilter, setCongregationFilter] = useState("");
 
@@ -91,6 +92,7 @@ export default function DiscipuladoDashboardPage() {
       setHasAccess(allowed);
       setIsAdminMaster(isGlobalAdmin);
       setCanManageDiscipulado(isGlobalAdmin || hasDiscipuladorRole);
+      setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
 
       if (!allowed) return;
 
@@ -157,12 +159,14 @@ export default function DiscipuladoDashboardPage() {
               Admin do discipulado
             </Link>
           ) : null}
-          <Link
-            href="/discipulado/convertidos/novo"
-            className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
-          >
-            Novo convertido
-          </Link>
+          {canCreateNovoConvertido ? (
+            <Link
+              href="/discipulado/convertidos/novo"
+              className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Novo convertido
+            </Link>
+          ) : null}
         </div>
       </div>
 

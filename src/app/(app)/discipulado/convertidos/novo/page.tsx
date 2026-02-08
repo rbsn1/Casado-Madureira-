@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 
@@ -12,7 +11,6 @@ type MemberResult = {
 };
 
 export default function NovoConvertidoDiscipuladoPage() {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<MemberResult[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberResult | null>(null);
@@ -20,7 +18,6 @@ export default function NovoConvertidoDiscipuladoPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [message, setMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
-  const [isSmDiscipulado, setIsSmDiscipulado] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -28,14 +25,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     async function checkScope() {
       const scope = await getAuthScope();
       if (!active) return;
-      const isGlobalAdmin =
-        scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
-      const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
-      const hasSmDiscipuladoRole = scope.roles.includes("SM_DISCIPULADO");
-      setHasAccess(
-        isGlobalAdmin || hasDiscipuladorRole || hasSmDiscipuladoRole
-      );
-      setIsSmDiscipulado(!isGlobalAdmin && hasSmDiscipuladoRole);
+      setHasAccess(scope.roles.includes("CADASTRADOR"));
     }
 
     checkScope();
@@ -88,10 +78,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       notes: notes.trim() || null,
       request_id: crypto.randomUUID()
     };
-    const insertQuery = supabaseClient.from("discipleship_cases").insert(payload);
-    const { data, error } = isSmDiscipulado
-      ? await insertQuery
-      : await insertQuery.select("id").single();
+    const { error } = await supabaseClient.from("discipleship_cases").insert(payload);
 
     if (error) {
       if (error.code === "23505") {
@@ -105,26 +92,17 @@ export default function NovoConvertidoDiscipuladoPage() {
     }
 
     setStatus("success");
-    if (isSmDiscipulado) {
-      setMessage("Novo convertido cadastrado com sucesso.");
-      setSelectedMember(null);
-      setQuery("");
-      setMembers([]);
-      setNotes("");
-      return;
-    }
-
-    const caseId = (data as { id?: string } | null)?.id;
-    setMessage("Case de discipulado criado com sucesso.");
-    if (caseId) {
-      router.push(`/discipulado/convertidos/${caseId}`);
-    }
+    setMessage("Novo convertido cadastrado com sucesso.");
+    setSelectedMember(null);
+    setQuery("");
+    setMembers([]);
+    setNotes("");
   }
 
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito ao perfil de discipulador e administradores.
+        Acesso restrito ao perfil CADASTRADOR.
       </div>
     );
   }
@@ -201,16 +179,12 @@ export default function NovoConvertidoDiscipuladoPage() {
           <button
             type="button"
             onClick={() => {
-              if (isSmDiscipulado) {
-                setSelectedMember(null);
-                setQuery("");
-                setMembers([]);
-                setNotes("");
-                setMessage("");
-                setStatus("idle");
-                return;
-              }
-              router.push("/discipulado/convertidos");
+              setSelectedMember(null);
+              setQuery("");
+              setMembers([]);
+              setNotes("");
+              setMessage("");
+              setStatus("idle");
             }}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
           >
