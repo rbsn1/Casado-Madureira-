@@ -4,6 +4,59 @@ import { FormEvent, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
+const origemOptions = ["Culto da Manhã", "Culto da Tarde", "Culto da Noite"];
+const igrejaOptions = [
+  "Sede",
+  "Congregação Cidade Nova",
+  "Congregação Japiim",
+  "Congregação Alvorada",
+  "Assembleia de Deus - Sede",
+  "Igreja Batista da Lagoinha Manaus",
+  "Igreja Batista do Amazonas",
+  "Igreja Adventista Central de Manaus",
+  "Igreja Universal - Alvorada",
+  "Igreja Universal - Centro",
+  "Igreja do Evangelho Quadrangular - Centro",
+  "Igreja do Evangelho Quadrangular - Cidade Nova",
+  "Igreja Presbiteriana de Manaus",
+  "Igreja Metodista de Manaus",
+  "Igreja Crista Maranata - Centro",
+  "Igreja Crista Maranata - Cidade Nova",
+  "Igreja de Deus no Brasil - Centro",
+  "Igreja Batista do Parque Dez",
+  "Igreja Batista de Adrianopolis",
+  "Igreja Batista de Flores",
+  "Igreja Batista de Compensa",
+  "Outra"
+];
+const bairroOptions = [
+  "Adrianópolis",
+  "Aleixo",
+  "Alvorada",
+  "Centro",
+  "Cidade Nova",
+  "Compensa",
+  "Dom Pedro",
+  "Flores",
+  "Japiim",
+  "Jorge Teixeira",
+  "Lago Azul",
+  "Mauazinho",
+  "Monte das Oliveiras",
+  "Parque Dez",
+  "Petrópolis",
+  "Planalto",
+  "Ponta Negra",
+  "Praça 14",
+  "Redenção",
+  "Santa Etelvina",
+  "São José",
+  "Tancredo Neves",
+  "Tarumã",
+  "Zumbi",
+  "Outro"
+];
+
 export default function CadastroInternoPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -15,64 +68,11 @@ export default function CadastroInternoPage() {
   const [bairroOutro, setBairroOutro] = useState("");
   const [telefone, setTelefone] = useState("");
 
-  const origemOptions = ["Culto da Manhã", "Culto da Tarde", "Culto da Noite"];
-  const igrejaOptions = [
-    "Sede",
-    "Congregação Cidade Nova",
-    "Congregação Japiim",
-    "Congregação Alvorada",
-    "Assembleia de Deus - Sede",
-    "Igreja Batista da Lagoinha Manaus",
-    "Igreja Batista do Amazonas",
-    "Igreja Adventista Central de Manaus",
-    "Igreja Universal - Alvorada",
-    "Igreja Universal - Centro",
-    "Igreja do Evangelho Quadrangular - Centro",
-    "Igreja do Evangelho Quadrangular - Cidade Nova",
-    "Igreja Presbiteriana de Manaus",
-    "Igreja Metodista de Manaus",
-    "Igreja Crista Maranata - Centro",
-    "Igreja Crista Maranata - Cidade Nova",
-    "Igreja de Deus no Brasil - Centro",
-    "Igreja Batista do Parque Dez",
-    "Igreja Batista de Adrianopolis",
-    "Igreja Batista de Flores",
-    "Igreja Batista de Compensa",
-    "Outra"
-  ];
-
   const igrejaFilteredOptions = useMemo(() => {
     const term = igrejaBusca.trim().toLowerCase();
     if (!term) return igrejaOptions;
     return igrejaOptions.filter((option) => option.toLowerCase().includes(term));
-  }, [igrejaBusca, igrejaOptions]);
-  const bairroOptions = [
-    "Adrianópolis",
-    "Aleixo",
-    "Alvorada",
-    "Centro",
-    "Cidade Nova",
-    "Compensa",
-    "Dom Pedro",
-    "Flores",
-    "Japiim",
-    "Jorge Teixeira",
-    "Lago Azul",
-    "Mauazinho",
-    "Monte das Oliveiras",
-    "Parque Dez",
-    "Petrópolis",
-    "Planalto",
-    "Ponta Negra",
-    "Praça 14",
-    "Redenção",
-    "Santa Etelvina",
-    "São José",
-    "Tancredo Neves",
-    "Tarumã",
-    "Zumbi",
-    "Outro"
-  ];
+  }, [igrejaBusca]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

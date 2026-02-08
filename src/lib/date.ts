@@ -12,7 +12,13 @@ export function formatDateBR(value: Date | string | number | null | undefined) {
         return `${day}/${month}/${year}`;
       }
     }
-    return `${day}/${month}/${year}`;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
   }
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return "";

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type PublicDept = {
@@ -179,9 +179,7 @@ export function HelpChatWidget() {
 
     if (open) {
       setLastInteractionAt(Date.now());
-      if (!messages.length) {
-        setMessages([namePromptMessage]);
-      }
+      setMessages((prev) => (prev.length ? prev : [namePromptMessage]));
       loadDepartments();
       loadContacts();
       loadPublicContacts();
@@ -230,11 +228,19 @@ export function HelpChatWidget() {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, typing, open]);
 
+  const getEligibleDepartments = useCallback(() => {
+    return departments.filter((dept) => dept.is_active);
+  }, [departments]);
+
+  const getDepartmentChips = useCallback(() => {
+    return getEligibleDepartments().map((dept) => dept.name);
+  }, [getEligibleDepartments]);
+
   useEffect(() => {
     if (!open || !visitorName || pendingDept || chips.length) return;
     if (!departments.length) return;
     setChips(getDepartmentChips());
-  }, [open, visitorName, pendingDept, chips.length, departments.length]);
+  }, [open, visitorName, pendingDept, chips.length, departments.length, getDepartmentChips]);
 
   const canSend = useMemo(() => !visitorName && input.trim().length > 1, [input, visitorName]);
 
@@ -256,14 +262,6 @@ export function HelpChatWidget() {
 
   function getIntentChips() {
     return ["Contato", "Participar"];
-  }
-
-  function getEligibleDepartments() {
-    return departments.filter((dept) => dept.is_active);
-  }
-
-  function getDepartmentChips() {
-    return getEligibleDepartments().map((dept) => dept.name);
   }
 
   function mapIntent(label: string): PublicFaq["intent"] | null {
