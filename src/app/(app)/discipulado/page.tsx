@@ -42,6 +42,7 @@ export default function DiscipuladoDashboardPage() {
   const [almostDone, setAlmostDone] = useState<DashboardListItem[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
+  const [canManageDiscipulado, setCanManageDiscipulado] = useState(false);
   const [congregations, setCongregations] = useState<Congregation[]>([]);
   const [congregationFilter, setCongregationFilter] = useState("");
 
@@ -85,9 +86,11 @@ export default function DiscipuladoDashboardPage() {
 
       const isGlobalAdmin =
         scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
-      const allowed = isGlobalAdmin || scope.roles.includes("DISCIPULADOR");
+      const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
+      const allowed = isGlobalAdmin || hasDiscipuladorRole;
       setHasAccess(allowed);
       setIsAdminMaster(isGlobalAdmin);
+      setCanManageDiscipulado(isGlobalAdmin || hasDiscipuladorRole);
 
       if (!allowed) return;
 
@@ -146,7 +149,7 @@ export default function DiscipuladoDashboardPage() {
               ))}
             </select>
           ) : null}
-          {isAdminMaster ? (
+          {canManageDiscipulado ? (
             <Link
               href="/discipulado/admin"
               className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:border-sky-400"

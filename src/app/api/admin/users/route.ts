@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/serverAuth";
+import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 const DISCIPULADO_ONLY_ROLES = new Set(["DISCIPULADOR", "SM_DISCIPULADO"]);
@@ -40,18 +40,38 @@ async function resolveDefaultCongregationId() {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
 
   const { searchParams } = new URL(request.url);
   const pageParam = Number(searchParams.get("page") ?? "1");
   const perPageParam = Number(searchParams.get("perPage") ?? "200");
   const roleFilter = searchParams.get("role")?.trim() || null;
-  const congregationFilter = searchParams.get("congregationId")?.trim() || null;
+  const requestedCongregationFilter = searchParams.get("congregationId")?.trim() || null;
   const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   const perPage = Number.isFinite(perPageParam)
     ? Math.max(1, Math.min(200, Math.floor(perPageParam)))
     : 200;
+  const congregationFilter = auth.isGlobalAdmin
+    ? requestedCongregationFilter
+    : auth.congregationId;
+
+  if (!auth.isGlobalAdmin && roleFilter && !DISCIPULADO_ONLY_ROLES.has(roleFilter)) {
+    return NextResponse.json(
+      { error: "Administradores de discipulado só podem consultar papéis do discipulado." },
+      { status: 403 }
+    );
+  }
+  if (
+    !auth.isGlobalAdmin &&
+    requestedCongregationFilter &&
+    requestedCongregationFilter !== auth.congregationId
+  ) {
+    return NextResponse.json(
+      { error: "Você só pode consultar usuários da sua congregação." },
+      { status: 403 }
+    );
+  }
 
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage, page });
@@ -76,6 +96,9 @@ export async function GET(request: Request) {
     .from("usuarios_perfis")
     .select(rolesSelect)
     .in("user_id", ids);
+  if (!auth.isGlobalAdmin) {
+    rolesQuery = rolesQuery.in("role", Array.from(DISCIPULADO_ONLY_ROLES));
+  }
   if (roleFilter) {
     rolesQuery = rolesQuery.eq("role", roleFilter);
   }
@@ -144,7 +167,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -152,8 +175,27 @@ export async function POST(request: Request) {
   const email = String(body.email ?? "");
   const password = String(body.password ?? "");
   const role = body.role ? String(body.role) : null;
-  const congregationId = body.congregationId ? String(body.congregationId) : null;
+  const requestedCongregationId = body.congregationId ? String(body.congregationId) : null;
   const whatsapp = body.whatsapp ? String(body.whatsapp) : null;
+
+  if (!auth.isGlobalAdmin && role && !DISCIPULADO_ONLY_ROLES.has(role)) {
+    return NextResponse.json(
+      { error: "Administradores de discipulado só podem criar usuários com papéis do discipulado." },
+      { status: 403 }
+    );
+  }
+  if (
+    !auth.isGlobalAdmin &&
+    requestedCongregationId &&
+    requestedCongregationId !== auth.congregationId
+  ) {
+    return NextResponse.json(
+      { error: "Você só pode criar usuários vinculados à sua congregação." },
+      { status: 403 }
+    );
+  }
+
+  const congregationId = auth.isGlobalAdmin ? requestedCongregationId : auth.congregationId;
 
   if (!email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });

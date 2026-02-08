@@ -9,7 +9,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 type LoginStatus = "idle" | "loading" | "error";
 
 const cardClass =
-  "rounded-2xl border border-black/5 bg-white/90 p-6 shadow-lg shadow-black/5 backdrop-blur";
+  "rounded-2xl border border-sky-100/80 bg-white/92 p-6 shadow-xl shadow-sky-200/35 backdrop-blur";
 
 export default function DiscipuladoLoginPage() {
   const router = useRouter();
@@ -91,7 +91,7 @@ export default function DiscipuladoLoginPage() {
   }
 
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
+    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px" theme="discipulado">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export default function DiscipuladoLoginPage() {
         <section className="flex flex-1 items-center justify-center pt-10">
           <div className={`${cardClass} w-full max-w-md`}>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Discipulado</p>
-            <h1 className="mt-2 text-2xl font-semibold text-sky-900">Entrar no módulo</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-sky-950">Entrar no módulo</h1>
             <p className="mt-2 text-sm text-slate-600">
               Use seu e-mail institucional para acessar o acompanhamento de discipulado.
             </p>

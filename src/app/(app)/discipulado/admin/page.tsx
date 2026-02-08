@@ -53,6 +53,8 @@ function getDiscipuladoRoleLabel(role: string) {
 
 export default function DiscipuladoAdminPage() {
   const [hasAccess, setHasAccess] = useState(false);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [managerCongregationId, setManagerCongregationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -274,9 +276,12 @@ export default function DiscipuladoAdminPage() {
 
       const isGlobalAdmin =
         scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
-      setHasAccess(isGlobalAdmin);
+      const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
+      setHasAccess(isGlobalAdmin || hasDiscipuladorRole);
+      setIsGlobalAdmin(isGlobalAdmin);
+      setManagerCongregationId(scope.congregationId ?? null);
 
-      if (!isGlobalAdmin) {
+      if (!isGlobalAdmin && !hasDiscipuladorRole) {
         setLoading(false);
         return;
       }
@@ -343,6 +348,10 @@ export default function DiscipuladoAdminPage() {
 
   async function handleCreateCongregation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isGlobalAdmin) {
+      setCongregationStatusMessage("Somente administração da sede pode criar congregações.");
+      return;
+    }
     setCongregationStatusMessage("");
     setCongregationSuccessMessage("");
 
@@ -378,6 +387,10 @@ export default function DiscipuladoAdminPage() {
   }
 
   async function handleToggleCongregation(congregationId: string, nextIsActive: boolean) {
+    if (!isGlobalAdmin) {
+      setCongregationStatusMessage("Somente administração da sede pode editar congregações.");
+      return;
+    }
     setCongregationStatusMessage("");
     setCongregationSuccessMessage("");
     try {
@@ -583,18 +596,24 @@ export default function DiscipuladoAdminPage() {
           <p className="text-sm text-slate-600">Gestão de módulos e operação por congregação.</p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            value={congregationFilter}
-            onChange={(event) => setCongregationFilter(event.target.value)}
-            className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
-          >
-            <option value="">Todas as congregações</option>
-            {congregations.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}{item.is_active ? "" : " (inativa)"}
-              </option>
-            ))}
-          </select>
+          {isGlobalAdmin ? (
+            <select
+              value={congregationFilter}
+              onChange={(event) => setCongregationFilter(event.target.value)}
+              className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
+            >
+              <option value="">Todas as congregações</option>
+              {congregations.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}{item.is_active ? "" : " (inativa)"}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-semibold text-sky-900">
+              {congregationNameById[managerCongregationId ?? ""] ?? "Sua congregação"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -607,6 +626,7 @@ export default function DiscipuladoAdminPage() {
         </p>
       ) : null}
 
+      {isGlobalAdmin ? (
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Congregações (tenants)</h3>
         <p className="mt-1 text-sm text-slate-600">
@@ -691,6 +711,7 @@ export default function DiscipuladoAdminPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <article className="discipulado-panel p-4">
@@ -750,26 +771,35 @@ export default function DiscipuladoAdminPage() {
               <option value="SM_DISCIPULADO">SM Discipulado (somente cadastro)</option>
             </select>
           </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Congregação</span>
-            <select
-              value={newUser.congregation_id}
-              onChange={(event) =>
-                setNewUser((prev) => ({
-                  ...prev,
-                  congregation_id: event.target.value
-                }))
-              }
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-            >
-              <option value="">Selecione</option>
-              {activeCongregations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isGlobalAdmin ? (
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Congregação</span>
+              <select
+                value={newUser.congregation_id}
+                onChange={(event) =>
+                  setNewUser((prev) => ({
+                    ...prev,
+                    congregation_id: event.target.value
+                  }))
+                }
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                <option value="">Selecione</option>
+                {activeCongregations.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="space-y-1 text-sm">
+              <span className="text-slate-700">Congregação</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                {congregationNameById[managerCongregationId ?? ""] ?? "Sua congregação"}
+              </div>
+            </div>
+          )}
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">E-mail</span>
             <input

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/serverAuth";
+import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
@@ -15,14 +15,18 @@ function slugify(value: string) {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await (supabaseAdmin as any)
+  let query = (supabaseAdmin as any)
     .from("congregations")
     .select("id, name, slug, is_active, created_at")
     .order("name");
+  if (!auth.isGlobalAdmin && auth.congregationId) {
+    query = query.eq("id", auth.congregationId);
+  }
+  const { data, error } = await query;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,8 +36,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
+  if (!auth.isGlobalAdmin) {
+    return NextResponse.json(
+      { error: "Somente administradores globais podem criar congregações." },
+      { status: 403 }
+    );
+  }
 
   const body = await request.json();
   const name = String(body.name ?? "").trim();

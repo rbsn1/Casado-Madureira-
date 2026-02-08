@@ -4,17 +4,42 @@ type PortalBackgroundProps = {
   children: ReactNode;
   heroImageSrc?: string;
   heroHeight?: string;
+  theme?: "ccm" | "discipulado";
 };
 
 export function PortalBackground({
   children,
   heroImageSrc,
-  heroHeight = "520px"
+  heroHeight = "520px",
+  theme = "ccm"
 }: PortalBackgroundProps) {
+  const isDiscipulado = theme === "discipulado";
+  const rootClass = isDiscipulado
+    ? "relative min-h-screen overflow-hidden bg-[#f5f9ff] text-slate-900"
+    : "relative min-h-screen overflow-hidden bg-[#F7FBF7] text-slate-900";
+  const ambientClass = isDiscipulado
+    ? "absolute inset-0 bg-gradient-to-b from-[#f4f8ff] via-sky-100/70 to-indigo-100/45 portal-ambient-glow"
+    : "absolute inset-0 bg-gradient-to-b from-[#f9fbfa] via-emerald-100/60 to-emerald-200/40 portal-ambient-glow";
+  const heroOverlayClass = isDiscipulado
+    ? "absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.92)_0%,_rgba(243,247,255,0.66)_45%,_rgba(208,223,247,0.4)_75%)]"
+    : "absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.9)_0%,_rgba(244,250,246,0.62)_45%,_rgba(210,234,222,0.42)_75%)]";
+  const heroGradientClass = isDiscipulado
+    ? "absolute inset-0 bg-gradient-to-b from-white/85 via-sky-50/55 to-indigo-100/30"
+    : "absolute inset-0 bg-gradient-to-b from-white/85 via-emerald-50/45 to-emerald-100/30";
+  const glowMainClass = isDiscipulado
+    ? "absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-sky-200/45 blur-[150px] portal-glow-main"
+    : "absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[150px] portal-glow-main";
+  const glowSideClass = isDiscipulado
+    ? "absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-indigo-200/35 blur-[140px] portal-glow-side"
+    : "absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-sky-200/25 blur-[140px] portal-glow-side";
+  const glowLowerClass = isDiscipulado
+    ? "absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-sky-200/30 blur-[140px] portal-glow-lower"
+    : "absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-emerald-200/25 blur-[140px] portal-glow-lower";
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#F7FBF7] text-slate-900">
+    <div className={rootClass}>
       {/* Base gradient (more presence) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#f9fbfa] via-emerald-100/60 to-emerald-200/40 portal-ambient-glow" />
+      <div className={ambientClass} />
 
       {/* Hero image backdrop (more anchor) */}
       {heroImageSrc ? (
@@ -27,8 +52,8 @@ export function PortalBackground({
               transform: "translateX(28px)"
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.9)_0%,_rgba(244,250,246,0.62)_45%,_rgba(210,234,222,0.42)_75%)]" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white/85 via-emerald-50/45 to-emerald-100/30" />
+          <div className={heroOverlayClass} />
+          <div className={heroGradientClass} />
         </div>
       ) : null}
 
@@ -43,9 +68,9 @@ export function PortalBackground({
       />
 
       {/* Glows */}
-      <div className="absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[150px] portal-glow-main" />
-      <div className="absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-sky-200/25 blur-[140px] portal-glow-side" />
-      <div className="absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-emerald-200/25 blur-[140px] portal-glow-lower" />
+      <div className={glowMainClass} />
+      <div className={glowSideClass} />
+      <div className={glowLowerClass} />
 
       {/* Vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0)_45%,_rgba(12,20,14,0.06)_100%)]" />

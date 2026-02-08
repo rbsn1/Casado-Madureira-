@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/serverAuth";
+import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
@@ -18,8 +18,14 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
+  if (!auth.isGlobalAdmin) {
+    return NextResponse.json(
+      { error: "Somente administradores globais podem editar congregações." },
+      { status: 403 }
+    );
+  }
 
   const id = String(params.id ?? "").trim();
   if (!id) {

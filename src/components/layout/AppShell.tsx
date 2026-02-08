@@ -30,7 +30,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR","SM_DISCIPULADO"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN"] }
+      { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] }
     ]
   },
   {
@@ -56,6 +56,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
   const isDiscipuladoAccount = !isGlobalAdmin && (roles.includes("DISCIPULADOR") || hasSmDiscipuladoRole);
+  const isDiscipuladoConsole = current.startsWith("/discipulado");
 
   const visibleSections = navSections
     .map((section) => ({
@@ -166,23 +167,40 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   }
 
   return (
-    <div className="app-shell">
+    <div className={clsx("app-shell", isDiscipuladoConsole && "discipulado-console-shell")}>
       {!isCadastradorOnly ? (
-        <aside className="hidden lg:block border-r border-brand-900 bg-brand-900 text-white">
+        <aside
+          className={clsx(
+            "hidden lg:block border-r text-white",
+            isDiscipuladoConsole ? "border-slate-900 bg-slate-950" : "border-brand-900 bg-brand-900"
+          )}
+        >
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-6">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
-                CM
+            <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
+              <div
+                className={clsx(
+                  "flex h-10 w-10 items-center justify-center rounded-xl font-bold text-white shadow-inner",
+                  isDiscipuladoConsole ? "bg-sky-600" : "bg-accent-600"
+                )}
+              >
+                {isDiscipuladoConsole ? "DC" : "CM"}
               </div>
               <div>
-                <p className="text-sm text-brand-100/90">SaaS</p>
-                <p className="text-lg font-semibold text-white">Casados com a Madureira</p>
+                <p className={clsx("text-sm", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>SaaS</p>
+                <p className="text-lg font-semibold text-white">
+                  {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
+                </p>
               </div>
             </Link>
             <nav className="flex-1 space-y-6">
               {visibleSections.map((section) => (
                 <div key={section.title}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
+                  <p
+                    className={clsx(
+                      "mb-2 text-xs font-semibold uppercase tracking-wide",
+                      isDiscipuladoConsole ? "text-slate-300/90" : "text-brand-100/80"
+                    )}
+                  >
                     {section.title}
                   </p>
                   <ul className="space-y-1">
@@ -191,10 +209,17 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                           <Link
                             href={item.href}
                             className={clsx(
-                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-brand-700/80 hover:text-white",
+                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:text-white",
+                              isDiscipuladoConsole
+                                ? "hover:bg-sky-800/80"
+                                : "hover:bg-brand-700/80",
                               current === item.href
-                                ? "bg-brand-700 text-white shadow-sm"
-                                : "text-brand-100/90"
+                                ? isDiscipuladoConsole
+                                  ? "bg-sky-700 text-white shadow-sm"
+                                  : "bg-brand-700 text-white shadow-sm"
+                                : isDiscipuladoConsole
+                                  ? "text-slate-200/90"
+                                  : "text-brand-100/90"
                             )}
                           >
                             {item.label}
@@ -205,28 +230,40 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </div>
               ))}
             </nav>
-            <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
+            <div
+              className={clsx(
+                "rounded-xl p-4 shadow-sm ring-1",
+                isDiscipuladoConsole
+                  ? "bg-slate-900/60 ring-sky-800/60"
+                  : "bg-brand-700/40 ring-brand-700/60"
+              )}
+            >
               <p className="text-sm font-semibold text-white">Acesso interno</p>
-              <p className="text-xs text-brand-100/90">
+              <p className={clsx("text-xs", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>
                 RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO
               </p>
             </div>
           </div>
         </aside>
       ) : null}
-      <main className="min-h-screen bg-white">
+      <main
+        className={clsx(
+          "min-h-screen",
+          isDiscipuladoConsole ? "bg-gradient-to-b from-slate-50 via-sky-50/35 to-white" : "bg-white"
+        )}
+      >
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
           <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-text-muted">
-                {isDiscipuladoAccount ? "Portal Discipulado" : "Casados com a Madureira"}
+              <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
+                {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
               </p>
-              <h1 className="text-2xl font-semibold text-text">
+              <h1 className={clsx("text-2xl font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                 {isCadastradorOnly
                   ? "Cadastro"
                   : hasSmDiscipuladoRole
                     ? "Cadastro de Convertidos"
-                    : isDiscipuladoAccount
+                    : isDiscipuladoConsole || isDiscipuladoAccount
                       ? "Painel Discipulado"
                       : "Painel Interno"}
               </h1>
@@ -236,12 +273,22 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 <button
                   type="button"
                   onClick={() => setShowMobileNav(true)}
-                  className="inline-flex items-center justify-center rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900 lg:hidden"
+                  className={clsx(
+                    "inline-flex items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-semibold transition lg:hidden",
+                    isDiscipuladoConsole
+                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
+                      : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                  )}
                 >
                   Menu
                 </button>
               ) : null}
-              <div className="flex items-center gap-2 rounded-full bg-brand-100 px-4 py-2 text-sm font-medium text-brand-900">
+              <div
+                className={clsx(
+                  "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
+                  isDiscipuladoConsole ? "bg-sky-100 text-sky-900" : "bg-brand-100 text-brand-900"
+                )}
+              >
                 {userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}
               </div>
               {!isCadastradorOnly ? (
@@ -252,7 +299,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     setPasswordStatus("idle");
                     setPasswordMessage("");
                   }}
-                  className="rounded-full border border-brand-100 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-700 hover:text-brand-900"
+                  className={clsx(
+                    "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
+                    isDiscipuladoConsole
+                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
+                      : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                  )}
                 >
                   Alterar senha
                 </button>
@@ -260,7 +312,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-text-muted transition hover:border-brand-100 hover:text-brand-900"
+                className={clsx(
+                  "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
+                  isDiscipuladoConsole
+                    ? "border-slate-200 text-slate-600 hover:border-sky-200 hover:text-sky-900"
+                    : "border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
+                )}
               >
                 Sair
               </button>
@@ -276,13 +333,28 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             onClick={() => setShowMobileNav(false)}
             aria-hidden="true"
           />
-          <div className="absolute left-0 top-0 h-full w-72 bg-brand-900 text-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-brand-800 px-4 py-4">
-              <span className="text-sm font-semibold text-brand-100">Menu</span>
+          <div
+            className={clsx(
+              "absolute left-0 top-0 h-full w-72 text-white shadow-xl",
+              isDiscipuladoConsole ? "bg-slate-950" : "bg-brand-900"
+            )}
+          >
+            <div
+              className={clsx(
+                "flex items-center justify-between border-b px-4 py-4",
+                isDiscipuladoConsole ? "border-slate-800" : "border-brand-800"
+              )}
+            >
+              <span className={clsx("text-sm font-semibold", isDiscipuladoConsole ? "text-slate-200" : "text-brand-100")}>Menu</span>
               <button
                 type="button"
                 onClick={() => setShowMobileNav(false)}
-                className="rounded-full border border-brand-700/60 px-3 py-1 text-xs text-brand-100 hover:bg-brand-800"
+                className={clsx(
+                  "rounded-full border px-3 py-1 text-xs hover:bg-opacity-100",
+                  isDiscipuladoConsole
+                    ? "border-slate-700/60 text-slate-200 hover:bg-slate-800"
+                    : "border-brand-700/60 text-brand-100 hover:bg-brand-800"
+                )}
               >
                 Fechar
               </button>
@@ -290,7 +362,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <nav className="space-y-6 px-4 py-5">
               {visibleSections.map((section) => (
                 <div key={section.title}>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
+                  <p
+                    className={clsx(
+                      "mb-2 text-xs font-semibold uppercase tracking-wide",
+                      isDiscipuladoConsole ? "text-slate-300/90" : "text-brand-100/80"
+                    )}
+                  >
                     {section.title}
                   </p>
                   <ul className="space-y-1">
@@ -300,10 +377,15 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
                             className={clsx(
-                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:bg-brand-700/80 hover:text-white",
+                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:text-white",
+                              isDiscipuladoConsole ? "hover:bg-sky-800/80" : "hover:bg-brand-700/80",
                               current === item.href
-                                ? "bg-brand-700 text-white shadow-sm"
-                                : "text-brand-100/90"
+                                ? isDiscipuladoConsole
+                                  ? "bg-sky-700 text-white shadow-sm"
+                                  : "bg-brand-700 text-white shadow-sm"
+                                : isDiscipuladoConsole
+                                  ? "text-slate-200/90"
+                                  : "text-brand-100/90"
                             )}
                           >
                             {item.label}
@@ -321,11 +403,16 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-emerald-900">Alterar senha</h2>
+              <h2 className={clsx("text-lg font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-emerald-900")}>
+                Alterar senha
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(false)}
-                className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
+                className={clsx(
+                  "rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600",
+                  isDiscipuladoConsole ? "hover:border-sky-200 hover:text-sky-900" : "hover:border-emerald-200 hover:text-emerald-900"
+                )}
               >
                 Fechar
               </button>
@@ -336,7 +423,10 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 <input
                   name="password"
                   type="password"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  className={clsx(
+                    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none",
+                    isDiscipuladoConsole ? "focus:border-sky-400" : "focus:border-emerald-400"
+                  )}
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -344,12 +434,18 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 <input
                   name="confirm"
                   type="password"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  className={clsx(
+                    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none",
+                    isDiscipuladoConsole ? "focus:border-sky-400" : "focus:border-emerald-400"
+                  )}
                 />
               </label>
               <button
                 type="submit"
-                className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className={clsx(
+                  "w-full rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70",
+                  isDiscipuladoConsole ? "bg-sky-700 hover:bg-sky-800" : "bg-emerald-600 hover:bg-emerald-700"
+                )}
                 disabled={passwordStatus === "loading"}
               >
                 {passwordStatus === "loading" ? "Salvando..." : "Salvar nova senha"}
@@ -360,7 +456,14 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </p>
               ) : null}
               {passwordStatus === "success" ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <p
+                  className={clsx(
+                    "rounded-lg px-3 py-2 text-xs",
+                    isDiscipuladoConsole
+                      ? "border border-sky-200 bg-sky-50 text-sky-700"
+                      : "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                  )}
+                >
                   {passwordMessage}
                 </p>
               ) : null}

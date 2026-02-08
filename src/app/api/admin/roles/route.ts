@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/serverAuth";
+import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
@@ -55,7 +55,7 @@ async function resolveUserCongregationId(userId: string) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin(request);
+  const auth = await requireDiscipuladoAdmin(request);
   if ("error" in auth) return auth.error;
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -63,7 +63,26 @@ export async function POST(request: Request) {
   const userId = String(body.userId ?? "");
   const role = String(body.role ?? "");
   const active = body.active !== false;
-  const congregationId = body.congregationId ? String(body.congregationId) : null;
+  const requestedCongregationId = body.congregationId ? String(body.congregationId) : null;
+
+  if (!auth.isGlobalAdmin && !DISCIPULADO_ONLY_ROLES.has(role)) {
+    return NextResponse.json(
+      { error: "Administradores de discipulado só podem gerenciar papéis do discipulado." },
+      { status: 403 }
+    );
+  }
+  if (
+    !auth.isGlobalAdmin &&
+    requestedCongregationId &&
+    requestedCongregationId !== auth.congregationId
+  ) {
+    return NextResponse.json(
+      { error: "Você só pode gerenciar papéis da sua congregação." },
+      { status: 403 }
+    );
+  }
+
+  const congregationId = auth.isGlobalAdmin ? requestedCongregationId : auth.congregationId;
 
   if (!userId || !role) {
     return NextResponse.json({ error: "userId and role are required" }, { status: 400 });
@@ -118,6 +137,13 @@ export async function POST(request: Request) {
   const targetCongregationId = hasCongregationId
     ? congregationId ?? (await resolveUserCongregationId(userId)) ?? (await resolveDefaultCongregationId())
     : null;
+
+  if (!auth.isGlobalAdmin && targetCongregationId !== auth.congregationId) {
+    return NextResponse.json(
+      { error: "Você só pode gerenciar usuários vinculados à sua congregação." },
+      { status: 403 }
+    );
+  }
 
   if (hasCongregationId && !targetCongregationId) {
     return NextResponse.json({ error: "Nenhuma congregação disponível para vincular o papel." }, { status: 400 });
