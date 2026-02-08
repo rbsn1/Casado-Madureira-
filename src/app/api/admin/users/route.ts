@@ -182,9 +182,10 @@ export async function POST(request: Request) {
   if (error || !data.user) {
     return NextResponse.json({ error: error?.message ?? "failed to create user" }, { status: 500 });
   }
+  const createdUserId = data.user.id;
 
   async function rollbackUserCreation(message: string) {
-    await supabaseAdmin.auth.admin.deleteUser(data.user.id);
+    await supabaseAdmin.auth.admin.deleteUser(createdUserId);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
@@ -198,8 +199,8 @@ export async function POST(request: Request) {
     }
 
     const payload = hasCongregationId
-      ? { user_id: data.user.id, role, active: true, congregation_id: targetCongregationId }
-      : { user_id: data.user.id, role, active: true };
+      ? { user_id: createdUserId, role, active: true, congregation_id: targetCongregationId }
+      : { user_id: createdUserId, role, active: true };
     const { error: roleError } = await (supabaseAdmin as any)
       .from("usuarios_perfis")
       .upsert(payload);
@@ -211,11 +212,11 @@ export async function POST(request: Request) {
   if (whatsapp) {
     const { error: contactError } = await (supabaseAdmin as any)
       .from("user_contacts")
-      .upsert({ user_id: data.user.id, whatsapp });
+      .upsert({ user_id: createdUserId, whatsapp });
     if (contactError) {
       return rollbackUserCreation(contactError.message);
     }
   }
 
-  return NextResponse.json({ id: data.user.id });
+  return NextResponse.json({ id: createdUserId });
 }
