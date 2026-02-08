@@ -25,7 +25,14 @@ const navSections: { title: string; items: NavItem[] }[] = [
     ]
   },
   {
-    title: "Novos Convertidos",
+    title: "Discipulado",
+    items: [
+      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","DISCIPULADOR"] },
+      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","DISCIPULADOR"] }
+    ]
+  },
+  {
+    title: "Novos Convertidos (Legado)",
     items: [
       { href: "/novos-convertidos/dashboard", label: "Dashboard", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS"] },
       { href: "/novos-convertidos", label: "Fila", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS"] }
@@ -161,7 +168,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
               <p className="text-sm font-semibold text-white">Acesso interno</p>
               <p className="text-xs text-brand-100/90">
-                RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR
+                RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR
               </p>
             </div>
           </div>

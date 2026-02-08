@@ -175,6 +175,20 @@ export default function PessoaPerfilPage() {
       setStatusMessage("Selecione um departamento.");
       return;
     }
+
+    const { data: eligible, error: eligibleError } = await supabaseClient.rpc(
+      "is_member_department_eligible",
+      { target_member_id: pessoaId }
+    );
+    if (eligibleError) {
+      setStatusMessage(eligibleError.message);
+      return;
+    }
+    if (!eligible) {
+      setStatusMessage("Para participar de departamentos, conclua o discipulado.");
+      return;
+    }
+
     const { error } = await supabaseClient.from("pessoa_departamento").insert({
       pessoa_id: pessoaId,
       departamento_id,

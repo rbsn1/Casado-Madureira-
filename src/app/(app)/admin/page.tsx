@@ -37,7 +37,8 @@ const roleOptions = [
   "NOVOS_CONVERTIDOS",
   "LIDER_DEPTO",
   "VOLUNTARIO",
-  "CADASTRADOR"
+  "CADASTRADOR",
+  "DISCIPULADOR"
 ];
 
 const weekdayOptions = [

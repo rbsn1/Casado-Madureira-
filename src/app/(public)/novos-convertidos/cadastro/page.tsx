@@ -89,12 +89,18 @@ export default function NovoConvertidoCadastroPage() {
       igreja_origem: igrejaOrigem || null,
       bairro: bairroFinal || null,
       data: formData.get("data") ? String(formData.get("data")) : null,
-      observacoes: String(formData.get("observacoes") ?? "")
+      observacoes: String(formData.get("observacoes") ?? ""),
+      request_id: crypto.randomUUID()
     };
 
     const { error } = await supabaseClient.from("pessoas").insert(payload);
 
     if (error) {
+      if (error.code === "23505") {
+        setStatus("success");
+        setMessage("Cadastro já recebido anteriormente. Evitamos duplicidade.");
+        return;
+      }
       setStatus("error");
       setMessage(error.message);
       return;

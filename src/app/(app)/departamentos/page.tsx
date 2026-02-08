@@ -205,8 +205,27 @@ export default function DepartamentosPage() {
     if (!supabaseClient || !selectedDept) return;
     setStatusMessage("");
     const formData = new FormData(event.currentTarget);
+    const pessoaId = String(formData.get("pessoa_id") ?? "");
+    if (!pessoaId) {
+      setStatusMessage("Selecione uma pessoa.");
+      return;
+    }
+
+    const { data: eligible, error: eligibleError } = await supabaseClient.rpc(
+      "is_member_department_eligible",
+      { target_member_id: pessoaId }
+    );
+    if (eligibleError) {
+      setStatusMessage(eligibleError.message);
+      return;
+    }
+    if (!eligible) {
+      setStatusMessage("Para participar de departamentos, conclua o discipulado.");
+      return;
+    }
+
     const payload = {
-      pessoa_id: String(formData.get("pessoa_id") ?? ""),
+      pessoa_id: pessoaId,
       departamento_id: selectedDept.id,
       funcao: String(formData.get("funcao") ?? ""),
       status: "ATIVO"

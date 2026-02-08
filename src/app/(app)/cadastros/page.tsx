@@ -260,7 +260,8 @@ function CadastrosContent() {
       igreja_origem: igrejaOrigem || null,
       bairro: bairroInput || null,
       data: data || null,
-      observacoes: observacoes.trim()
+      observacoes: observacoes.trim(),
+      request_id: crypto.randomUUID()
     };
     if (editingPessoa) {
       const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
@@ -271,6 +272,14 @@ function CadastrosContent() {
     } else {
       const { error } = await supabaseClient.from("pessoas").insert(payload);
       if (error) {
+        if (error.code === "23505") {
+          setStatusMessage("Cadastro duplicado detectado e ignorado com segurança.");
+          setShowCreate(false);
+          setEditingPessoa(null);
+          resetForm();
+          await loadPessoas();
+          return;
+        }
         setStatusMessage(error.message);
         return;
       }
@@ -343,7 +352,8 @@ function CadastrosContent() {
         igreja_origem: row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "",
         bairro: row[headerIndex.bairro] ?? "",
         data: row[headerIndex.data] ? String(row[headerIndex.data]) : null,
-        observacoes: row[headerIndex.observacoes] ?? ""
+        observacoes: row[headerIndex.observacoes] ?? "",
+        request_id: crypto.randomUUID()
       };
     });
     if (invalidRows.length) {

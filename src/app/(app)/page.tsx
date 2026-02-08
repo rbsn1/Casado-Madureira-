@@ -6,6 +6,7 @@ import { StatCard } from "@/components/cards/StatCard";
 import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getAuthScope } from "@/lib/authScope";
 import { formatDateBR } from "@/lib/date";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +21,19 @@ type GrowthEntry = {
 type MonthlyEntry = {
   month: number;
   count: number;
+};
+
+type DiscipleshipCards = {
+  em_discipulado: number;
+  concluidos: number;
+  parados: number;
+  pendentes_criticos: number;
+  proximos_a_concluir: number;
+};
+
+type Congregation = {
+  id: string;
+  name: string;
 };
 
 function formatDate(value: Date) {
@@ -81,6 +95,17 @@ export default function DashboardPage() {
   const [mensal, setMensal] = useState<MonthlyEntry[]>([]);
   const [checkingRoles, setCheckingRoles] = useState(true);
   const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [isAdminMaster, setIsAdminMaster] = useState(false);
+  const [congregationFilter, setCongregationFilter] = useState("");
+  const [congregations, setCongregations] = useState<Congregation[]>([]);
+  const [discipleshipCards, setDiscipleshipCards] = useState<DiscipleshipCards>({
+    em_discipulado: 0,
+    concluidos: 0,
+    parados: 0,
+    pendentes_criticos: 0,
+    proximos_a_concluir: 0
+  });
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
   useEffect(() => {
@@ -91,11 +116,22 @@ export default function DashboardPage() {
         if (active) setCheckingRoles(false);
         return;
       }
-      const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
+      const scope = await getAuthScope();
       if (!active) return;
-      const roles = (rolesData ?? []) as string[];
+      const roles = scope.roles;
       const onlyCadastrador = roles.length === 1 && roles.includes("CADASTRADOR");
       setIsCadastradorOnly(onlyCadastrador);
+      setUserRoles(roles);
+      setIsAdminMaster(scope.isAdminMaster);
+      if (scope.isAdminMaster) {
+        const { data } = await supabaseClient
+          .from("congregations")
+          .select("id, name")
+          .eq("is_active", true)
+          .order("name");
+        if (!active) return;
+        setCongregations((data ?? []) as Congregation[]);
+      }
       setCheckingRoles(false);
       if (onlyCadastrador) {
         router.replace("/cadastro");
@@ -119,11 +155,23 @@ export default function DashboardPage() {
       }
 
       const range = getPeriodRange(period, customStart, customEnd);
-      const { data, error } = await supabaseClient.rpc("get_casados_dashboard", {
-        start_ts: range.start ? range.start.toISOString() : null,
-        end_ts: range.end ? range.end.toISOString() : null,
-        year: anoSelecionado
-      });
+      const [casadosResult, discipleshipResult] = await Promise.all([
+        supabaseClient.rpc("get_casados_dashboard", {
+          start_ts: range.start ? range.start.toISOString() : null,
+          end_ts: range.end ? range.end.toISOString() : null,
+          year: anoSelecionado,
+          target_congregation_id: isAdminMaster ? congregationFilter || null : null
+        }),
+        userRoles.includes("ADMIN_MASTER") || userRoles.includes("DISCIPULADOR")
+          ? supabaseClient.rpc("get_discipleship_dashboard", {
+              stale_days: 14,
+              target_congregation_id: isAdminMaster ? congregationFilter || null : null
+            })
+          : Promise.resolve({ data: null, error: null } as any)
+      ]);
+
+      const data = casadosResult.data;
+      const error = casadosResult.error;
 
       if (error) {
         setStatusMessage(error.message);
@@ -149,10 +197,24 @@ export default function DashboardPage() {
         setAnoSelecionado(data.ano_selecionado);
       }
       setMensal((data?.cadastros_mensais ?? []) as MonthlyEntry[]);
+
+      if (!discipleshipResult?.error && discipleshipResult?.data?.cards) {
+        setDiscipleshipCards(discipleshipResult.data.cards as DiscipleshipCards);
+      }
     }
 
     loadDashboard();
-  }, [period, customStart, customEnd, anoSelecionado, checkingRoles, isCadastradorOnly]);
+  }, [
+    period,
+    customStart,
+    customEnd,
+    anoSelecionado,
+    checkingRoles,
+    isCadastradorOnly,
+    congregationFilter,
+    isAdminMaster,
+    userRoles
+  ]);
 
   function handleMonthClick(year: number, month: number) {
     const monthValue = String(month).padStart(2, "0");
@@ -194,6 +256,20 @@ export default function DashboardPage() {
             <p className="mt-1 text-sm text-slate-600">{periodSummary}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {isAdminMaster ? (
+              <select
+                value={congregationFilter}
+                onChange={(event) => setCongregationFilter(event.target.value)}
+                className="rounded-full border border-brand-100 bg-white px-3 py-1 text-sm font-medium text-brand-900 focus:border-emerald-300 focus:outline-none"
+              >
+                <option value="">Todas as congregações</option>
+                {congregations.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             {["Hoje", "Semana", "Mês", "Personalizado"].map((label) => (
               <button
                 key={label}
@@ -257,6 +333,45 @@ export default function DashboardPage() {
         <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="sky" />
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
+
+      {userRoles.includes("ADMIN_MASTER") || userRoles.includes("DISCIPULADOR") ? (
+        <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Discipulado</p>
+              <h3 className="text-lg font-semibold text-sky-950">Indicadores integrados</h3>
+            </div>
+            <Link
+              href="/discipulado"
+              className="rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+            >
+              Abrir módulo
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            <div className="rounded-xl border border-sky-100 bg-white p-3">
+              <p className="text-xs text-slate-600">Em discipulado</p>
+              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.em_discipulado}</p>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-white p-3">
+              <p className="text-xs text-slate-600">Concluídos</p>
+              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.concluidos}</p>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-white p-3">
+              <p className="text-xs text-slate-600">Parados</p>
+              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.parados}</p>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-white p-3">
+              <p className="text-xs text-slate-600">Pendentes críticos</p>
+              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.pendentes_criticos}</p>
+            </div>
+            <div className="rounded-xl border border-sky-100 bg-white p-3">
+              <p className="text-xs text-slate-600">Próximos a concluir</p>
+              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.proximos_a_concluir}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

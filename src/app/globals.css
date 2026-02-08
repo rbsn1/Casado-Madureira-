@@ -55,6 +55,17 @@ body {
   @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
 }
 
+.discipulado-theme {
+  background:
+    radial-gradient(1100px 520px at -8% -20%, rgba(14, 116, 144, 0.16), transparent 60%),
+    radial-gradient(900px 420px at 105% -10%, rgba(30, 64, 175, 0.12), transparent 55%),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.discipulado-panel {
+  @apply rounded-2xl border border-sky-100/70 bg-white/95 shadow-sm;
+}
+
 .agenda-card {
   position: relative;
   overflow: hidden;
