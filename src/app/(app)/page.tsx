@@ -128,10 +128,11 @@ export default function DashboardPage() {
       if (!active) return;
       const roles = scope.roles;
       const onlyCadastrador = roles.length === 1 && roles.includes("CADASTRADOR");
+      const isGlobalAdmin = scope.isAdminMaster || roles.includes("SUPER_ADMIN") || roles.includes("ADMIN_MASTER");
       setIsCadastradorOnly(onlyCadastrador);
       setUserRoles(roles);
-      setIsAdminMaster(scope.isAdminMaster);
-      if (scope.isAdminMaster) {
+      setIsAdminMaster(isGlobalAdmin);
+      if (isGlobalAdmin) {
         const { data } = await supabaseClient
           .from("congregations")
           .select("id, name")
@@ -175,7 +176,7 @@ export default function DashboardPage() {
 
       const [casadosPrimary, discipleshipResult] = await Promise.all([
         supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation),
-        userRoles.includes("ADMIN_MASTER") || userRoles.includes("DISCIPULADOR")
+        isAdminMaster || userRoles.includes("SUPER_ADMIN") || userRoles.includes("DISCIPULADOR")
           ? supabaseClient.rpc("get_discipleship_dashboard", {
               stale_days: 14,
               target_congregation_id: isAdminMaster ? congregationFilter || null : null
@@ -351,7 +352,7 @@ export default function DashboardPage() {
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
 
-      {userRoles.includes("ADMIN_MASTER") || userRoles.includes("DISCIPULADOR") ? (
+      {isAdminMaster || userRoles.includes("SUPER_ADMIN") || userRoles.includes("DISCIPULADOR") ? (
         <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

@@ -27,7 +27,12 @@ export default function NovoConvertidoDiscipuladoPage() {
     async function checkScope() {
       const scope = await getAuthScope();
       if (!active) return;
-      setHasAccess(scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("DISCIPULADOR"));
+      setHasAccess(
+        scope.isAdminMaster ||
+          scope.roles.includes("ADMIN_MASTER") ||
+          scope.roles.includes("SUPER_ADMIN") ||
+          scope.roles.includes("DISCIPULADOR")
+      );
     }
 
     checkScope();

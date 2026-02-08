@@ -32,6 +32,7 @@ type SpecialEventConfig = {
 
 const roleOptions = [
   "ADMIN_MASTER",
+  "SUPER_ADMIN",
   "PASTOR",
   "SECRETARIA",
   "NOVOS_CONVERTIDOS",

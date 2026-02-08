@@ -83,9 +83,11 @@ export default function DiscipuladoDashboardPage() {
       const scope = await getAuthScope();
       if (!active) return;
 
-      const allowed = scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("DISCIPULADOR");
+      const isGlobalAdmin =
+        scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
+      const allowed = isGlobalAdmin || scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
-      setIsAdminMaster(scope.isAdminMaster);
+      setIsAdminMaster(isGlobalAdmin);
 
       if (!allowed) return;
 

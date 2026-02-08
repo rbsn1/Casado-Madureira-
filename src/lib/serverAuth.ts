@@ -41,7 +41,7 @@ export async function requireAdmin(request: Request) {
     .from("usuarios_perfis")
     .select("role, active")
     .eq("user_id", data.user.id)
-    .eq("role", "ADMIN_MASTER")
+    .in("role", ["ADMIN_MASTER", "SUPER_ADMIN"])
     .eq("active", true);
 
   if (adminRoleError || !adminRoles?.length) {

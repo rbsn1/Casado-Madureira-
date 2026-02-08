@@ -50,7 +50,11 @@ export default function DiscipuladoConvertidosPage() {
 
       const scope = await getAuthScope();
       if (!active) return;
-      const allowed = scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("DISCIPULADOR");
+      const allowed =
+        scope.isAdminMaster ||
+        scope.roles.includes("ADMIN_MASTER") ||
+        scope.roles.includes("SUPER_ADMIN") ||
+        scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
       if (!allowed) return;
 

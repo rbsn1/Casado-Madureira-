@@ -27,8 +27,8 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Discipulado",
     items: [
-      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","DISCIPULADOR"] },
-      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","DISCIPULADOR"] }
+      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
+      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] }
     ]
   },
   {
@@ -50,11 +50,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordStatus, setPasswordStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
-  const isCadastradorOnly = roles.length === 1 && roles.includes("CADASTRADOR");
-  const isAdminMaster = roles.includes("ADMIN_MASTER");
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
 
   function canAccessItem(item: NavItem) {
-    if (isAdminMaster) return true;
+    if (isGlobalAdmin) return true;
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
   }
@@ -67,13 +67,23 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       const { data } = await supabaseClient.auth.getUser();
       if (!active) return;
       if (!data.user) {
-        router.replace("/acesso-interno");
+        const loginPath = current.startsWith("/discipulado") ? "/discipulado/login" : "/acesso-interno";
+        router.replace(loginPath);
         return;
       }
       setUserEmail(data.user.email ?? null);
-      const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
+      const [{ data: rolesData }, { data: contextData }] = await Promise.all([
+        supabaseClient.rpc("get_my_roles"),
+        supabaseClient.rpc("get_my_context")
+      ]);
       const nextRoles = (rolesData ?? []) as string[];
+      const context = (contextData ?? {}) as { is_admin_master?: boolean };
+      const nextIsGlobalAdmin =
+        Boolean(context.is_admin_master) ||
+        nextRoles.includes("ADMIN_MASTER") ||
+        nextRoles.includes("SUPER_ADMIN");
       setRoles(nextRoles);
+      setIsGlobalAdmin(nextIsGlobalAdmin);
       if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
         router.replace("/cadastro");
       }
@@ -98,7 +108,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    router.push("/acesso-interno");
+    const loginPath = current.startsWith("/discipulado") ? "/discipulado/login" : "/acesso-interno";
+    router.push(loginPath);
   }
 
   async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
@@ -175,7 +186,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
               <p className="text-sm font-semibold text-white">Acesso interno</p>
               <p className="text-xs text-brand-100/90">
-                RBAC: ADMIN_MASTER, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR
+                RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR
               </p>
             </div>
           </div>
