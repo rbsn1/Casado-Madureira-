@@ -55,25 +55,6 @@ body {
   @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
 }
 
-.discipulado-login-bg {
-  background-image: var(--discipulado-login-bg-mobile, url("/discipulado-login-bg-2160x2700.webp")), url("/taladelogindis.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.discipulado-login-bg-overlay {
-  background:
-    radial-gradient(circle at center, rgba(26, 32, 58, 0.18) 0%, rgba(22, 27, 51, 0.36) 52%, rgba(12, 15, 34, 0.6) 100%),
-    linear-gradient(135deg, rgba(41, 24, 76, 0.22) 0%, rgba(26, 61, 108, 0.14) 52%, rgba(246, 173, 85, 0.1) 100%);
-}
-
-@media (min-width: 1024px) {
-  .discipulado-login-bg {
-    background-image: var(--discipulado-login-bg-desktop, url("/discipulado-login-bg-3072x1728.webp")), url("/taladelogindis.png");
-  }
-}
-
 .discipulado-theme {
   background:
     radial-gradient(1100px 520px at -8% -20%, rgba(14, 116, 144, 0.16), transparent 60%),

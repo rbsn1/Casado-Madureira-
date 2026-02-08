@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import type { CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
+import styles from "./loginBackground.module.css";
 
 type LoginStatus = "idle" | "loading" | "error";
 
 const cardClass =
   "rounded-2xl border border-sky-100/80 bg-white/92 p-6 shadow-xl shadow-sky-200/35 backdrop-blur";
 const discipuladoLoginBgDesktop = "/discipulado-login-bg-3072x1728.webp";
-const discipuladoLoginBgMobile = "/discipulado-login-bg-2160x2700.webp";
 
 export default function DiscipuladoLoginPage() {
   const router = useRouter();
@@ -97,16 +96,7 @@ export default function DiscipuladoLoginPage() {
     <PortalBackground heroImageSrc={discipuladoLoginBgDesktop} heroHeight="460px" theme="discipulado">
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-          <div
-            className="discipulado-login-bg absolute inset-0"
-            style={
-              {
-                "--discipulado-login-bg-mobile": `url('${discipuladoLoginBgMobile}')`,
-                "--discipulado-login-bg-desktop": `url('${discipuladoLoginBgDesktop}')`
-              } as CSSProperties
-            }
-          />
-          <div className="discipulado-login-bg-overlay absolute inset-0" />
+          <div className={styles.backgroundLayer} />
         </div>
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
