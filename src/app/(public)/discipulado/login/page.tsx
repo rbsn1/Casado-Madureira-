@@ -91,8 +91,26 @@ export default function DiscipuladoLoginPage() {
   }
 
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px" theme="discipulado">
-      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
+    <PortalBackground heroImageSrc="/portal-hero.jpg" heroHeight="460px" theme="discipulado">
+      <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+          <div
+            className="absolute -left-16 top-24 hidden h-[360px] w-[260px] rounded-[30px] border border-white/35 bg-cover bg-center opacity-80 shadow-2xl shadow-sky-900/20 ring-1 ring-sky-200/30 lg:block"
+            style={{
+              backgroundImage:
+                "linear-gradient(160deg, rgba(10,37,64,0.58), rgba(12,74,110,0.12)), url('/hero-community.jpg')"
+            }}
+          />
+          <div
+            className="absolute -right-10 bottom-16 hidden h-[320px] w-[280px] rounded-[34px] border border-white/30 bg-cover bg-center opacity-80 shadow-2xl shadow-indigo-900/20 ring-1 ring-indigo-200/40 md:block"
+            style={{
+              backgroundImage:
+                "linear-gradient(150deg, rgba(15,23,42,0.52), rgba(56,189,248,0.16)), url('/portal-hero.jpg')"
+            }}
+          />
+          <div className="absolute left-10 top-40 hidden h-40 w-40 rounded-full bg-sky-300/30 blur-3xl lg:block" />
+          <div className="absolute right-20 top-28 hidden h-44 w-44 rounded-full bg-indigo-300/25 blur-3xl lg:block" />
+        </div>
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-700 text-xs font-semibold text-white">
