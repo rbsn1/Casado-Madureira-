@@ -146,6 +146,14 @@ export default function DiscipuladoDashboardPage() {
               ))}
             </select>
           ) : null}
+          {isAdminMaster ? (
+            <Link
+              href="/discipulado/admin"
+              className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:border-sky-400"
+            >
+              Admin do discipulado
+            </Link>
+          ) : null}
           <Link
             href="/discipulado/convertidos/novo"
             className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
