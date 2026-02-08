@@ -51,6 +51,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const isCadastradorOnly = roles.length === 1 && roles.includes("CADASTRADOR");
+  const isAdminMaster = roles.includes("ADMIN_MASTER");
+
+  function canAccessItem(item: NavItem) {
+    if (isAdminMaster) return true;
+    if (!item.roles?.length) return true;
+    return item.roles.some((role) => roles.includes(role));
+  }
 
   useEffect(() => {
     let active = true;
@@ -145,7 +152,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   </p>
                   <ul className="space-y-1">
                     {section.items
-                      .filter((item) => !item.roles || item.roles.some((role) => roles.includes(role)))
+                      .filter((item) => canAccessItem(item))
                       .map((item) => (
                         <li key={item.href}>
                           <Link
@@ -247,7 +254,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   </p>
                   <ul className="space-y-1">
                     {section.items
-                      .filter((item) => !item.roles || item.roles.some((role) => roles.includes(role)))
+                      .filter((item) => canAccessItem(item))
                       .map((item) => (
                         <li key={item.href}>
                           <Link
