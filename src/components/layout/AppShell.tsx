@@ -268,7 +268,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <h1 className={clsx("text-2xl font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                 {isCadastradorOnly
                   ? "Cadastro"
-                  : hasSmDiscipuladoRole
+                  : hasCadastradorRole
                     ? "Cadastro de Convertidos"
                     : isDiscipuladoConsole || isDiscipuladoAccount
                       ? "Painel Discipulado"
