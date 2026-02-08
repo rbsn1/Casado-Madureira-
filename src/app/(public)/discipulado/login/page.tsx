@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import styles from "./loginBackground.module.css";
 
 type LoginStatus = "idle" | "loading" | "error";
 
 const cardClass =
-  "rounded-2xl border border-sky-100/80 bg-white/92 p-6 shadow-xl shadow-sky-200/35 backdrop-blur";
-const discipuladoLoginBgDesktop = "/discipulado-login-bg-3072x1728.webp";
+  "w-full max-w-md rounded-2xl border border-sky-100/80 bg-white/92 p-6 shadow-xl shadow-sky-200/35 backdrop-blur";
+const inputClass =
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100";
 
 export default function DiscipuladoLoginPage() {
   const router = useRouter();
@@ -93,11 +93,8 @@ export default function DiscipuladoLoginPage() {
   }
 
   return (
-    <PortalBackground heroImageSrc={discipuladoLoginBgDesktop} heroHeight="460px" theme="discipulado">
-      <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-          <div className={styles.backgroundLayer} />
-        </div>
+    <div className={styles.page}>
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-700 text-xs font-semibold text-white">
@@ -119,7 +116,7 @@ export default function DiscipuladoLoginPage() {
         </header>
 
         <section className="flex flex-1 items-center justify-center pt-10">
-          <div className={`${cardClass} w-full max-w-md`}>
+          <div className={cardClass}>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Discipulado</p>
             <h1 className="mt-2 text-2xl font-semibold text-sky-950">Entrar no módulo</h1>
             <p className="mt-2 text-sm text-slate-600">
@@ -137,7 +134,7 @@ export default function DiscipuladoLoginPage() {
                   placeholder="voce@casados.com"
                   value={emailValue}
                   onChange={(event) => setEmailValue(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                  className={inputClass}
                 />
               </div>
               <div className="space-y-2">
@@ -149,7 +146,7 @@ export default function DiscipuladoLoginPage() {
                   name="password"
                   type="password"
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                  className={inputClass}
                 />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
@@ -167,7 +164,7 @@ export default function DiscipuladoLoginPage() {
               </div>
               <button
                 type="submit"
-                className="w-full rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
                 disabled={status === "loading"}
               >
                 {status === "loading" ? "Entrando..." : "Entrar no discipulado"}
@@ -186,6 +183,6 @@ export default function DiscipuladoLoginPage() {
           </div>
         </section>
       </div>
-    </PortalBackground>
+    </div>
   );
 }
