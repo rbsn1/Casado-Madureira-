@@ -43,6 +43,14 @@ type UserItem = {
   whatsapp?: string | null;
 };
 
+const DISCIPULADO_USER_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO"] as const;
+type DiscipuladoUserRole = (typeof DISCIPULADO_USER_ROLES)[number];
+
+function getDiscipuladoRoleLabel(role: string) {
+  if (role === "SM_DISCIPULADO") return "SM Discipulado (Cadastro)";
+  return "Discipulador";
+}
+
 export default function DiscipuladoAdminPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -61,6 +69,7 @@ export default function DiscipuladoAdminPage() {
   const [userStatusMessage, setUserStatusMessage] = useState("");
   const [userSuccessMessage, setUserSuccessMessage] = useState("");
   const [newUser, setNewUser] = useState({
+    role: "DISCIPULADOR" as DiscipuladoUserRole,
     email: "",
     password: "",
     whatsapp: "",
@@ -97,10 +106,12 @@ export default function DiscipuladoAdminPage() {
   const filteredDiscipleshipUsers = useMemo(
     () =>
       discipleshipUsers.filter((user) => {
-        const discipuladorRole = user.roles.find((role) => role.role === "DISCIPULADOR");
-        if (!discipuladorRole) return false;
+        const discipuladoRole = user.roles.find((role) =>
+          DISCIPULADO_USER_ROLES.includes(role.role as DiscipuladoUserRole)
+        );
+        if (!discipuladoRole) return false;
         if (!congregationFilter) return true;
-        return discipuladorRole.congregation_id === congregationFilter;
+        return discipuladoRole.congregation_id === congregationFilter;
       }),
     [congregationFilter, discipleshipUsers]
   );
@@ -108,7 +119,9 @@ export default function DiscipuladoAdminPage() {
   const activeDiscipleshipUsers = useMemo(
     () =>
       filteredDiscipleshipUsers.filter((user) =>
-        user.roles.some((role) => role.role === "DISCIPULADOR" && role.active)
+        user.roles.some(
+          (role) => DISCIPULADO_USER_ROLES.includes(role.role as DiscipuladoUserRole) && role.active
+        )
       ).length,
     [filteredDiscipleshipUsers]
   );
@@ -142,14 +155,42 @@ export default function DiscipuladoAdminPage() {
     return congregationItems;
   }, [apiFetch]);
 
-  const loadDiscipleshipUsers = useCallback(async () => {
+  const loadDiscipleshipUsers = useCallback(async (targetCongregation?: string) => {
     setUsersLoading(true);
     setUserStatusMessage("");
     try {
-      const data = await apiFetch("/api/admin/users");
-      const users = ((data.users ?? []) as UserItem[])
-        .filter((user) => user.roles.some((role) => role.role === "DISCIPULADOR"))
-        .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
+      const responses = await Promise.all(
+        DISCIPULADO_USER_ROLES.map(async (role) => {
+          const query = new URLSearchParams({
+            role,
+            page: "1",
+            perPage: "200"
+          });
+          if (targetCongregation) {
+            query.set("congregationId", targetCongregation);
+          }
+          return apiFetch(`/api/admin/users?${query.toString()}`);
+        })
+      );
+
+      const usersById = new Map<string, UserItem>();
+      responses.forEach((response) => {
+        const roleUsers = (response.users ?? []) as UserItem[];
+        roleUsers.forEach((user) => {
+          const existing = usersById.get(user.id);
+          if (!existing) {
+            usersById.set(user.id, user);
+            return;
+          }
+          const roleMap = new Map<string, UserRole>();
+          [...existing.roles, ...user.roles].forEach((role) => {
+            roleMap.set(`${role.role}:${role.congregation_id ?? ""}`, role);
+          });
+          usersById.set(user.id, { ...existing, roles: Array.from(roleMap.values()) });
+        });
+      });
+
+      const users = Array.from(usersById.values()).sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
       setDiscipleshipUsers(users);
     } catch (error) {
       setUserStatusMessage((error as Error).message);
@@ -269,7 +310,7 @@ export default function DiscipuladoAdminPage() {
         ...prev,
         congregation_id: defaultCongregation || congregationItems[0]?.id || ""
       }));
-      await Promise.all([loadPanelData(defaultCongregation), loadDiscipleshipUsers()]);
+      await Promise.all([loadPanelData(defaultCongregation), loadDiscipleshipUsers(defaultCongregation)]);
       setLoading(false);
     }
 
@@ -290,7 +331,8 @@ export default function DiscipuladoAdminPage() {
       congregation_id: congregationFilter || prev.congregation_id
     }));
     loadPanelData(congregationFilter);
-  }, [congregationFilter, hasAccess, loadPanelData]);
+    loadDiscipleshipUsers(congregationFilter);
+  }, [congregationFilter, hasAccess, loadDiscipleshipUsers, loadPanelData]);
 
   function updateDraft(id: string, patch: Partial<ModuleDraft>) {
     setModuleDrafts((prev) => ({
@@ -441,11 +483,12 @@ export default function DiscipuladoAdminPage() {
     await loadPanelData(congregationFilter);
   }
 
-  async function handleCreateDiscipulador(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateDiscipuladoUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setUserStatusMessage("");
     setUserSuccessMessage("");
 
+    const role = newUser.role;
     const email = newUser.email.trim();
     const password = newUser.password.trim();
     const whatsapp = newUser.whatsapp.trim();
@@ -466,20 +509,31 @@ export default function DiscipuladoAdminPage() {
         body: JSON.stringify({
           email,
           password,
-          role: "DISCIPULADOR",
+          role,
           congregationId,
           whatsapp: whatsapp || null
         })
       });
-      setNewUser({ email: "", password: "", whatsapp: "", congregation_id: congregationId });
-      setUserSuccessMessage("Usuário de discipulado criado com sucesso.");
-      await loadDiscipleshipUsers();
+      setNewUser((prev) => ({
+        ...prev,
+        email: "",
+        password: "",
+        whatsapp: "",
+        congregation_id: congregationId
+      }));
+      setUserSuccessMessage(`${getDiscipuladoRoleLabel(role)} criado com sucesso.`);
+      await loadDiscipleshipUsers(congregationFilter || congregationId);
     } catch (error) {
       setUserStatusMessage((error as Error).message);
     }
   }
 
-  async function handleToggleDiscipuladorRole(userId: string, nextActive: boolean, congregationId: string | null) {
+  async function handleToggleDiscipuladoRole(
+    userId: string,
+    role: DiscipuladoUserRole,
+    nextActive: boolean,
+    congregationId: string | null
+  ) {
     setUserStatusMessage("");
     setUserSuccessMessage("");
     const targetCongregation = congregationId ?? congregationFilter;
@@ -492,13 +546,17 @@ export default function DiscipuladoAdminPage() {
         method: "POST",
         body: JSON.stringify({
           userId,
-          role: "DISCIPULADOR",
+          role,
           active: nextActive,
           congregationId: targetCongregation
         })
       });
-      setUserSuccessMessage(nextActive ? "Acesso de discipulador ativado." : "Acesso de discipulador desativado.");
-      await loadDiscipleshipUsers();
+      setUserSuccessMessage(
+        nextActive
+          ? `Acesso ${getDiscipuladoRoleLabel(role)} ativado.`
+          : `Acesso ${getDiscipuladoRoleLabel(role)} desativado.`
+      );
+      await loadDiscipleshipUsers(congregationFilter || targetCongregation);
     } catch (error) {
       setUserStatusMessage((error as Error).message);
     }
@@ -604,7 +662,7 @@ export default function DiscipuladoAdminPage() {
             </button>
           </div>
           <div className="flex items-end text-xs text-slate-500">
-            Cada congregação criada já pode receber usuários DISCIPULADOR vinculados.
+            Cada congregação criada já pode receber usuários DISCIPULADOR ou SM_DISCIPULADO vinculados.
           </div>
         </form>
 
@@ -652,7 +710,7 @@ export default function DiscipuladoAdminPage() {
           <p className="mt-2 text-3xl font-bold text-sky-950">{totalCasesCount}</p>
         </article>
         <article className="discipulado-panel p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700">Discipuladores ativos</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700">Usuários ativos</p>
           <p className="mt-2 text-3xl font-bold text-sky-950">{activeDiscipleshipUsers}</p>
         </article>
       </div>
@@ -660,7 +718,8 @@ export default function DiscipuladoAdminPage() {
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Usuários do discipulado</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Contas com papel <strong>DISCIPULADOR</strong> acessam apenas o módulo de discipulado.
+          Contas com papéis <strong>DISCIPULADOR</strong> e <strong>SM_DISCIPULADO</strong> acessam apenas o módulo
+          de discipulado.
         </p>
 
         {userStatusMessage ? (
@@ -674,7 +733,23 @@ export default function DiscipuladoAdminPage() {
           </p>
         ) : null}
 
-        <form onSubmit={handleCreateDiscipulador} className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <form onSubmit={handleCreateDiscipuladoUser} className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Perfil</span>
+            <select
+              value={newUser.role}
+              onChange={(event) =>
+                setNewUser((prev) => ({
+                  ...prev,
+                  role: event.target.value as DiscipuladoUserRole
+                }))
+              }
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            >
+              <option value="DISCIPULADOR">Discipulador (completo)</option>
+              <option value="SM_DISCIPULADO">SM Discipulado (somente cadastro)</option>
+            </select>
+          </label>
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Congregação</span>
             <select
@@ -744,7 +819,7 @@ export default function DiscipuladoAdminPage() {
               type="submit"
               className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
             >
-              Criar usuário discipulado
+              Criar usuário
             </button>
           </div>
         </form>
@@ -755,15 +830,20 @@ export default function DiscipuladoAdminPage() {
             <p className="text-sm text-slate-600">Nenhum usuário de discipulado cadastrado.</p>
           ) : null}
           {filteredDiscipleshipUsers.map((user) => {
-            const discipuladorRole = user.roles.find((role) => role.role === "DISCIPULADOR");
-            const isActive = Boolean(discipuladorRole?.active);
-            const roleCongregationId = discipuladorRole?.congregation_id ?? null;
+            const discipuladoRole = user.roles.find((role) =>
+              DISCIPULADO_USER_ROLES.includes(role.role as DiscipuladoUserRole)
+            );
+            if (!discipuladoRole) return null;
+            const isActive = Boolean(discipuladoRole.active);
+            const roleCongregationId = discipuladoRole.congregation_id ?? null;
             return (
               <article key={user.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{user.email ?? "Sem e-mail"}</p>
                     <p className="text-xs text-slate-500">
+                      {getDiscipuladoRoleLabel(discipuladoRole.role)}
+                      {" • "}
                       Criado em {formatDateBR(user.created_at)}
                       {roleCongregationId ? ` • ${congregationNameById[roleCongregationId] ?? "Congregação"}` : ""}
                       {user.whatsapp ? ` • WhatsApp: ${user.whatsapp}` : ""}
@@ -771,7 +851,14 @@ export default function DiscipuladoAdminPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleToggleDiscipuladorRole(user.id, !isActive, roleCongregationId)}
+                    onClick={() =>
+                      handleToggleDiscipuladoRole(
+                        user.id,
+                        discipuladoRole.role as DiscipuladoUserRole,
+                        !isActive,
+                        roleCongregationId
+                      )
+                    }
                     className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
                       isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
                     }`}

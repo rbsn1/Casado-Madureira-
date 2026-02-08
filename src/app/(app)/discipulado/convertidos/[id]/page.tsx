@@ -199,6 +199,10 @@ export default function DiscipulandoDetalhePage() {
   }
 
   async function handleConcludeCase() {
+    if (totalModules === 0) {
+      setStatusMessage("Não é possível concluir: nenhum módulo foi gerado para este discipulado.");
+      return;
+    }
     if (doneModules !== totalModules) {
       setStatusMessage("Para concluir o discipulado, finalize todos os módulos.");
       return;

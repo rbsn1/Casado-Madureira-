@@ -28,6 +28,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Discipulado",
     items: [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
+      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR","SM_DISCIPULADO"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN"] }
     ]
@@ -52,8 +53,9 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
-  const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
+  const isDiscipuladoAccount = !isGlobalAdmin && (roles.includes("DISCIPULADOR") || hasSmDiscipuladoRole);
 
   const visibleSections = navSections
     .map((section) => ({
@@ -64,6 +66,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
 
   function canAccessItem(item: NavItem) {
     if (isGlobalAdmin) return true;
+    if (hasSmDiscipuladoRole) return item.href === "/discipulado/convertidos/novo";
     if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
@@ -92,9 +95,15 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         Boolean(context.is_admin_master) ||
         nextRoles.includes("ADMIN_MASTER") ||
         nextRoles.includes("SUPER_ADMIN");
-      const nextIsDiscipuladoAccount = !nextIsGlobalAdmin && nextRoles.includes("DISCIPULADOR");
+      const nextHasSmDiscipuladoRole = nextRoles.includes("SM_DISCIPULADO");
+      const nextIsDiscipuladoAccount =
+        !nextIsGlobalAdmin && (nextRoles.includes("DISCIPULADOR") || nextHasSmDiscipuladoRole);
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
+      if (nextHasSmDiscipuladoRole && current !== "/discipulado/convertidos/novo") {
+        router.replace("/discipulado/convertidos/novo");
+        return;
+      }
       if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
         router.replace("/discipulado");
         return;
@@ -199,7 +208,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <div className="rounded-xl bg-brand-700/40 p-4 shadow-sm ring-1 ring-brand-700/60">
               <p className="text-sm font-semibold text-white">Acesso interno</p>
               <p className="text-xs text-brand-100/90">
-                RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR
+                RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO
               </p>
             </div>
           </div>
@@ -213,7 +222,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 {isDiscipuladoAccount ? "Portal Discipulado" : "Casados com a Madureira"}
               </p>
               <h1 className="text-2xl font-semibold text-text">
-                {isCadastradorOnly ? "Cadastro" : isDiscipuladoAccount ? "Painel Discipulado" : "Painel Interno"}
+                {isCadastradorOnly
+                  ? "Cadastro"
+                  : hasSmDiscipuladoRole
+                    ? "Cadastro de Convertidos"
+                    : isDiscipuladoAccount
+                      ? "Painel Discipulado"
+                      : "Painel Interno"}
               </h1>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
