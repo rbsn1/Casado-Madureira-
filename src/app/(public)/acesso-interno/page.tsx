@@ -43,6 +43,14 @@ export default function AcessoInternoPage() {
     setStatus("idle");
     const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
     const roles = (rolesData ?? []) as string[];
+    const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
+    const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
+
+    if (isDiscipuladoAccount) {
+      router.push("/discipulado");
+      return;
+    }
+
     if (roles.length === 1 && roles.includes("CADASTRADOR")) {
       router.push("/cadastro");
       return;
@@ -107,6 +115,13 @@ export default function AcessoInternoPage() {
             <h1 className="mt-2 text-2xl font-semibold text-emerald-900">Entre no painel</h1>
             <p className="mt-2 text-sm text-slate-600">
               Utilize seu e-mail institucional para acompanhar cadastros, relatórios e times.
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Perfis de discipulado devem usar o acesso dedicado em{" "}
+              <Link href="/discipulado/login" className="font-semibold text-sky-700 hover:text-sky-900">
+                /discipulado/login
+              </Link>
+              .
             </p>
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">

@@ -4,6 +4,18 @@ import { requireAdmin } from "@/lib/serverAuth";
 
 export const runtime = "nodejs";
 
+async function hasColumn(table: string, column: string) {
+  const supabaseAdmin = getSupabaseAdmin();
+  if (table !== "usuarios_perfis" || column !== "congregation_id") return false;
+  const { error } = await (supabaseAdmin as any)
+    .from("usuarios_perfis")
+    .select("congregation_id")
+    .limit(1);
+  if (!error) return true;
+  if (error.message?.toLowerCase().includes("congregation_id")) return false;
+  return false;
+}
+
 export async function GET(request: Request) {
   const auth = await requireAdmin(request);
   if ("error" in auth) return auth.error;
@@ -15,9 +27,15 @@ export async function GET(request: Request) {
   }
 
   const ids = data.users.map((user) => user.id);
+  if (!ids.length) {
+    return NextResponse.json({ users: [] });
+  }
+
+  const hasCongregationId = await hasColumn("usuarios_perfis", "congregation_id");
+  const rolesSelect = hasCongregationId ? "user_id, role, active, congregation_id" : "user_id, role, active";
   const { data: roles, error: roleError } = await supabaseAdmin
     .from("usuarios_perfis")
-    .select("user_id, role, active")
+    .select(rolesSelect)
     .in("user_id", ids);
 
   if (roleError) {
@@ -40,12 +58,18 @@ export async function GET(request: Request) {
     return acc;
   }, {});
 
-  const rolesByUser = ((roles ?? []) as { user_id: string; role: string; active: boolean }[]).reduce<
-    Record<string, { role: string; active: boolean }[]>
+  const rolesByUser = (
+    (roles ?? []) as { user_id: string; role: string; active: boolean; congregation_id?: string | null }[]
+  ).reduce<
+    Record<string, { role: string; active: boolean; congregation_id: string | null }[]>
   >(
     (acc, item) => {
       acc[item.user_id] = acc[item.user_id] ?? [];
-      acc[item.user_id].push({ role: item.role, active: item.active });
+      acc[item.user_id].push({
+        role: item.role,
+        active: item.active,
+        congregation_id: item.congregation_id ?? null
+      });
       return acc;
     },
     {}
@@ -71,10 +95,17 @@ export async function POST(request: Request) {
   const email = String(body.email ?? "");
   const password = String(body.password ?? "");
   const role = body.role ? String(body.role) : null;
+  const congregationId = body.congregationId ? String(body.congregationId) : null;
   const whatsapp = body.whatsapp ? String(body.whatsapp) : null;
 
   if (!email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
+  }
+  if (role === "DISCIPULADOR" && !congregationId) {
+    return NextResponse.json(
+      { error: "congregationId is required for DISCIPULADOR users" },
+      { status: 400 }
+    );
   }
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -88,7 +119,17 @@ export async function POST(request: Request) {
   }
 
   if (role) {
-    const payload = { user_id: data.user.id, role, active: true };
+    const hasCongregationId = await hasColumn("usuarios_perfis", "congregation_id");
+    if (congregationId && !hasCongregationId) {
+      return NextResponse.json(
+        { error: "A coluna congregation_id não existe em usuarios_perfis. Aplique a migração multi-congregação." },
+        { status: 400 }
+      );
+    }
+
+    const payload = hasCongregationId
+      ? { user_id: data.user.id, role, active: true, congregation_id: congregationId }
+      : { user_id: data.user.id, role, active: true };
     const { error: roleError } = await (supabaseAdmin as any)
       .from("usuarios_perfis")
       .upsert(payload);

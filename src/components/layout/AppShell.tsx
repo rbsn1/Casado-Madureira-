@@ -53,9 +53,18 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
+  const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
+
+  const visibleSections = navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => canAccessItem(item))
+    }))
+    .filter((section) => section.items.length > 0);
 
   function canAccessItem(item: NavItem) {
     if (isGlobalAdmin) return true;
+    if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
   }
@@ -83,8 +92,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         Boolean(context.is_admin_master) ||
         nextRoles.includes("ADMIN_MASTER") ||
         nextRoles.includes("SUPER_ADMIN");
+      const nextIsDiscipuladoAccount = !nextIsGlobalAdmin && nextRoles.includes("DISCIPULADOR");
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
+      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
+        router.replace("/discipulado");
+        return;
+      }
       if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
         router.replace("/cadastro");
       }
@@ -157,15 +171,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               </div>
             </Link>
             <nav className="flex-1 space-y-6">
-              {navSections.map((section) => (
+              {visibleSections.map((section) => (
                 <div key={section.title}>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items
-                      .filter((item) => canAccessItem(item))
-                      .map((item) => (
+                    {section.items.map((item) => (
                         <li key={item.href}>
                           <Link
                             href={item.href}
@@ -197,9 +209,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
           <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-text-muted">Casados com a Madureira</p>
+              <p className="text-sm text-text-muted">
+                {isDiscipuladoAccount ? "Portal Discipulado" : "Casados com a Madureira"}
+              </p>
               <h1 className="text-2xl font-semibold text-text">
-                {isCadastradorOnly ? "Cadastro" : "Painel Interno"}
+                {isCadastradorOnly ? "Cadastro" : isDiscipuladoAccount ? "Painel Discipulado" : "Painel Interno"}
               </h1>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -259,15 +273,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               </button>
             </div>
             <nav className="space-y-6 px-4 py-5">
-              {navSections.map((section) => (
+              {visibleSections.map((section) => (
                 <div key={section.title}>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items
-                      .filter((item) => canAccessItem(item))
-                      .map((item) => (
+                    {section.items.map((item) => (
                         <li key={item.href}>
                           <Link
                             href={item.href}

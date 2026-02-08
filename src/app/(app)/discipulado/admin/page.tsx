@@ -8,6 +8,9 @@ import { formatDateBR } from "@/lib/date";
 type Congregation = {
   id: string;
   name: string;
+  slug: string;
+  is_active: boolean;
+  created_at: string;
 };
 
 type ModuleItem = {
@@ -26,17 +29,47 @@ type ModuleDraft = {
   sort_order: string;
 };
 
+type UserRole = {
+  role: string;
+  active: boolean;
+  congregation_id: string | null;
+};
+
+type UserItem = {
+  id: string;
+  email: string | null;
+  created_at: string;
+  roles: UserRole[];
+  whatsapp?: string | null;
+};
+
 export default function DiscipuladoAdminPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [congregationStatusMessage, setCongregationStatusMessage] = useState("");
+  const [congregationSuccessMessage, setCongregationSuccessMessage] = useState("");
   const [congregations, setCongregations] = useState<Congregation[]>([]);
   const [congregationFilter, setCongregationFilter] = useState("");
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [moduleDrafts, setModuleDrafts] = useState<Record<string, ModuleDraft>>({});
   const [openCasesCount, setOpenCasesCount] = useState(0);
   const [totalCasesCount, setTotalCasesCount] = useState(0);
+  const [discipleshipUsers, setDiscipleshipUsers] = useState<UserItem[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userStatusMessage, setUserStatusMessage] = useState("");
+  const [userSuccessMessage, setUserSuccessMessage] = useState("");
+  const [newUser, setNewUser] = useState({
+    email: "",
+    password: "",
+    whatsapp: "",
+    congregation_id: ""
+  });
+  const [newCongregation, setNewCongregation] = useState({
+    name: "",
+    slug: ""
+  });
   const [newModule, setNewModule] = useState({
     congregation_id: "",
     title: "",
@@ -55,6 +88,75 @@ export default function DiscipuladoAdminPage() {
     () => modules.filter((item) => item.is_active).length,
     [modules]
   );
+
+  const activeCongregations = useMemo(
+    () => congregations.filter((item) => item.is_active),
+    [congregations]
+  );
+
+  const filteredDiscipleshipUsers = useMemo(
+    () =>
+      discipleshipUsers.filter((user) => {
+        const discipuladorRole = user.roles.find((role) => role.role === "DISCIPULADOR");
+        if (!discipuladorRole) return false;
+        if (!congregationFilter) return true;
+        return discipuladorRole.congregation_id === congregationFilter;
+      }),
+    [congregationFilter, discipleshipUsers]
+  );
+
+  const activeDiscipleshipUsers = useMemo(
+    () =>
+      filteredDiscipleshipUsers.filter((user) =>
+        user.roles.some((role) => role.role === "DISCIPULADOR" && role.active)
+      ).length,
+    [filteredDiscipleshipUsers]
+  );
+
+  const apiFetch = useCallback(async (path: string, options: RequestInit = {}) => {
+    if (!supabaseClient) throw new Error("Supabase não configurado.");
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Sessão expirada.");
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...(options.headers ?? {})
+      }
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error ?? "Erro na requisição.");
+    }
+    return payload;
+  }, []);
+
+  const loadCongregations = useCallback(async () => {
+    const data = await apiFetch("/api/admin/congregations");
+    const congregationItems = ((data.congregations ?? []) as Congregation[]).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    setCongregations(congregationItems);
+    return congregationItems;
+  }, [apiFetch]);
+
+  const loadDiscipleshipUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUserStatusMessage("");
+    try {
+      const data = await apiFetch("/api/admin/users");
+      const users = ((data.users ?? []) as UserItem[])
+        .filter((user) => user.roles.some((role) => role.role === "DISCIPULADOR"))
+        .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
+      setDiscipleshipUsers(users);
+    } catch (error) {
+      setUserStatusMessage((error as Error).message);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [apiFetch]);
 
   const loadPanelData = useCallback(async (targetCongregation: string) => {
     if (!supabaseClient) return;
@@ -138,29 +240,36 @@ export default function DiscipuladoAdminPage() {
         return;
       }
 
-      const { data: congregationsData, error: congregationsError } = await supabaseClient
-        .from("congregations")
-        .select("id, name")
-        .eq("is_active", true)
-        .order("name");
-
-      if (!active) return;
-      if (congregationsError) {
-        setStatusMessage(congregationsError.message);
+      let congregationItems: Congregation[] = [];
+      try {
+        congregationItems = await loadCongregations();
+      } catch (error) {
+        if (!active) return;
+        setStatusMessage((error as Error).message);
         setLoading(false);
         return;
       }
 
-      const congregationItems = (congregationsData ?? []) as Congregation[];
-      setCongregations(congregationItems);
+      if (!active) return;
 
-      const defaultCongregation = scope.congregationId ?? "";
+      const scopeCongregation =
+        scope.congregationId && congregationItems.some((item) => item.id === scope.congregationId)
+          ? scope.congregationId
+          : "";
+      const firstActiveCongregation =
+        congregationItems.find((item) => item.is_active)?.id ?? congregationItems[0]?.id ?? "";
+      const defaultCongregation = scopeCongregation || firstActiveCongregation;
+
       setCongregationFilter(defaultCongregation);
       setNewModule((prev) => ({
         ...prev,
         congregation_id: defaultCongregation || congregationItems[0]?.id || ""
       }));
-      await loadPanelData(defaultCongregation);
+      setNewUser((prev) => ({
+        ...prev,
+        congregation_id: defaultCongregation || congregationItems[0]?.id || ""
+      }));
+      await Promise.all([loadPanelData(defaultCongregation), loadDiscipleshipUsers()]);
       setLoading(false);
     }
 
@@ -168,11 +277,15 @@ export default function DiscipuladoAdminPage() {
     return () => {
       active = false;
     };
-  }, [loadPanelData]);
+  }, [loadCongregations, loadDiscipleshipUsers, loadPanelData]);
 
   useEffect(() => {
     if (!hasAccess) return;
     setNewModule((prev) => ({
+      ...prev,
+      congregation_id: congregationFilter || prev.congregation_id
+    }));
+    setNewUser((prev) => ({
       ...prev,
       congregation_id: congregationFilter || prev.congregation_id
     }));
@@ -184,6 +297,57 @@ export default function DiscipuladoAdminPage() {
       ...prev,
       [id]: { ...prev[id], ...patch }
     }));
+  }
+
+  async function handleCreateCongregation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCongregationStatusMessage("");
+    setCongregationSuccessMessage("");
+
+    const name = newCongregation.name.trim();
+    const slug = newCongregation.slug.trim();
+    if (!name) {
+      setCongregationStatusMessage("Informe o nome da congregação.");
+      return;
+    }
+
+    try {
+      const data = await apiFetch("/api/admin/congregations", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          slug: slug || undefined,
+          isActive: true
+        })
+      });
+      const created = data.congregation as Congregation | undefined;
+      const refreshed = await loadCongregations();
+      const nextCongregationId = created?.id ?? refreshed[0]?.id ?? "";
+      if (nextCongregationId) {
+        setCongregationFilter(nextCongregationId);
+        setNewModule((prev) => ({ ...prev, congregation_id: nextCongregationId }));
+        setNewUser((prev) => ({ ...prev, congregation_id: nextCongregationId }));
+      }
+      setNewCongregation({ name: "", slug: "" });
+      setCongregationSuccessMessage("Congregação criada e pronta para receber usuários.");
+    } catch (error) {
+      setCongregationStatusMessage((error as Error).message);
+    }
+  }
+
+  async function handleToggleCongregation(congregationId: string, nextIsActive: boolean) {
+    setCongregationStatusMessage("");
+    setCongregationSuccessMessage("");
+    try {
+      await apiFetch(`/api/admin/congregations/${congregationId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive: nextIsActive })
+      });
+      await loadCongregations();
+      setCongregationSuccessMessage(nextIsActive ? "Congregação ativada." : "Congregação desativada.");
+    } catch (error) {
+      setCongregationStatusMessage((error as Error).message);
+    }
   }
 
   async function handleCreateModule(event: FormEvent<HTMLFormElement>) {
@@ -277,6 +441,69 @@ export default function DiscipuladoAdminPage() {
     await loadPanelData(congregationFilter);
   }
 
+  async function handleCreateDiscipulador(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setUserStatusMessage("");
+    setUserSuccessMessage("");
+
+    const email = newUser.email.trim();
+    const password = newUser.password.trim();
+    const whatsapp = newUser.whatsapp.trim();
+    const congregationId = newUser.congregation_id || congregationFilter;
+
+    if (!email || !password) {
+      setUserStatusMessage("Informe e-mail e senha para criar o usuário.");
+      return;
+    }
+    if (!congregationId) {
+      setUserStatusMessage("Selecione a congregação para o usuário de discipulado.");
+      return;
+    }
+
+    try {
+      await apiFetch("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          role: "DISCIPULADOR",
+          congregationId,
+          whatsapp: whatsapp || null
+        })
+      });
+      setNewUser({ email: "", password: "", whatsapp: "", congregation_id: congregationId });
+      setUserSuccessMessage("Usuário de discipulado criado com sucesso.");
+      await loadDiscipleshipUsers();
+    } catch (error) {
+      setUserStatusMessage((error as Error).message);
+    }
+  }
+
+  async function handleToggleDiscipuladorRole(userId: string, nextActive: boolean, congregationId: string | null) {
+    setUserStatusMessage("");
+    setUserSuccessMessage("");
+    const targetCongregation = congregationId ?? congregationFilter;
+    if (!targetCongregation) {
+      setUserStatusMessage("Não foi possível identificar a congregação deste usuário.");
+      return;
+    }
+    try {
+      await apiFetch("/api/admin/roles", {
+        method: "POST",
+        body: JSON.stringify({
+          userId,
+          role: "DISCIPULADOR",
+          active: nextActive,
+          congregationId: targetCongregation
+        })
+      });
+      setUserSuccessMessage(nextActive ? "Acesso de discipulador ativado." : "Acesso de discipulador desativado.");
+      await loadDiscipleshipUsers();
+    } catch (error) {
+      setUserStatusMessage((error as Error).message);
+    }
+  }
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
@@ -306,7 +533,7 @@ export default function DiscipuladoAdminPage() {
             <option value="">Todas as congregações</option>
             {congregations.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {item.name}{item.is_active ? "" : " (inativa)"}
               </option>
             ))}
           </select>
@@ -322,7 +549,92 @@ export default function DiscipuladoAdminPage() {
         </p>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <section className="discipulado-panel p-5">
+        <h3 className="text-sm font-semibold text-sky-900">Congregações (tenants)</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Cadastre novas congregações e habilite o ambiente delas para discipulado.
+        </p>
+
+        {congregationStatusMessage ? (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {congregationStatusMessage}
+          </p>
+        ) : null}
+        {congregationSuccessMessage ? (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            {congregationSuccessMessage}
+          </p>
+        ) : null}
+
+        <form onSubmit={handleCreateCongregation} className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Nome da congregação</span>
+            <input
+              value={newCongregation.name}
+              onChange={(event) =>
+                setNewCongregation((prev) => ({
+                  ...prev,
+                  name: event.target.value
+                }))
+              }
+              placeholder="Ex.: Madureira Campo Grande"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Slug (opcional)</span>
+            <input
+              value={newCongregation.slug}
+              onChange={(event) =>
+                setNewCongregation((prev) => ({
+                  ...prev,
+                  slug: event.target.value
+                }))
+              }
+              placeholder="madureira-campo-grande"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <div className="flex items-end xl:col-span-1">
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Criar congregação
+            </button>
+          </div>
+          <div className="flex items-end text-xs text-slate-500">
+            Cada congregação criada já pode receber usuários DISCIPULADOR vinculados.
+          </div>
+        </form>
+
+        <div className="mt-4 space-y-2">
+          {!congregations.length ? <p className="text-sm text-slate-600">Nenhuma congregação cadastrada.</p> : null}
+          {congregations.map((item) => (
+            <article key={item.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                  <p className="text-xs text-slate-500">
+                    slug: {item.slug} • criada em {formatDateBR(item.created_at)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleCongregation(item.id, !item.is_active)}
+                  className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
+                    item.is_active ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  {item.is_active ? "Desativar" : "Ativar"}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <article className="discipulado-panel p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Módulos totais</p>
           <p className="mt-2 text-3xl font-bold text-sky-950">{modules.length}</p>
@@ -339,7 +651,139 @@ export default function DiscipuladoAdminPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Cases totais</p>
           <p className="mt-2 text-3xl font-bold text-sky-950">{totalCasesCount}</p>
         </article>
+        <article className="discipulado-panel p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-fuchsia-700">Discipuladores ativos</p>
+          <p className="mt-2 text-3xl font-bold text-sky-950">{activeDiscipleshipUsers}</p>
+        </article>
       </div>
+
+      <section className="discipulado-panel p-5">
+        <h3 className="text-sm font-semibold text-sky-900">Usuários do discipulado</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          Contas com papel <strong>DISCIPULADOR</strong> acessam apenas o módulo de discipulado.
+        </p>
+
+        {userStatusMessage ? (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {userStatusMessage}
+          </p>
+        ) : null}
+        {userSuccessMessage ? (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            {userSuccessMessage}
+          </p>
+        ) : null}
+
+        <form onSubmit={handleCreateDiscipulador} className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Congregação</span>
+            <select
+              value={newUser.congregation_id}
+              onChange={(event) =>
+                setNewUser((prev) => ({
+                  ...prev,
+                  congregation_id: event.target.value
+                }))
+              }
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            >
+              <option value="">Selecione</option>
+              {activeCongregations.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">E-mail</span>
+            <input
+              type="email"
+              value={newUser.email}
+              onChange={(event) =>
+                setNewUser((prev) => ({
+                  ...prev,
+                  email: event.target.value
+                }))
+              }
+              placeholder="discipulado@congregacao.org"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Senha inicial</span>
+            <input
+              type="password"
+              value={newUser.password}
+              onChange={(event) =>
+                setNewUser((prev) => ({
+                  ...prev,
+                  password: event.target.value
+                }))
+              }
+              placeholder="mínimo 6 caracteres"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">WhatsApp (opcional)</span>
+            <input
+              value={newUser.whatsapp}
+              onChange={(event) =>
+                setNewUser((prev) => ({
+                  ...prev,
+                  whatsapp: event.target.value
+                }))
+              }
+              placeholder="(11) 99999-9999"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Criar usuário discipulado
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-4 space-y-2">
+          {usersLoading ? <p className="text-sm text-slate-600">Carregando usuários...</p> : null}
+          {!usersLoading && !filteredDiscipleshipUsers.length ? (
+            <p className="text-sm text-slate-600">Nenhum usuário de discipulado cadastrado.</p>
+          ) : null}
+          {filteredDiscipleshipUsers.map((user) => {
+            const discipuladorRole = user.roles.find((role) => role.role === "DISCIPULADOR");
+            const isActive = Boolean(discipuladorRole?.active);
+            const roleCongregationId = discipuladorRole?.congregation_id ?? null;
+            return (
+              <article key={user.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{user.email ?? "Sem e-mail"}</p>
+                    <p className="text-xs text-slate-500">
+                      Criado em {formatDateBR(user.created_at)}
+                      {roleCongregationId ? ` • ${congregationNameById[roleCongregationId] ?? "Congregação"}` : ""}
+                      {user.whatsapp ? ` • WhatsApp: ${user.whatsapp}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleDiscipuladorRole(user.id, !isActive, roleCongregationId)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
+                      isActive ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                  >
+                    {isActive ? "Desativar acesso" : "Ativar acesso"}
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Criar módulo</h3>
@@ -357,7 +801,7 @@ export default function DiscipuladoAdminPage() {
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
             >
               <option value="">Selecione</option>
-              {congregations.map((item) => (
+              {activeCongregations.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
                 </option>
