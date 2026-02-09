@@ -17,6 +17,15 @@ export default function ContaPage() {
       const { data } = await supabaseClient.rpc("get_my_roles");
       if (!active) return;
       const roles = (data ?? []) as string[];
+      const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
+      const isDiscipuladoAccount =
+        !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
+      const isSmDiscipuladoOnly =
+        !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
+      if (isDiscipuladoAccount) {
+        router.replace(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+        return;
+      }
       if (roles.length === 1 && roles.includes("CADASTRADOR")) {
         router.replace("/cadastro");
       }

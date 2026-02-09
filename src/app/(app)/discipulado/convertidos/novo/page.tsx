@@ -26,7 +26,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     async function checkScope() {
       const scope = await getAuthScope();
       if (!active) return;
-      setHasAccess(scope.roles.includes("CADASTRADOR"));
+      setHasAccess(scope.roles.includes("CADASTRADOR") || scope.roles.includes("SM_DISCIPULADO"));
     }
 
     checkScope();
@@ -112,7 +112,7 @@ export default function NovoConvertidoDiscipuladoPage() {
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito ao perfil CADASTRADOR.
+        Acesso restrito aos perfis CADASTRADOR e SM_DISCIPULADO.
       </div>
     );
   }

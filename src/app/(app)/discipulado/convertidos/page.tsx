@@ -18,6 +18,102 @@ type CaseSummaryItem = {
   total_modules: number;
 };
 
+type FallbackCaseRow = {
+  id: string;
+  member_id: string;
+  status: CaseSummaryItem["status"];
+  notes: string | null;
+  updated_at: string;
+};
+
+function isMissingListCasesFunctionError(message: string, code?: string) {
+  return code === "PGRST202" || message.includes("list_discipleship_cases_summary");
+}
+
+async function loadCaseSummariesWithFallback() {
+  if (!supabaseClient) return { data: [] as CaseSummaryItem[], errorMessage: "" };
+
+  const { data: rpcData, error: rpcError } = await supabaseClient.rpc("list_discipleship_cases_summary", {
+    status_filter: null,
+    target_congregation_id: null,
+    rows_limit: 500
+  });
+
+  if (!rpcError) {
+    return { data: (rpcData ?? []) as CaseSummaryItem[], errorMessage: "" };
+  }
+
+  if (!isMissingListCasesFunctionError(rpcError.message, rpcError.code)) {
+    return { data: [] as CaseSummaryItem[], errorMessage: rpcError.message };
+  }
+
+  const { data: casesData, error: casesError } = await supabaseClient
+    .from("discipleship_cases")
+    .select("id, member_id, status, notes, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  if (casesError) {
+    return { data: [] as CaseSummaryItem[], errorMessage: casesError.message };
+  }
+
+  const baseCases = (casesData ?? []) as FallbackCaseRow[];
+  if (!baseCases.length) {
+    return { data: [] as CaseSummaryItem[], errorMessage: "" };
+  }
+
+  const memberIds = [...new Set(baseCases.map((item) => item.member_id))];
+  const caseIds = baseCases.map((item) => item.id);
+
+  const [{ data: membersData, error: membersError }, { data: progressData, error: progressError }] = await Promise.all([
+    supabaseClient.from("pessoas").select("id, nome_completo, telefone_whatsapp").in("id", memberIds),
+    supabaseClient.from("discipleship_progress").select("case_id, status").in("case_id", caseIds)
+  ]);
+
+  if (membersError) {
+    return { data: [] as CaseSummaryItem[], errorMessage: membersError.message };
+  }
+  if (progressError) {
+    return { data: [] as CaseSummaryItem[], errorMessage: progressError.message };
+  }
+
+  const memberMap = new Map(
+    (membersData ?? []).map((member) => [
+      member.id,
+      {
+        name: member.nome_completo,
+        phone: member.telefone_whatsapp as string | null
+      }
+    ])
+  );
+
+  const progressMap = new Map<string, { done: number; total: number }>();
+  for (const item of progressData ?? []) {
+    const current = progressMap.get(item.case_id) ?? { done: 0, total: 0 };
+    current.total += 1;
+    if (item.status === "concluido") current.done += 1;
+    progressMap.set(item.case_id, current);
+  }
+
+  const summaries: CaseSummaryItem[] = baseCases.map((item) => {
+    const member = memberMap.get(item.member_id);
+    const progress = progressMap.get(item.id) ?? { done: 0, total: 0 };
+    return {
+      case_id: item.id,
+      member_id: item.member_id,
+      member_name: member?.name ?? "Membro",
+      member_phone: member?.phone ?? null,
+      status: item.status,
+      notes: item.notes,
+      updated_at: item.updated_at,
+      done_modules: progress.done,
+      total_modules: progress.total
+    };
+  });
+
+  return { data: summaries, errorMessage: "" };
+}
+
 function statusLabel(status: CaseSummaryItem["status"]) {
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
@@ -51,17 +147,10 @@ export default function DiscipuladoConvertidosPage() {
       setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
       if (!allowed) return;
 
-      const { data: caseSummaries, error: listError } = await supabaseClient.rpc(
-        "list_discipleship_cases_summary",
-        {
-          status_filter: null,
-          target_congregation_id: null,
-          rows_limit: 500
-        }
-      );
+      const { data: caseSummaries, errorMessage } = await loadCaseSummariesWithFallback();
       if (!active) return;
-      if (listError) {
-        setStatusMessage(listError.message);
+      if (errorMessage) {
+        setStatusMessage(errorMessage);
         return;
       }
       setCases((caseSummaries ?? []) as CaseSummaryItem[]);

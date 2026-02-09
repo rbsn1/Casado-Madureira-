@@ -54,9 +54,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
   const hasCadastradorRole = roles.includes("CADASTRADOR");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
-  const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
+  const isDiscipuladoAccount =
+    !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
   const isDiscipuladoConsole = current.startsWith("/discipulado");
 
   const visibleSections = navSections
@@ -68,7 +70,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
 
   function canAccessItem(item: NavItem) {
     if (item.href === "/discipulado/convertidos/novo") {
-      return hasCadastradorRole;
+      return hasCadastradorRole || hasSmDiscipuladoRole;
     }
     if (item.href.startsWith("/manual")) {
       return true;
@@ -102,11 +104,15 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         Boolean(context.is_admin_master) ||
         nextRoles.includes("ADMIN_MASTER") ||
         nextRoles.includes("SUPER_ADMIN");
-      const nextIsDiscipuladoAccount = !nextIsGlobalAdmin && nextRoles.includes("DISCIPULADOR");
+      const nextIsDiscipuladoAccount =
+        !nextIsGlobalAdmin &&
+        (nextRoles.includes("DISCIPULADOR") || nextRoles.includes("SM_DISCIPULADO"));
+      const nextIsSmDiscipuladoOnly =
+        !nextIsGlobalAdmin && nextRoles.length === 1 && nextRoles.includes("SM_DISCIPULADO");
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
-      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado") && !current.startsWith("/manual")) {
-        router.replace("/discipulado");
+      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
+        router.replace(nextIsSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
         return;
       }
       if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
@@ -261,7 +267,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <h1 className={clsx("text-2xl font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                 {isCadastradorOnly
                   ? "Cadastro"
-                  : hasCadastradorRole
+                  : hasCadastradorRole || hasSmDiscipuladoRole
                     ? "Cadastro de Convertidos"
                     : isDiscipuladoConsole || isDiscipuladoAccount
                       ? "Painel Discipulado"

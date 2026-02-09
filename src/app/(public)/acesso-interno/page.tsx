@@ -44,10 +44,13 @@ export default function AcessoInternoPage() {
     const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
     const roles = (rolesData ?? []) as string[];
     const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-    const isDiscipuladoAccount = !isGlobalAdmin && roles.includes("DISCIPULADOR");
+    const isDiscipuladoAccount =
+      !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
+    const isSmDiscipuladoOnly =
+      !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
 
     if (isDiscipuladoAccount) {
-      router.push("/discipulado");
+      router.push(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
       return;
     }
 

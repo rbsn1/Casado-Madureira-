@@ -50,11 +50,18 @@ export default function DiscipuladoLoginPage() {
     const context = (contextData ?? {}) as { is_admin_master?: boolean };
     const isGlobalAdmin =
       Boolean(context.is_admin_master) || roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
+    const isDiscipuladoAccount =
+      !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
+    const isSmDiscipuladoOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
     if (!isGlobalAdmin && roles.includes("CADASTRADOR")) {
       router.push("/discipulado/convertidos/novo");
       return;
     }
-    if (isGlobalAdmin || roles.includes("DISCIPULADOR")) {
+    if (isDiscipuladoAccount) {
+      router.push(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+      return;
+    }
+    if (isGlobalAdmin) {
       router.push("/discipulado");
       return;
     }
