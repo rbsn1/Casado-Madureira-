@@ -42,6 +42,47 @@ type ModuleItem = {
   sort_order: number;
 };
 
+type IntegrationStatus = "PENDENTE" | "EM_ANDAMENTO" | "CONTATO" | "INTEGRADO" | "BATIZADO";
+
+type IntegrationItem = {
+  id: string;
+  pessoa_id: string;
+  status: IntegrationStatus;
+  notas: string | null;
+  responsavel_id: string | null;
+  ultima_interacao: string | null;
+  updated_at: string | null;
+};
+
+type BaptismItem = {
+  id: string;
+  data: string;
+  local: string | null;
+  observacoes: string | null;
+  created_at: string;
+};
+
+type DepartmentItem = {
+  id: string;
+  nome: string;
+};
+
+type DepartmentLinkItem = {
+  id: string;
+  departamento_id: string;
+  funcao: string | null;
+  status: string | null;
+  desde: string | null;
+};
+
+const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
+  "PENDENTE",
+  "EM_ANDAMENTO",
+  "CONTATO",
+  "INTEGRADO",
+  "BATIZADO"
+];
+
 function caseBadgeValue(status: CaseItem["status"]) {
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
@@ -67,6 +108,17 @@ export default function DiscipulandoDetalhePage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [integrationData, setIntegrationData] = useState<IntegrationItem | null>(null);
+  const [integrationStatusDraft, setIntegrationStatusDraft] = useState<IntegrationStatus>("PENDENTE");
+  const [integrationNotesDraft, setIntegrationNotesDraft] = useState("");
+  const [departments, setDepartments] = useState<DepartmentItem[]>([]);
+  const [departmentLinks, setDepartmentLinks] = useState<DepartmentLinkItem[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
+  const [departmentRoleDraft, setDepartmentRoleDraft] = useState("");
+  const [baptismDate, setBaptismDate] = useState("");
+  const [baptismLocation, setBaptismLocation] = useState("");
+  const [baptismNotes, setBaptismNotes] = useState("");
+  const [baptisms, setBaptisms] = useState<BaptismItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadCase = useCallback(async () => {
@@ -115,12 +167,38 @@ export default function DiscipulandoDetalhePage() {
 
     const progressRows = (progressResult ?? []) as ProgressItem[];
     const moduleIds = [...new Set(progressRows.map((item) => item.module_id))];
-    const { data: moduleResult, error: moduleError } = moduleIds.length
-      ? await supabaseClient
-          .from("discipleship_modules")
-          .select("id, title, description, sort_order")
-          .in("id", moduleIds)
-      : { data: [], error: null as any };
+    const [
+      { data: moduleResult, error: moduleError },
+      { data: integrationResult, error: integrationError },
+      { data: departmentsResult, error: departmentsError },
+      { data: linksResult, error: linksError },
+      { data: baptismResult, error: baptismError }
+    ] = await Promise.all([
+      moduleIds.length
+        ? supabaseClient
+            .from("discipleship_modules")
+            .select("id, title, description, sort_order")
+            .in("id", moduleIds)
+        : Promise.resolve({ data: [], error: null as any }),
+      supabaseClient
+        .from("integracao_novos_convertidos")
+        .select("id, pessoa_id, status, notas, responsavel_id, ultima_interacao, updated_at")
+        .eq("pessoa_id", currentCase.member_id)
+        .order("updated_at", { ascending: false })
+        .limit(1),
+      supabaseClient.from("departamentos").select("id, nome").eq("ativo", true).order("nome"),
+      supabaseClient
+        .from("pessoa_departamento")
+        .select("id, departamento_id, funcao, status, desde")
+        .eq("pessoa_id", currentCase.member_id)
+        .neq("status", "INATIVO"),
+      supabaseClient
+        .from("batismos")
+        .select("id, data, local, observacoes, created_at")
+        .eq("pessoa_id", currentCase.member_id)
+        .order("data", { ascending: false })
+        .limit(5)
+    ]);
 
     if (moduleError) {
       setStatusMessage(moduleError.message);
@@ -142,6 +220,74 @@ export default function DiscipulandoDetalhePage() {
     setProgress(progressRows);
     setModules(moduleMap);
     setNoteDrafts(drafts);
+    const integrationRows: unknown[] = Array.isArray(integrationResult) ? integrationResult : [];
+    const integrationCandidate = integrationRows[0] as Partial<IntegrationItem> | undefined;
+    const integrationRow: IntegrationItem | null =
+      integrationCandidate?.id && integrationCandidate?.pessoa_id && integrationCandidate?.status
+        ? {
+            id: String(integrationCandidate.id),
+            pessoa_id: String(integrationCandidate.pessoa_id),
+            status: integrationCandidate.status as IntegrationStatus,
+            notas: integrationCandidate.notas ?? null,
+            responsavel_id: integrationCandidate.responsavel_id ?? null,
+            ultima_interacao: integrationCandidate.ultima_interacao ?? null,
+            updated_at: integrationCandidate.updated_at ?? null
+          }
+        : null;
+    setIntegrationData(integrationRow);
+    setIntegrationStatusDraft(integrationRow?.status ?? "PENDENTE");
+    setIntegrationNotesDraft(integrationRow?.notas ?? "");
+
+    const departmentRows = (Array.isArray(departmentsResult) ? departmentsResult : [])
+      .map((row) => {
+        const item = row as Partial<DepartmentItem>;
+        if (!item.id || !item.nome) return null;
+        return { id: String(item.id), nome: String(item.nome) } as DepartmentItem;
+      })
+      .filter((item): item is DepartmentItem => item !== null);
+    setDepartments(departmentRows);
+    setSelectedDepartmentId((prev) =>
+      prev && departmentRows.some((item) => item.id === prev) ? prev : (departmentRows[0]?.id ?? "")
+    );
+    const departmentLinkRows = (Array.isArray(linksResult) ? linksResult : [])
+      .map((row) => {
+        const item = row as Partial<DepartmentLinkItem>;
+        if (!item.id || !item.departamento_id) return null;
+        return {
+          id: String(item.id),
+          departamento_id: String(item.departamento_id),
+          funcao: item.funcao ?? null,
+          status: item.status ?? null,
+          desde: item.desde ?? null
+        } as DepartmentLinkItem;
+      })
+      .filter((item): item is DepartmentLinkItem => item !== null);
+    setDepartmentLinks(departmentLinkRows);
+    const baptismRows = (Array.isArray(baptismResult) ? baptismResult : [])
+      .map((row) => {
+        const item = row as Partial<BaptismItem>;
+        if (!item.id || !item.data || !item.created_at) return null;
+        return {
+          id: String(item.id),
+          data: String(item.data),
+          local: item.local ?? null,
+          observacoes: item.observacoes ?? null,
+          created_at: String(item.created_at)
+        } as BaptismItem;
+      })
+      .filter((item): item is BaptismItem => item !== null);
+    setBaptisms(baptismRows);
+    setBaptismDate((prev) => prev || new Date().toISOString().slice(0, 10));
+
+    const secondaryError =
+      integrationError?.message ??
+      departmentsError?.message ??
+      linksError?.message ??
+      baptismError?.message ??
+      "";
+    if (secondaryError) {
+      setStatusMessage(secondaryError);
+    }
     setLoading(false);
   }, [caseId]);
 
@@ -179,6 +325,15 @@ export default function DiscipulandoDetalhePage() {
       return (moduleA?.title ?? "").localeCompare(moduleB?.title ?? "");
     });
   }, [modules, progress]);
+
+  const departmentNameById = useMemo(
+    () =>
+      departments.reduce<Record<string, string>>((acc, item) => {
+        acc[item.id] = item.nome;
+        return acc;
+      }, {}),
+    [departments]
+  );
 
   const doneModules = useMemo(
     () => sortedProgress.filter((item) => item.status === "concluido").length,
@@ -272,6 +427,119 @@ export default function DiscipulandoDetalhePage() {
       setStatusMessage(error.message);
       return;
     }
+    await loadCase();
+  }
+
+  async function handleSaveIntegration() {
+    if (!supabaseClient || !member) return;
+    setStatusMessage("");
+
+    if (integrationData) {
+      const { error } = await supabaseClient
+        .from("integracao_novos_convertidos")
+        .update({
+          status: integrationStatusDraft,
+          notas: integrationNotesDraft.trim() || null,
+          ultima_interacao: new Date().toISOString(),
+          responsavel_id: currentUserId
+        })
+        .eq("id", integrationData.id);
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+    } else {
+      const { error } = await supabaseClient.from("integracao_novos_convertidos").insert({
+        pessoa_id: member.id,
+        status: integrationStatusDraft,
+        notas: integrationNotesDraft.trim() || null,
+        ultima_interacao: new Date().toISOString(),
+        responsavel_id: currentUserId
+      });
+      if (error) {
+        setStatusMessage(error.message);
+        return;
+      }
+    }
+
+    await loadCase();
+  }
+
+  async function handleRegisterBaptism() {
+    if (!supabaseClient || !member) return;
+    if (!baptismDate) {
+      setStatusMessage("Informe a data do batismo.");
+      return;
+    }
+
+    setStatusMessage("");
+    const { error: baptismError } = await supabaseClient.from("batismos").insert({
+      pessoa_id: member.id,
+      data: baptismDate,
+      local: baptismLocation.trim() || null,
+      observacoes: baptismNotes.trim() || null,
+      responsavel_id: currentUserId
+    });
+
+    if (baptismError) {
+      setStatusMessage(baptismError.message);
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    if (integrationData) {
+      await supabaseClient
+        .from("integracao_novos_convertidos")
+        .update({
+          status: "BATIZADO",
+          ultima_interacao: nowIso,
+          responsavel_id: currentUserId
+        })
+        .eq("id", integrationData.id);
+    } else {
+      await supabaseClient.from("integracao_novos_convertidos").insert({
+        pessoa_id: member.id,
+        status: "BATIZADO",
+        ultima_interacao: nowIso,
+        responsavel_id: currentUserId
+      });
+    }
+
+    setIntegrationStatusDraft("BATIZADO");
+    setBaptismLocation("");
+    setBaptismNotes("");
+    await loadCase();
+  }
+
+  async function handleLinkDepartment() {
+    if (!supabaseClient || !member) return;
+    if (!selectedDepartmentId) {
+      setStatusMessage("Selecione um departamento.");
+      return;
+    }
+
+    const alreadyLinked = departmentLinks.some(
+      (item) => item.departamento_id === selectedDepartmentId && item.status !== "INATIVO"
+    );
+    if (alreadyLinked) {
+      setStatusMessage("Este membro já está vinculado a este departamento.");
+      return;
+    }
+
+    setStatusMessage("");
+    const { error } = await supabaseClient.from("pessoa_departamento").insert({
+      pessoa_id: member.id,
+      departamento_id: selectedDepartmentId,
+      funcao: departmentRoleDraft.trim() || null,
+      status: "ATIVO"
+    });
+
+    if (error) {
+      setStatusMessage(error.message);
+      return;
+    }
+
+    setDepartmentRoleDraft("");
     await loadCase();
   }
 
@@ -431,6 +699,144 @@ export default function DiscipulandoDetalhePage() {
               </article>
             );
           })}
+        </div>
+      </section>
+
+      <section className="discipulado-panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-sky-900">Integração e pós-discipulado</h3>
+            <p className="text-xs text-slate-600">
+              Fluxo operacional do discipulado: integração, batismo e vínculo em departamento.
+            </p>
+          </div>
+          <StatusBadge value={integrationStatusDraft} />
+        </div>
+
+        <div className="mt-4 grid gap-5 lg:grid-cols-3">
+          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+            <h4 className="text-sm font-semibold text-slate-900">Status de integração</h4>
+            <p className="mt-1 text-xs text-slate-600">
+              Última atualização: {integrationData?.updated_at ? formatDateBR(integrationData.updated_at) : "-"}
+            </p>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Status</span>
+              <select
+                value={integrationStatusDraft}
+                onChange={(event) => setIntegrationStatusDraft(event.target.value as IntegrationStatus)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                {INTEGRATION_STATUS_OPTIONS.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Notas de integração</span>
+              <textarea
+                rows={3}
+                value={integrationNotesDraft}
+                onChange={(event) => setIntegrationNotesDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleSaveIntegration}
+              className="mt-3 rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800"
+            >
+              Salvar integração
+            </button>
+          </article>
+
+          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+            <h4 className="text-sm font-semibold text-slate-900">Registrar batismo</h4>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Data</span>
+              <input
+                type="date"
+                value={baptismDate}
+                onChange={(event) => setBaptismDate(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Local</span>
+              <input
+                value={baptismLocation}
+                onChange={(event) => setBaptismLocation(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Observações</span>
+              <textarea
+                rows={2}
+                value={baptismNotes}
+                onChange={(event) => setBaptismNotes(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleRegisterBaptism}
+              className="mt-3 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+            >
+              Registrar batismo
+            </button>
+            {baptisms.length ? (
+              <p className="mt-3 text-xs text-slate-600">
+                Último batismo: {formatDateBR(baptisms[0].data)} {baptisms[0].local ? `• ${baptisms[0].local}` : ""}
+              </p>
+            ) : null}
+          </article>
+
+          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+            <h4 className="text-sm font-semibold text-slate-900">Vincular ao departamento</h4>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Departamento</span>
+              <select
+                value={selectedDepartmentId}
+                onChange={(event) => setSelectedDepartmentId(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                <option value="">Selecione</option>
+                {departments.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Função (opcional)</span>
+              <input
+                value={departmentRoleDraft}
+                onChange={(event) => setDepartmentRoleDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleLinkDepartment}
+              className="mt-3 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-800"
+            >
+              Vincular departamento
+            </button>
+            {departmentLinks.length ? (
+              <ul className="mt-3 space-y-1 text-xs text-slate-600">
+                {departmentLinks.slice(0, 5).map((item) => (
+                  <li key={item.id}>
+                    {departmentNameById[item.departamento_id] ?? "Departamento"} • {item.funcao ?? "Sem função"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-slate-500">Sem vínculo em departamento.</p>
+            )}
+          </article>
         </div>
       </section>
     </div>

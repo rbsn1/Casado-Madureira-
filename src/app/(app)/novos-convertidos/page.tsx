@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -21,7 +22,6 @@ function NovosConvertidosContent() {
   const [items, setItems] = useState<IntegracaoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
   async function loadIntegracoes() {
@@ -32,8 +32,7 @@ function NovosConvertidosContent() {
     setLoading(true);
     setStatusMessage("");
 
-    const [{ data: userData }, pessoasResult, integracaoResult] = await Promise.all([
-      supabaseClient.auth.getUser(),
+    const [pessoasResult, integracaoResult] = await Promise.all([
       supabaseClient.from("pessoas").select("id, nome_completo, telefone_whatsapp"),
       supabaseClient
         .from("integracao_novos_convertidos")
@@ -47,7 +46,6 @@ function NovosConvertidosContent() {
       return;
     }
 
-    setCurrentUserId(userData?.user?.id ?? null);
     const pessoaMap = new Map(
       (pessoasResult.data ?? []).map((pessoa) => [pessoa.id, pessoa])
     );
@@ -86,51 +84,6 @@ function NovosConvertidosContent() {
     });
   }, [items, searchParams]);
 
-  async function handleAssumir(item: IntegracaoItem) {
-    if (!supabaseClient || !currentUserId) return;
-    setStatusMessage("");
-    const { error } = await supabaseClient
-      .from("integracao_novos_convertidos")
-      .update({ responsavel_id: currentUserId, ultima_interacao: new Date().toISOString() })
-      .eq("id", item.id);
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    await loadIntegracoes();
-  }
-
-  async function handleMoverStatus(item: IntegracaoItem, status: string) {
-    if (!supabaseClient) return;
-    setStatusMessage("");
-    const { error } = await supabaseClient
-      .from("integracao_novos_convertidos")
-      .update({ status, ultima_interacao: new Date().toISOString() })
-      .eq("id", item.id);
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    await loadIntegracoes();
-  }
-
-  async function handleRegistrarContato(item: IntegracaoItem) {
-    if (!supabaseClient) return;
-    const descricao = window.prompt("Descreva o contato realizado:");
-    if (!descricao) return;
-    setStatusMessage("");
-    const { error } = await supabaseClient.from("eventos_timeline").insert({
-      pessoa_id: item.pessoa_id,
-      tipo: "CONTATO",
-      descricao
-    });
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    await handleMoverStatus(item, "CONTATO");
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -151,6 +104,14 @@ function NovosConvertidosContent() {
           {statusMessage}
         </p>
       ) : null}
+
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        Operação transferida para o módulo Discipulado. Nesta tela do CCM a fila é somente leitura.
+        {" "}
+        <Link href="/discipulado/convertidos" className="font-semibold underline">
+          Abrir Discipulado
+        </Link>
+      </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {loading ? (
@@ -175,29 +136,9 @@ function NovosConvertidosContent() {
               <p>Responsável: {item.responsavel_id ?? "A definir"}</p>
               <p>Telefone: {item.telefone_whatsapp ?? "-"}</p>
               <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => handleRegistrarContato(item)}
-                  className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                  Registrar contato
-                </button>
-                <button
-                  onClick={() => handleAssumir(item)}
-                  className="rounded-lg border border-emerald-300 px-3 py-1 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
-                >
-                  Assumir
-                </button>
-                <select
-                  className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
-                  value={item.status}
-                  onChange={(event) => handleMoverStatus(item, event.target.value)}
-                >
-                  {["PENDENTE", "EM_ANDAMENTO", "CONTATO", "INTEGRADO", "BATIZADO"].map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
+                <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                  Somente leitura no CCM
+                </span>
               </div>
             </div>
           </div>

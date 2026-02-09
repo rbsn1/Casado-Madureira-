@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -104,7 +105,7 @@ export default function PessoaPerfilPage() {
     ]);
 
     if (pessoaResult.error) {
-      setStatusMessage("Não foi possível carregar a pessoa.");
+      setStatusMessage("Nao foi possivel carregar a pessoa.");
       setLoading(false);
       return;
     }
@@ -127,100 +128,6 @@ export default function PessoaPerfilPage() {
     [departamentos]
   );
 
-  async function handleStatusUpdate(status: string) {
-    if (!supabaseClient || !integracao) return;
-    const { error } = await supabaseClient
-      .from("integracao_novos_convertidos")
-      .update({ status, ultima_interacao: new Date().toISOString() })
-      .eq("id", integracao.id);
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    await loadPessoa();
-  }
-
-  async function handleRegistrarBatismo(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!supabaseClient || !pessoaId) return;
-    const formData = new FormData(event.currentTarget);
-    const data = String(formData.get("data") ?? "");
-    const local = String(formData.get("local") ?? "");
-    const observacoes = String(formData.get("observacoes") ?? "");
-    if (!data) {
-      setStatusMessage("Informe a data do batismo.");
-      return;
-    }
-    const { error } = await supabaseClient.from("batismos").insert({
-      pessoa_id: pessoaId,
-      data,
-      local,
-      observacoes
-    });
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    event.currentTarget.reset();
-    await loadPessoa();
-  }
-
-  async function handleVincularDepto(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!supabaseClient || !pessoaId) return;
-    const formData = new FormData(event.currentTarget);
-    const departamento_id = String(formData.get("departamento_id") ?? "");
-    const funcao = String(formData.get("funcao") ?? "");
-    if (!departamento_id) {
-      setStatusMessage("Selecione um departamento.");
-      return;
-    }
-
-    const { data: eligible, error: eligibleError } = await supabaseClient.rpc(
-      "is_member_department_eligible",
-      { target_member_id: pessoaId }
-    );
-    if (eligibleError) {
-      setStatusMessage(eligibleError.message);
-      return;
-    }
-    if (!eligible) {
-      setStatusMessage("Para participar de departamentos, conclua o discipulado.");
-      return;
-    }
-
-    const { error } = await supabaseClient.from("pessoa_departamento").insert({
-      pessoa_id: pessoaId,
-      departamento_id,
-      funcao,
-      status: "ATIVO"
-    });
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    event.currentTarget.reset();
-    await loadPessoa();
-  }
-
-  async function handleRegistrarEvento() {
-    if (!supabaseClient || !pessoaId) return;
-    const tipo = window.prompt("Tipo do evento (CADASTRO, ENCAMINHADO, CONTATO, INTEGRADO, BATISMO, DEPTO_VINCULO)");
-    if (!tipo) return;
-    const descricao = window.prompt("Descrição do evento");
-    if (!descricao) return;
-    const { error } = await supabaseClient.from("eventos_timeline").insert({
-      pessoa_id: pessoaId,
-      tipo,
-      descricao
-    });
-    if (error) {
-      setStatusMessage(error.message);
-      return;
-    }
-    await loadPessoa();
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -230,27 +137,23 @@ export default function PessoaPerfilPage() {
             {pessoa?.nome_completo ?? "Pessoa"}
           </h2>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handleStatusUpdate("INTEGRADO")}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/discipulado/convertidos"
+            className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100"
           >
-            Marcar Integrado
-          </button>
-          <button
-            onClick={() => document.getElementById("batismo-form")?.scrollIntoView({ behavior: "smooth" })}
-            className="rounded-lg bg-accent-600 px-3 py-2 text-sm font-semibold text-white hover:bg-accent-700"
-          >
-            Registrar Batismo
-          </button>
-          <button
-            onClick={() => document.getElementById("depto-form")?.scrollIntoView({ behavior: "smooth" })}
-            className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
-          >
-            Vincular Depto
-          </button>
+            Operar no Discipulado
+          </Link>
+          <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            CCM: somente visualizacao
+          </span>
         </div>
       </div>
+
+      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        Fluxo atualizado: marcar integrado, registrar batismo e vincular departamento agora sao operacoes do
+        modulo Discipulado.
+      </p>
 
       {statusMessage ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
@@ -285,11 +188,11 @@ export default function PessoaPerfilPage() {
               </dd>
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Status integração</dt>
+              <dt className="text-xs text-slate-500">Status integracao</dt>
               <dd className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                 <StatusBadge value={integracao?.status ?? "PENDENTE"} />
                 <span className="text-xs text-slate-600">
-                  Responsável: {integracao?.responsavel_id ?? "A definir"}
+                  Responsavel: {integracao?.responsavel_id ?? "A definir"}
                 </span>
               </dd>
             </div>
@@ -297,13 +200,10 @@ export default function PessoaPerfilPage() {
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div className="card-muted card p-3">
-              <p className="text-xs font-semibold text-emerald-900">Integração</p>
-              <p className="text-sm text-slate-700">Responsável: {integracao?.responsavel_id ?? "A definir"}</p>
+              <p className="text-xs font-semibold text-emerald-900">Integracao</p>
+              <p className="text-sm text-slate-700">Responsavel: {integracao?.responsavel_id ?? "A definir"}</p>
               <p className="text-xs text-slate-500">
-                Última interação:{" "}
-                {integracao?.ultima_interacao
-                  ? formatDateBR(integracao.ultima_interacao)
-                  : "-"}
+                Ultima interacao: {integracao?.ultima_interacao ? formatDateBR(integracao.ultima_interacao) : "-"}
               </p>
             </div>
             <div className="card-muted card p-3">
@@ -318,83 +218,20 @@ export default function PessoaPerfilPage() {
               <p className="text-sm text-slate-700">
                 {pessoaDepto.length
                   ? pessoaDepto
-                      .map((item) => `${deptoMap.get(item.departamento_id) ?? "Depto"} (${item.funcao ?? "voluntário"})`)
+                      .map((item) => `${deptoMap.get(item.departamento_id) ?? "Depto"} (${item.funcao ?? "voluntario"})`)
                       .join(" • ")
-                  : "Nenhum vínculo"}
+                  : "Nenhum vinculo"}
               </p>
             </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2" id="batismo-form">
-            <form className="card p-4" onSubmit={handleRegistrarBatismo}>
-              <h3 className="text-sm font-semibold text-emerald-900">Registrar batismo</h3>
-              <label className="mt-3 block space-y-1 text-sm">
-                <span className="text-slate-700">Data</span>
-                <input
-                  name="data"
-                  type="date"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                />
-              </label>
-              <label className="mt-3 block space-y-1 text-sm">
-                <span className="text-slate-700">Local</span>
-                <input
-                  name="local"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                />
-              </label>
-              <label className="mt-3 block space-y-1 text-sm">
-                <span className="text-slate-700">Observações</span>
-                <textarea
-                  name="observacoes"
-                  rows={2}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                />
-              </label>
-              <button className="mt-3 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-700">
-                Salvar batismo
-              </button>
-            </form>
-
-            <form className="card p-4" onSubmit={handleVincularDepto} id="depto-form">
-              <h3 className="text-sm font-semibold text-emerald-900">Vincular departamento</h3>
-              <label className="mt-3 block space-y-1 text-sm">
-                <span className="text-slate-700">Departamento</span>
-                <select
-                  name="departamento_id"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                >
-                  <option value="">Selecione</option>
-                  {departamentos.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="mt-3 block space-y-1 text-sm">
-                <span className="text-slate-700">Função</span>
-                <input
-                  name="funcao"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                />
-              </label>
-              <button className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                Vincular
-              </button>
-            </form>
           </div>
         </div>
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-emerald-900">Timeline</h3>
-            <button
-              onClick={handleRegistrarEvento}
-              className="rounded-lg bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900"
-            >
-              Registrar evento
-            </button>
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+              Somente leitura
+            </span>
           </div>
           <ol className="mt-3 space-y-3">
             {loading ? <li className="text-sm text-slate-500">Carregando timeline...</li> : null}
