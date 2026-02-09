@@ -155,20 +155,23 @@ function CadastrosContent() {
       return;
     }
 
-    const pessoasRows = (pessoasResult.data ?? []) as PessoaQueryRow[];
-    const pessoasData: PessoaItem[] = pessoasRows.map((item) => ({
-      id: item.id,
-      nome_completo: item.nome_completo,
-      telefone_whatsapp: item.telefone_whatsapp,
-      origem: item.origem,
-      igreja_origem: item.igreja_origem,
-      bairro: item.bairro,
-      data: item.data,
-      observacoes: item.observacoes,
-      created_at: item.created_at,
-      cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status ?? null,
-      cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at ?? null
-    }));
+    const pessoasRows: unknown[] = Array.isArray(pessoasResult.data) ? pessoasResult.data : [];
+    const pessoasData: PessoaItem[] = pessoasRows.map((row) => {
+      const item = row as Partial<PessoaQueryRow>;
+      return {
+        id: String(item.id ?? ""),
+        nome_completo: String(item.nome_completo ?? ""),
+        telefone_whatsapp: item.telefone_whatsapp ?? null,
+        origem: item.origem ?? null,
+        igreja_origem: item.igreja_origem ?? null,
+        bairro: item.bairro ?? null,
+        data: item.data ?? null,
+        observacoes: item.observacoes ?? null,
+        created_at: String(item.created_at ?? ""),
+        cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status ?? null,
+        cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at ?? null
+      };
+    });
 
     const pessoaIds = (pessoasData ?? []).map((item) => item.id);
     let integracaoRows: IntegracaoItem[] = [];
