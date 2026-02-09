@@ -62,7 +62,8 @@ function CadastrosContent() {
   const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
 
   const loadPessoas = useCallback(async () => {
-    if (!supabaseClient) {
+    const client = supabaseClient;
+    if (!client) {
       setStatusMessage("Supabase não configurado.");
       return;
     }
@@ -74,7 +75,7 @@ function CadastrosContent() {
     const origemTipo = searchParams.get("origem_tipo");
     const mesFiltro = searchParams.get("mes");
 
-    let pessoasQuery = supabaseClient
+    let pessoasQuery = client
       .from("pessoas")
       .select(
         "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at, cadastro_completo_status, cadastro_completo_at"
@@ -128,7 +129,7 @@ function CadastrosContent() {
 
     if (pessoaIds.length) {
       const loadIntegracao = (columns: string) =>
-        supabaseClient
+        client
           .from("integracao_novos_convertidos")
           .select(columns)
           .in("pessoa_id", pessoaIds);

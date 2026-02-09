@@ -11,6 +11,67 @@ type MemberResult = {
   has_active_case: boolean;
 };
 
+function isMissingSearchMembersFunctionError(message: string, code?: string) {
+  return code === "PGRST202" || message.includes("search_ccm_members_for_discipleship");
+}
+
+async function searchMembersWithFallback(term: string) {
+  if (!supabaseClient) {
+    return { data: [] as MemberResult[], errorMessage: "Supabase não configurado." };
+  }
+
+  const { data: rpcData, error: rpcError } = await supabaseClient.rpc("search_ccm_members_for_discipleship", {
+    search_text: term,
+    rows_limit: 8,
+    target_congregation_id: null
+  });
+
+  if (!rpcError) {
+    return { data: (rpcData ?? []) as MemberResult[], errorMessage: "" };
+  }
+
+  if (!isMissingSearchMembersFunctionError(rpcError.message, rpcError.code)) {
+    return { data: [] as MemberResult[], errorMessage: rpcError.message };
+  }
+
+  const { data: peopleData, error: peopleError } = await supabaseClient
+    .from("pessoas")
+    .select("id, nome_completo, telefone_whatsapp")
+    .or(`nome_completo.ilike.%${term}%,telefone_whatsapp.ilike.%${term}%`)
+    .order("nome_completo", { ascending: true })
+    .limit(8);
+
+  if (peopleError) {
+    return { data: [] as MemberResult[], errorMessage: peopleError.message };
+  }
+
+  const members = (peopleData ?? []) as { id: string; nome_completo: string; telefone_whatsapp: string | null }[];
+  if (!members.length) {
+    return { data: [] as MemberResult[], errorMessage: "" };
+  }
+
+  const memberIds = members.map((item) => item.id);
+  const { data: casesData, error: casesError } = await supabaseClient
+    .from("discipleship_cases")
+    .select("member_id, status")
+    .in("member_id", memberIds)
+    .in("status", ["em_discipulado", "pausado"]);
+
+  if (casesError) {
+    return { data: [] as MemberResult[], errorMessage: casesError.message };
+  }
+
+  const activeCaseMembers = new Set((casesData ?? []).map((item) => item.member_id));
+  const fallbackData: MemberResult[] = members.map((member) => ({
+    id: member.id,
+    nome_completo: member.nome_completo,
+    telefone_whatsapp: member.telefone_whatsapp,
+    has_active_case: activeCaseMembers.has(member.id)
+  }));
+
+  return { data: fallbackData, errorMessage: "" };
+}
+
 export default function NovoConvertidoDiscipuladoPage() {
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<MemberResult[]>([]);
@@ -54,16 +115,12 @@ export default function NovoConvertidoDiscipuladoPage() {
         return;
       }
 
-      const { data, error } = await supabaseClient.rpc("search_ccm_members_for_discipleship", {
-        search_text: term,
-        rows_limit: 8,
-        target_congregation_id: null
-      });
+      const { data, errorMessage } = await searchMembersWithFallback(term);
 
       if (!active) return;
-      if (error) {
+      if (errorMessage) {
         setMembers([]);
-        setMessage(`Falha ao buscar membros do CCM: ${error.message}`);
+        setMessage(`Falha ao buscar membros do CCM: ${errorMessage}`);
         setStatus("error");
         return;
       }
