@@ -3,17 +3,16 @@
   min-height: 100vh;
   width: 100vw;
   overflow-x: hidden;
-  background-image: url("/discipulado-login-bg-2160x2700.webp");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: radial-gradient(1100px 520px at 12% -12%, rgba(14, 116, 144, 0.2), transparent 62%),
+    radial-gradient(1000px 520px at 92% -10%, rgba(30, 64, 175, 0.16), transparent 58%),
+    linear-gradient(180deg, #f4f8ff 0%, #edf4ff 42%, #eaf2ff 100%);
 }
 
 .page::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(5, 10, 18, 0.16) 0%, rgba(5, 10, 18, 0.3) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(248, 252, 255, 0.16) 100%);
   pointer-events: none;
   z-index: 0;
 }
@@ -24,17 +23,10 @@
   inset: 0;
   background: radial-gradient(
     circle at center,
-    rgba(5, 10, 18, 0.34) 0%,
-    rgba(5, 10, 18, 0.12) 45%,
-    rgba(5, 10, 18, 0) 72%
+    rgba(255, 255, 255, 0.56) 0%,
+    rgba(241, 248, 255, 0.2) 48%,
+    rgba(241, 248, 255, 0) 74%
   );
   pointer-events: none;
   z-index: 0;
-}
-
-@media (min-width: 1024px) {
-  .page {
-    background-image: url("/discipulado-login-bg-3072x1728.webp");
-    background-attachment: fixed;
-  }
 }
