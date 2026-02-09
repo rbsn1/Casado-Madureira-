@@ -23,6 +23,8 @@ type PessoaItem = {
   status?: string;
   responsavel_id?: string | null;
   updated_at?: string | null;
+  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
+  cadastro_completo_at?: string | null;
 };
 
 function CadastrosContent() {
@@ -46,6 +48,8 @@ function CadastrosContent() {
   const [showIgreja, setShowIgreja] = useState(true);
   const [showBairro, setShowBairro] = useState(true);
   const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
+  const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
+  const [canGenerateCompletionLink, setCanGenerateCompletionLink] = useState(false);
   const searchParams = useSearchParams();
 
   const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
@@ -65,7 +69,9 @@ function CadastrosContent() {
 
     let pessoasQuery = supabaseClient
       .from("pessoas")
-      .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at")
+      .select(
+        "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at, cadastro_completo_status, cadastro_completo_at"
+      )
       .order("created_at", { ascending: false });
 
     if (igrejaFiltro) {
@@ -156,6 +162,25 @@ function CadastrosContent() {
     loadPessoas();
   }, [loadPessoas]);
 
+  useEffect(() => {
+    let active = true;
+    async function loadPermissions() {
+      if (!supabaseClient) return;
+      const { data } = await supabaseClient.rpc("get_my_roles");
+      if (!active) return;
+      const roles = (data ?? []) as string[];
+      setCanGenerateCompletionLink(
+        roles.some((role) =>
+          ["ADMIN_MASTER", "PASTOR", "SECRETARIA", "NOVOS_CONVERTIDOS", "CADASTRADOR"].includes(role)
+        )
+      );
+    }
+    loadPermissions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return pessoas.filter((pessoa) => {
@@ -195,7 +220,23 @@ function CadastrosContent() {
     }).length;
   }, [pessoas]);
 
-  const columnCount = 7 + (showIgreja ? 1 : 0) + (showBairro ? 1 : 0);
+  const columnCount = 8 + (showIgreja ? 1 : 0) + (showBairro ? 1 : 0);
+
+  function getCadastroCompletoLabel(status?: PessoaItem["cadastro_completo_status"]) {
+    if (status === "concluido") return "Concluído";
+    if (status === "link_enviado") return "Link enviado";
+    return "Pendente";
+  }
+
+  function getCadastroCompletoClass(status?: PessoaItem["cadastro_completo_status"]) {
+    if (status === "concluido") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700";
+    }
+    if (status === "link_enviado") {
+      return "border-amber-200 bg-amber-50 text-amber-700";
+    }
+    return "border-slate-200 bg-slate-100 text-slate-600";
+  }
 
   function resetForm() {
     setNome("");
@@ -395,6 +436,37 @@ function CadastrosContent() {
     }
     await loadPessoas();
     setDeletingId(null);
+  }
+
+  async function handleGenerateCompletionLink(pessoa: PessoaItem) {
+    if (!supabaseClient) return;
+    setStatusMessage("");
+    setGeneratingLinkForId(pessoa.id);
+
+    const { data, error } = await supabaseClient.rpc("generate_member_completion_token", {
+      target_member_id: pessoa.id,
+      ttl_hours: 168
+    });
+
+    if (error || !data) {
+      setStatusMessage(error?.message ?? "Não foi possível gerar o link de cadastro completo.");
+      setGeneratingLinkForId(null);
+      return;
+    }
+
+    const token = String(data);
+    const link = `${window.location.origin}/cadastro/completar?token=${encodeURIComponent(token)}`;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setStatusMessage(`Link copiado para ${pessoa.nome_completo}. Envie para o membro concluir o cadastro.`);
+    } catch {
+      window.prompt("Copie o link de cadastro completo:", link);
+      setStatusMessage(`Link gerado para ${pessoa.nome_completo}.`);
+    }
+
+    await loadPessoas();
+    setGeneratingLinkForId(null);
   }
 
   return (
@@ -624,7 +696,18 @@ function CadastrosContent() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["Nome", "Telefone", "Origem", showIgreja ? "Igreja" : null, showBairro ? "Bairro" : null, "Status", "Responsável", "Atualizado em", "Ações"]
+                {[
+                  "Nome",
+                  "Telefone",
+                  "Origem",
+                  showIgreja ? "Igreja" : null,
+                  showBairro ? "Bairro" : null,
+                  "Status",
+                  "Cadastro completo",
+                  "Responsável",
+                  "Atualizado em",
+                  "Ações"
+                ]
                   .filter(Boolean)
                   .map((col) => (
                     <th key={col as string} className="px-4 py-2 text-left font-semibold text-slate-600">
@@ -666,6 +749,15 @@ function CadastrosContent() {
                   <td className="px-4 py-3">
                     <StatusBadge value={pessoa.status ?? "PENDENTE"} />
                   </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold ${getCadastroCompletoClass(
+                        pessoa.cadastro_completo_status
+                      )}`}
+                    >
+                      {getCadastroCompletoLabel(pessoa.cadastro_completo_status)}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-slate-700">{pessoa.responsavel_id ?? "A definir"}</td>
                   <td className="px-4 py-3 text-slate-700">
                     {pessoa.updated_at ? formatDateBR(pessoa.updated_at) : "-"}
@@ -685,6 +777,23 @@ function CadastrosContent() {
                       >
                         Editar
                       </button>
+                      {canGenerateCompletionLink ? (
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateCompletionLink(pessoa)}
+                          disabled={
+                            generatingLinkForId === pessoa.id ||
+                            pessoa.cadastro_completo_status === "concluido"
+                          }
+                          className="rounded-lg border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          {pessoa.cadastro_completo_status === "concluido"
+                            ? "Cadastro concluído"
+                            : generatingLinkForId === pessoa.id
+                              ? "Gerando..."
+                              : "Link completo"}
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => handleDelete(pessoa)}

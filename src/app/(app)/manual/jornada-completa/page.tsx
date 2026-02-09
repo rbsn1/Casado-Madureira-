@@ -6,7 +6,9 @@ const mindMap = `PORTAL CCM + DISCIPULADO (JORNADA COMPLETA)
 │  ├─ Login interno (/acesso-interno)
 │  └─ Login discipulado (/discipulado/login)
 ├─ 2) Captação (CCM é fonte única)
-│  ├─ Cadastro de pessoa no CCM
+│  ├─ Pré-cadastro de pessoa no CCM
+│  ├─ Geração de link de cadastro completo
+│  ├─ Membro conclui dados (CPF, RG, foto, etc.)
 │  ├─ Regras de deduplicação/idempotência
 │  └─ Encaminhamento para acompanhamento inicial
 ├─ 3) Operação Interna CCM
@@ -67,8 +69,9 @@ export default function ManualJornadaCompletaPage() {
           <article className="rounded-xl border border-border bg-surface p-4">
             <p className="font-semibold text-text">2. Cadastro oficial de membros (CCM)</p>
             <p className="mt-1">
-              Todo membro nasce no CCM. O formulário público/interno alimenta a base única de pessoas, com controle de
-              deduplicação e rastreabilidade.
+              Todo membro nasce no CCM via pré-cadastro. Em seguida, a equipe envia um link seguro para o membro
+              concluir o cadastro completo com dados adicionais (como CPF, RG e foto), mantendo a mesma base única de
+              pessoas, com deduplicação e rastreabilidade.
             </p>
           </article>
           <article className="rounded-xl border border-border bg-surface p-4">
