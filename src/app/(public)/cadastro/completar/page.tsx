@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -23,7 +23,7 @@ type CompletionPayload = {
 const cardClass =
   "w-full max-w-2xl rounded-2xl border border-black/5 bg-white/90 p-6 shadow-lg shadow-black/5 backdrop-blur";
 
-export default function CadastroCompletoPage() {
+function CadastroCompletoPageContent() {
   const searchParams = useSearchParams();
   const token = useMemo(() => searchParams.get("token")?.trim() ?? "", [searchParams]);
 
@@ -285,5 +285,27 @@ export default function CadastroCompletoPage() {
         </section>
       </div>
     </PortalBackground>
+  );
+}
+
+function CadastroCompletoFallback() {
+  return (
+    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
+      <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
+        <section className="flex flex-1 items-center justify-center py-10">
+          <div className={cardClass}>
+            <p className="text-sm text-slate-600">Carregando cadastro completo...</p>
+          </div>
+        </section>
+      </div>
+    </PortalBackground>
+  );
+}
+
+export default function CadastroCompletoPage() {
+  return (
+    <Suspense fallback={<CadastroCompletoFallback />}>
+      <CadastroCompletoPageContent />
+    </Suspense>
   );
 }
