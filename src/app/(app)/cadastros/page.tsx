@@ -27,6 +27,13 @@ type PessoaItem = {
   cadastro_completo_at?: string | null;
 };
 
+type IntegracaoItem = {
+  pessoa_id: string;
+  status?: string | null;
+  responsavel_id?: string | null;
+  updated_at?: string | null;
+};
+
 function CadastrosContent() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
@@ -107,25 +114,49 @@ function CadastrosContent() {
       pessoasQuery = pessoasQuery.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
     }
 
-    const [pessoasResult, integracaoResult] = await Promise.all([
-      pessoasQuery,
-      supabaseClient.from("integracao_novos_convertidos").select("pessoa_id, status, updated_at, responsavel_id")
-    ]);
+    const { data: pessoasData, error: pessoasError } = await pessoasQuery;
 
-    if (pessoasResult.error || integracaoResult.error) {
+    if (pessoasError) {
       setStatusMessage("Não foi possível carregar os cadastros.");
       setLoading(false);
       return;
     }
 
+    const pessoaIds = (pessoasData ?? []).map((item) => item.id);
+    let integracaoRows: IntegracaoItem[] = [];
+    let integracaoWarning = "";
+
+    if (pessoaIds.length) {
+      const loadIntegracao = (columns: string) =>
+        supabaseClient
+          .from("integracao_novos_convertidos")
+          .select(columns)
+          .in("pessoa_id", pessoaIds);
+
+      let integracaoResult = await loadIntegracao("pessoa_id, status, updated_at, responsavel_id");
+      if (integracaoResult.error) {
+        // Fallback para ambientes legados que não possuem todas as colunas da integração.
+        integracaoResult = await loadIntegracao("pessoa_id, status, updated_at");
+      }
+      if (integracaoResult.error) {
+        integracaoResult = await loadIntegracao("pessoa_id, status");
+      }
+
+      if (integracaoResult.error) {
+        integracaoWarning = "Cadastros carregados sem dados de integração.";
+      } else {
+        integracaoRows = (integracaoResult.data ?? []) as IntegracaoItem[];
+      }
+    }
+
     const integracaoMap = new Map(
-      (integracaoResult.data ?? []).map((item) => [
+      integracaoRows.map((item) => [
         item.pessoa_id,
         { status: item.status, responsavel_id: item.responsavel_id, updated_at: item.updated_at }
       ])
     );
 
-    let merged = (pessoasResult.data ?? []).map((pessoa) => {
+    let merged = (pessoasData ?? []).map((pessoa) => {
       const integracao = integracaoMap.get(pessoa.id);
       return {
         ...pessoa,
@@ -155,6 +186,9 @@ function CadastrosContent() {
     }
 
     setPessoas(merged);
+    if (integracaoWarning) {
+      setStatusMessage(integracaoWarning);
+    }
     setLoading(false);
   }, [searchParams]);
 
