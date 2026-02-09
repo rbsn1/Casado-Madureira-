@@ -8,6 +8,7 @@ type MemberResult = {
   id: string;
   nome_completo: string;
   telefone_whatsapp: string | null;
+  has_active_case: boolean;
 };
 
 export default function NovoConvertidoDiscipuladoPage() {
@@ -38,34 +39,43 @@ export default function NovoConvertidoDiscipuladoPage() {
     let active = true;
 
     async function searchMembers() {
-      if (!supabaseClient || !query.trim() || selectedMember) {
-        if (active && !query.trim()) setMembers([]);
+      const term = query.trim();
+      if (!supabaseClient || selectedMember) {
+        return;
+      }
+      if (term.length < 2) {
+        if (active) {
+          setMembers([]);
+          if (status === "error") {
+            setStatus("idle");
+            setMessage("");
+          }
+        }
         return;
       }
 
-      const { data, error } = await supabaseClient
-        .from("pessoas")
-        .select("id, nome_completo, telefone_whatsapp")
-        .ilike("nome_completo", `%${query.trim()}%`)
-        .order("nome_completo")
-        .limit(8);
+      const { data, error } = await supabaseClient.rpc("search_ccm_members_for_discipleship", {
+        search_text: term,
+        rows_limit: 8,
+        target_congregation_id: null
+      });
 
       if (!active) return;
       if (error) {
         setMembers([]);
-        setMessage(error.message);
+        setMessage(`Falha ao buscar membros do CCM: ${error.message}`);
         setStatus("error");
         return;
       }
       setMembers((data ?? []) as MemberResult[]);
     }
 
-    const timeout = window.setTimeout(searchMembers, 180);
+    const timeout = window.setTimeout(searchMembers, 260);
     return () => {
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [query, selectedMember]);
+  }, [query, selectedMember, status]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,6 +139,9 @@ export default function NovoConvertidoDiscipuladoPage() {
             placeholder="Digite nome ou sobrenome"
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
           />
+          {!selectedMember && query.trim().length > 0 && query.trim().length < 2 ? (
+            <p className="text-xs text-slate-500">Digite ao menos 2 caracteres para buscar.</p>
+          ) : null}
         </label>
 
         {!selectedMember && members.length ? (
@@ -137,15 +150,21 @@ export default function NovoConvertidoDiscipuladoPage() {
               <button
                 key={member.id}
                 type="button"
+                disabled={member.has_active_case}
                 onClick={() => {
                   setSelectedMember(member);
                   setQuery(member.nome_completo);
                   setMembers([]);
                 }}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-sky-50"
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 <span className="font-medium text-slate-900">{member.nome_completo}</span>
-                <span className="text-xs text-slate-600">{member.telefone_whatsapp ?? "-"}</span>
+                <span className="text-right text-xs text-slate-600">
+                  {member.telefone_whatsapp ?? "-"}
+                  {member.has_active_case ? (
+                    <span className="mt-1 block font-semibold text-amber-700">Case ativo</span>
+                  ) : null}
+                </span>
               </button>
             ))}
           </div>

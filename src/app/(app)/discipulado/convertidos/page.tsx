@@ -6,35 +6,26 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 
-type CaseItem = {
-  id: string;
+type CaseSummaryItem = {
+  case_id: string;
   member_id: string;
+  member_name: string;
+  member_phone: string | null;
   status: "em_discipulado" | "concluido" | "pausado";
   notes: string | null;
   updated_at: string;
+  done_modules: number;
+  total_modules: number;
 };
 
-type MemberItem = {
-  id: string;
-  nome_completo: string;
-  telefone_whatsapp: string | null;
-};
-
-type ProgressItem = {
-  case_id: string;
-  status: "nao_iniciado" | "em_andamento" | "concluido";
-};
-
-function statusLabel(status: CaseItem["status"]) {
+function statusLabel(status: CaseSummaryItem["status"]) {
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
   return "PAUSADO";
 }
 
 export default function DiscipuladoConvertidosPage() {
-  const [cases, setCases] = useState<CaseItem[]>([]);
-  const [members, setMembers] = useState<Record<string, MemberItem>>({});
-  const [progressStats, setProgressStats] = useState<Record<string, { done: number; total: number }>>({});
+  const [cases, setCases] = useState<CaseSummaryItem[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
@@ -60,62 +51,20 @@ export default function DiscipuladoConvertidosPage() {
       setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
       if (!allowed) return;
 
-      const { data: casesData, error: casesError } = await supabaseClient
-        .from("discipleship_cases")
-        .select("id, member_id, status, notes, updated_at")
-        .order("updated_at", { ascending: false });
-      if (!active) return;
-      if (casesError) {
-        setStatusMessage(casesError.message);
-        return;
-      }
-
-      const caseItems = (casesData ?? []) as CaseItem[];
-      setCases(caseItems);
-
-      const memberIds = [...new Set(caseItems.map((item) => item.member_id))];
-      if (!memberIds.length) {
-        setMembers({});
-        setProgressStats({});
-        return;
-      }
-
-      const [{ data: membersData, error: membersError }, { data: progressData, error: progressError }] =
-        await Promise.all([
-          supabaseClient
-            .from("pessoas")
-            .select("id, nome_completo, telefone_whatsapp")
-            .in("id", memberIds),
-          supabaseClient
-            .from("discipleship_progress")
-            .select("case_id, status")
-            .in("case_id", caseItems.map((item) => item.id))
-        ]);
-
-      if (!active) return;
-      if (membersError || progressError) {
-        setStatusMessage(membersError?.message ?? progressError?.message ?? "Falha ao carregar dados.");
-        return;
-      }
-
-      const memberMap = ((membersData ?? []) as MemberItem[]).reduce<Record<string, MemberItem>>((acc, item) => {
-        acc[item.id] = item;
-        return acc;
-      }, {});
-      setMembers(memberMap);
-
-      const nextStats = ((progressData ?? []) as ProgressItem[]).reduce<Record<string, { done: number; total: number }>>(
-        (acc, item) => {
-          acc[item.case_id] = acc[item.case_id] ?? { done: 0, total: 0 };
-          acc[item.case_id].total += 1;
-          if (item.status === "concluido") {
-            acc[item.case_id].done += 1;
-          }
-          return acc;
-        },
-        {}
+      const { data: caseSummaries, error: listError } = await supabaseClient.rpc(
+        "list_discipleship_cases_summary",
+        {
+          status_filter: null,
+          target_congregation_id: null,
+          rows_limit: 500
+        }
       );
-      setProgressStats(nextStats);
+      if (!active) return;
+      if (listError) {
+        setStatusMessage(listError.message);
+        return;
+      }
+      setCases((caseSummaries ?? []) as CaseSummaryItem[]);
     }
 
     load();
@@ -176,19 +125,17 @@ export default function DiscipuladoConvertidosPage() {
           <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso encontrado.</div>
         ) : null}
         {filteredCases.map((item) => {
-          const member = members[item.member_id];
-          const progress = progressStats[item.id] ?? { done: 0, total: 0 };
-          const percent = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
+          const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
           return (
             <Link
-              key={item.id}
-              href={`/discipulado/convertidos/${item.id}`}
+              key={item.case_id}
+              href={`/discipulado/convertidos/${item.case_id}`}
               className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{member?.nome_completo ?? "Membro"}</p>
-                  <p className="text-xs text-slate-600">{member?.telefone_whatsapp ?? "-"}</p>
+                  <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
+                  <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
                 </div>
                 <StatusBadge value={statusLabel(item.status)} />
               </div>
@@ -197,7 +144,7 @@ export default function DiscipuladoConvertidosPage() {
                   <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />
                 </div>
                 <p className="mt-1 text-xs text-slate-600">
-                  Progresso: {progress.done}/{progress.total} ({percent}%)
+                  Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
                 </p>
               </div>
               <p className="text-xs text-slate-600">{item.notes || "Sem observações gerais."}</p>
