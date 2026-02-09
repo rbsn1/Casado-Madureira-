@@ -9,9 +9,9 @@ import styles from "./loginBackground.module.css";
 type LoginStatus = "idle" | "loading" | "error";
 
 const cardClass =
-  "w-full max-w-md rounded-2xl border border-sky-100/80 bg-white/92 p-6 shadow-xl shadow-sky-200/35 backdrop-blur";
+  "w-full max-w-md rounded-[1.35rem] border border-amber-50/80 bg-white/82 p-6 shadow-[0_32px_86px_-38px_rgba(53,41,20,0.42)] backdrop-blur-xl";
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100";
+  "w-full rounded-xl border border-slate-200/90 bg-white/92 px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100";
 
 export default function DiscipuladoLoginPage() {
   const router = useRouter();
@@ -164,7 +164,7 @@ export default function DiscipuladoLoginPage() {
               </div>
               <button
                 type="submit"
-                className="w-full rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-xl bg-gradient-to-r from-sky-700 via-teal-700 to-amber-700 px-4 py-2 text-sm font-semibold text-white shadow transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-70"
                 disabled={status === "loading"}
               >
                 {status === "loading" ? "Entrando..." : "Entrar no discipulado"}
