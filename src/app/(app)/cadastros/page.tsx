@@ -196,7 +196,21 @@ function CadastrosContent() {
       if (integracaoResult.error) {
         integracaoWarning = "Cadastros carregados sem dados de integração.";
       } else {
-        integracaoRows = (integracaoResult.data ?? []) as IntegracaoItem[];
+        const rawIntegracaoRows: unknown[] = Array.isArray(integracaoResult.data)
+          ? integracaoResult.data
+          : [];
+        integracaoRows = rawIntegracaoRows
+          .map((row) => {
+            const item = row as Partial<IntegracaoItem>;
+            if (!item.pessoa_id) return null;
+            return {
+              pessoa_id: String(item.pessoa_id),
+              status: item.status ?? null,
+              responsavel_id: item.responsavel_id ?? null,
+              updated_at: item.updated_at ?? null
+            } as IntegracaoItem;
+          })
+          .filter((item): item is IntegracaoItem => item !== null);
       }
     }
 

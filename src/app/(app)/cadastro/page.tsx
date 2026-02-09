@@ -149,145 +149,162 @@ export default function CadastroInternoPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
       <div>
         <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-        <h2 className="text-xl font-semibold text-emerald-900">Cadastro rápido</h2>
+        <h2 className="text-xl font-semibold text-emerald-900 md:text-2xl">Cadastro rápido</h2>
         <p className="mt-1 text-sm text-slate-600">
           Cadastre as pessoas na sala com agilidade e sem perder nenhum registro.
         </p>
       </div>
 
-      <form className="card space-y-4 p-5" onSubmit={handleSubmit}>
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Nome completo</span>
-          <input
-            required
-            name="nome_completo"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            placeholder="Digite o nome"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Telefone (WhatsApp)</span>
-          <input
-            required
-            name="telefone_whatsapp"
-            value={telefone}
-            onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            placeholder="(92) 99227-0057"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Origem</span>
-          <select
-            name="origem"
-            value={origem}
-            onChange={(event) => setOrigem(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-          >
-            {origemOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Igreja de origem / Congregação</span>
-          <input
-            value={igrejaBusca}
-            onChange={(event) => setIgrejaBusca(event.target.value)}
-            placeholder="Buscar igreja..."
-            className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-          />
-          <select
-            name="igreja_origem"
-            value={igreja}
-            onChange={(event) => setIgreja(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-          >
-            {igrejaFilteredOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        {igreja === "Outra" ? (
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Qual igreja?</span>
-            <input
-              name="igreja_origem_outra"
-              value={igrejaOutra}
-              onChange={(event) => setIgrejaOutra(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="Digite o nome da igreja"
-            />
-          </label>
-        ) : null}
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Bairro</span>
-          <select
-            name="bairro"
-            value={bairro}
-            onChange={(event) => setBairro(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-          >
-            {bairroOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-        {bairro === "Outro" ? (
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Qual bairro?</span>
-            <input
-              name="bairro_outro"
-              value={bairroOutro}
-              onChange={(event) => setBairroOutro(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="Digite o bairro"
-            />
-          </label>
-        ) : null}
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Data</span>
-          <input
-            name="data"
-            type="date"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Observações</span>
-          <textarea
-            name="observacoes"
-            rows={3}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            placeholder="Compartilhe mais detalhes"
-          />
-        </label>
-        <button
-          className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={status === "loading"}
-        >
-          {status === "loading" ? "Enviando..." : "Enviar cadastro"}
-        </button>
-        {status === "success" ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
-            {message}
-          </p>
-        ) : null}
-        {status === "error" ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-            {message || "Não foi possível enviar o cadastro. Tente novamente."}
-          </p>
-        ) : null}
-      </form>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <form className="card p-5 md:p-6" onSubmit={handleSubmit}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Nome completo</span>
+              <input
+                required
+                name="nome_completo"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                placeholder="Digite o nome"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Telefone (WhatsApp)</span>
+              <input
+                required
+                name="telefone_whatsapp"
+                value={telefone}
+                onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                placeholder="(92) 99227-0057"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Origem</span>
+              <select
+                name="origem"
+                value={origem}
+                onChange={(event) => setOrigem(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              >
+                {origemOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Bairro</span>
+              <select
+                name="bairro"
+                value={bairro}
+                onChange={(event) => setBairro(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              >
+                {bairroOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {bairro === "Outro" ? (
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-700">Qual bairro?</span>
+                <input
+                  name="bairro_outro"
+                  value={bairroOutro}
+                  onChange={(event) => setBairroOutro(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  placeholder="Digite o bairro"
+                />
+              </label>
+            ) : null}
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Data</span>
+              <input
+                name="data"
+                type="date"
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-700">Igreja de origem / Congregação</span>
+              <input
+                value={igrejaBusca}
+                onChange={(event) => setIgrejaBusca(event.target.value)}
+                placeholder="Buscar igreja..."
+                className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              />
+              <select
+                name="igreja_origem"
+                value={igreja}
+                onChange={(event) => setIgreja(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              >
+                {igrejaFilteredOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {igreja === "Outra" ? (
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span className="text-slate-700">Qual igreja?</span>
+                <input
+                  name="igreja_origem_outra"
+                  value={igrejaOutra}
+                  onChange={(event) => setIgrejaOutra(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  placeholder="Digite o nome da igreja"
+                />
+              </label>
+            ) : null}
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-700">Observações</span>
+              <textarea
+                name="observacoes"
+                rows={3}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                placeholder="Compartilhe mais detalhes"
+              />
+            </label>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={status === "loading"}
+            >
+              {status === "loading" ? "Enviando..." : "Enviar cadastro"}
+            </button>
+            <p className="text-xs text-slate-500">Resposta rápida para operação em culto e plantão.</p>
+          </div>
+          {status === "success" ? (
+            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+              {message}
+            </p>
+          ) : null}
+          {status === "error" ? (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {message || "Não foi possível enviar o cadastro. Tente novamente."}
+            </p>
+          ) : null}
+        </form>
+
+        <aside className="card hidden p-5 xl:block">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Checklist rápido</h3>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>Nome completo e telefone com DDD.</li>
+            <li>Origem do contato e congregação de referência.</li>
+            <li>Bairro e observações úteis para acompanhamento.</li>
+            <li>Evite duplicidade: confirme telefone antes de enviar.</li>
+          </ul>
+        </aside>
+      </div>
     </div>
   );
 }
