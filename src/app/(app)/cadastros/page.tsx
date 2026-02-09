@@ -34,6 +34,14 @@ type IntegracaoItem = {
   updated_at?: string | null;
 };
 
+function isMissingProfileCompletionColumnsError(message: string, code?: string) {
+  return (
+    code === "PGRST204" ||
+    message.includes("cadastro_completo_status") ||
+    message.includes("cadastro_completo_at")
+  );
+}
+
 function CadastrosContent() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
@@ -75,53 +83,69 @@ function CadastrosContent() {
     const origemTipo = searchParams.get("origem_tipo");
     const mesFiltro = searchParams.get("mes");
 
-    let pessoasQuery = client
-      .from("pessoas")
-      .select(
-        "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at, cadastro_completo_status, cadastro_completo_at"
-      )
-      .order("created_at", { ascending: false });
+    const buildPessoasQuery = (columns: string) => {
+      let query = client.from("pessoas").select(columns).order("created_at", { ascending: false });
 
-    if (igrejaFiltro) {
-      if (igrejaFiltro === "__null") {
-        pessoasQuery = pessoasQuery.is("igreja_origem", null);
-      } else {
-        pessoasQuery = pessoasQuery.eq("igreja_origem", igrejaFiltro);
+      if (igrejaFiltro) {
+        if (igrejaFiltro === "__null") {
+          query = query.is("igreja_origem", null);
+        } else {
+          query = query.eq("igreja_origem", igrejaFiltro);
+        }
       }
-    }
-    if (bairroFiltro) {
-      if (bairroFiltro === "__null") {
-        pessoasQuery = pessoasQuery.is("bairro", null);
-      } else {
-        pessoasQuery = pessoasQuery.eq("bairro", bairroFiltro);
+      if (bairroFiltro) {
+        if (bairroFiltro === "__null") {
+          query = query.is("bairro", null);
+        } else {
+          query = query.eq("bairro", bairroFiltro);
+        }
       }
-    }
-    if (origemFiltro) pessoasQuery = pessoasQuery.ilike("origem", `%${origemFiltro}%`);
-    if (origemTipo) {
-      if (origemTipo === "celula") {
-        pessoasQuery = pessoasQuery.or("origem.ilike.%celula%,origem.ilike.%célula%");
-      } else if (origemTipo === "outro") {
-        // filtro adicional aplicado após o merge
-      } else if (origemTipo !== "outro") {
-        pessoasQuery = pessoasQuery.ilike("origem", `%${origemTipo}%`);
+      if (origemFiltro) query = query.ilike("origem", `%${origemFiltro}%`);
+      if (origemTipo) {
+        if (origemTipo === "celula") {
+          query = query.or("origem.ilike.%celula%,origem.ilike.%célula%");
+        } else if (origemTipo === "outro") {
+          // filtro adicional aplicado após o merge
+        } else if (origemTipo !== "outro") {
+          query = query.ilike("origem", `%${origemTipo}%`);
+        }
       }
-    }
-    if (mesFiltro && /^\d{4}-\d{2}$/.test(mesFiltro)) {
-      const [yearStr, monthStr] = mesFiltro.split("-");
-      const year = Number(yearStr);
-      const month = Number(monthStr);
-      const start = new Date(year, month - 1, 1);
-      const end = new Date(year, month, 0, 23, 59, 59);
-      pessoasQuery = pessoasQuery.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+      if (mesFiltro && /^\d{4}-\d{2}$/.test(mesFiltro)) {
+        const [yearStr, monthStr] = mesFiltro.split("-");
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+        const start = new Date(year, month - 1, 1);
+        const end = new Date(year, month, 0, 23, 59, 59);
+        query = query.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
+      }
+
+      return query;
+    };
+
+    const baseColumns =
+      "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at";
+    let pessoasResult = await buildPessoasQuery(`${baseColumns}, cadastro_completo_status, cadastro_completo_at`);
+    let usingLegacyColumns = false;
+
+    if (
+      pessoasResult.error &&
+      isMissingProfileCompletionColumnsError(pessoasResult.error.message, pessoasResult.error.code)
+    ) {
+      usingLegacyColumns = true;
+      pessoasResult = await buildPessoasQuery(baseColumns);
     }
 
-    const { data: pessoasData, error: pessoasError } = await pessoasQuery;
-
-    if (pessoasError) {
-      setStatusMessage("Não foi possível carregar os cadastros.");
+    if (pessoasResult.error) {
+      setStatusMessage(`Não foi possível carregar os cadastros. ${pessoasResult.error.message}`);
       setLoading(false);
       return;
     }
+
+    const pessoasData = (pessoasResult.data ?? []).map((item) => ({
+      ...item,
+      cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status,
+      cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at
+    })) as PessoaItem[];
 
     const pessoaIds = (pessoasData ?? []).map((item) => item.id);
     let integracaoRows: IntegracaoItem[] = [];
