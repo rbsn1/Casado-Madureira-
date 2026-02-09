@@ -34,6 +34,20 @@ type IntegracaoItem = {
   updated_at?: string | null;
 };
 
+type PessoaQueryRow = {
+  id: string;
+  nome_completo: string;
+  telefone_whatsapp: string | null;
+  origem: string | null;
+  igreja_origem: string | null;
+  bairro: string | null;
+  data: string | null;
+  observacoes: string | null;
+  created_at: string;
+  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
+  cadastro_completo_at?: string | null;
+};
+
 function isMissingProfileCompletionColumnsError(message: string, code?: string) {
   return (
     code === "PGRST204" ||
@@ -141,11 +155,20 @@ function CadastrosContent() {
       return;
     }
 
-    const pessoasData = (pessoasResult.data ?? []).map((item) => ({
-      ...item,
-      cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status,
-      cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at
-    })) as PessoaItem[];
+    const pessoasRows = (pessoasResult.data ?? []) as PessoaQueryRow[];
+    const pessoasData: PessoaItem[] = pessoasRows.map((item) => ({
+      id: item.id,
+      nome_completo: item.nome_completo,
+      telefone_whatsapp: item.telefone_whatsapp,
+      origem: item.origem,
+      igreja_origem: item.igreja_origem,
+      bairro: item.bairro,
+      data: item.data,
+      observacoes: item.observacoes,
+      created_at: item.created_at,
+      cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status ?? null,
+      cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at ?? null
+    }));
 
     const pessoaIds = (pessoasData ?? []).map((item) => item.id);
     let integracaoRows: IntegracaoItem[] = [];
