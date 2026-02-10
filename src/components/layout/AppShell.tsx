@@ -5,6 +5,7 @@ import { FormEvent, ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 
 type NavItem = {
   href: string;
@@ -54,12 +55,17 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [passwordMessage, setPasswordMessage] = useState("");
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
   const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
   const hasCadastradorRole = roles.includes("CADASTRADOR");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
-  const isDiscipuladoAccount =
-    !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
+  const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
   const isDiscipuladoConsole = current.startsWith("/discipulado");
+  const shouldMaskContent = !authResolved || (isDiscipuladoAccount && !isDiscipuladoConsole);
+  const accessRoleHint =
+    isDiscipuladoAccount && !isGlobalAdmin
+      ? "RBAC: DISCIPULADOR, SM_DISCIPULADO"
+      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO";
 
   const visibleSections = navSections
     .map((section) => ({
@@ -69,50 +75,43 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     .filter((section) => section.items.length > 0);
 
   function canAccessItem(item: NavItem) {
+    if (isGlobalAdmin) return true;
+    if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (item.href === "/discipulado/convertidos/novo") {
       return hasCadastradorRole || hasSmDiscipuladoRole;
     }
-    if (item.href.startsWith("/manual")) {
-      return true;
-    }
-    if (isGlobalAdmin) return true;
-    if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
   }
 
   useEffect(() => {
     let active = true;
+    setAuthResolved(false);
 
     async function loadUser() {
-      if (!supabaseClient) return;
+      if (!supabaseClient) {
+        if (active) setAuthResolved(true);
+        return;
+      }
       const { data } = await supabaseClient.auth.getUser();
       if (!active) return;
       if (!data.user) {
         const loginPath = current.startsWith("/discipulado") ? "/discipulado/login" : "/acesso-interno";
+        setAuthResolved(true);
         router.replace(loginPath);
         return;
       }
       setUserEmail(data.user.email ?? null);
-      const [{ data: rolesData }, { data: contextData }] = await Promise.all([
-        supabaseClient.rpc("get_my_roles"),
-        supabaseClient.rpc("get_my_context")
-      ]);
-      const nextRoles = (rolesData ?? []) as string[];
-      const context = (contextData ?? {}) as { is_admin_master?: boolean };
-      const nextIsGlobalAdmin =
-        Boolean(context.is_admin_master) ||
-        nextRoles.includes("ADMIN_MASTER") ||
-        nextRoles.includes("SUPER_ADMIN");
-      const nextIsDiscipuladoAccount =
-        !nextIsGlobalAdmin &&
-        (nextRoles.includes("DISCIPULADOR") || nextRoles.includes("SM_DISCIPULADO"));
-      const nextIsSmDiscipuladoOnly =
-        !nextIsGlobalAdmin && nextRoles.length === 1 && nextRoles.includes("SM_DISCIPULADO");
+      const scope = await getAuthScope();
+      if (!active) return;
+      const nextRoles = scope.roles;
+      const nextIsGlobalAdmin = scope.isAdminMaster;
+      const nextIsDiscipuladoAccount = isDiscipuladoScopedAccount(nextRoles, nextIsGlobalAdmin);
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
+      setAuthResolved(true);
       if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
-        router.replace(nextIsSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+        router.replace(getDiscipuladoHomePath(nextRoles));
         return;
       }
       if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
@@ -246,7 +245,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             >
               <p className="text-sm font-semibold text-white">Acesso interno</p>
               <p className={clsx("text-xs", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>
-                RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO
+                {accessRoleHint}
               </p>
             </div>
           </div>
@@ -267,9 +266,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <h1 className={clsx("text-2xl font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                 {isCadastradorOnly
                   ? "Cadastro"
-                  : hasCadastradorRole || hasSmDiscipuladoRole
+                  : isDiscipuladoAccount
+                    ? "Painel Discipulado"
+                    : hasCadastradorRole || hasSmDiscipuladoRole
                     ? "Cadastro de Convertidos"
-                    : isDiscipuladoConsole || isDiscipuladoAccount
+                    : isDiscipuladoConsole
                       ? "Painel Discipulado"
                       : "Painel Interno"}
               </h1>
@@ -329,7 +330,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               </button>
             </div>
           </header>
-          {children}
+          {shouldMaskContent ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+              Carregando ambiente...
+            </div>
+          ) : (
+            children
+          )}
         </div>
       </main>
       {showMobileNav ? (

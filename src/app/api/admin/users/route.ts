@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
+import { syncLegacyProfileRoleForUser } from "@/lib/userProfileSync";
 
 export const runtime = "nodejs";
 const DISCIPULADO_ONLY_ROLES = new Set(["DISCIPULADOR", "SM_DISCIPULADO"]);
@@ -259,6 +260,8 @@ export async function POST(request: Request) {
       return rollbackUserCreation(contactError.message);
     }
   }
+
+  await syncLegacyProfileRoleForUser(createdUserId);
 
   return NextResponse.json({ id: createdUserId });
 }

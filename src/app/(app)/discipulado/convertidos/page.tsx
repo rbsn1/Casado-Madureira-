@@ -130,6 +130,7 @@ function statusLabel(status: CaseSummaryItem["status"]) {
 export default function DiscipuladoConvertidosPage() {
   const [cases, setCases] = useState<CaseSummaryItem[]>([]);
   const [ccmMembersWithoutCase, setCcmMembersWithoutCase] = useState<CcmMemberWithoutCase[]>([]);
+  const [visibleCcmMembersCount, setVisibleCcmMembersCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
@@ -152,7 +153,9 @@ export default function DiscipuladoConvertidosPage() {
         scope.roles.includes("SUPER_ADMIN") ||
         scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
-      setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
+      setCanCreateNovoConvertido(
+        scope.roles.includes("CADASTRADOR") || scope.roles.includes("SM_DISCIPULADO")
+      );
       if (!allowed) return;
 
       const { data: caseSummaries, errorMessage } = await loadCaseSummariesWithFallback();
@@ -179,6 +182,7 @@ export default function DiscipuladoConvertidosPage() {
 
       const caseMemberIds = new Set(safeCases.map((item) => item.member_id));
       const ccmRows: unknown[] = Array.isArray(peopleData) ? peopleData : [];
+      setVisibleCcmMembersCount(ccmRows.length);
       const noCaseMembers = ccmRows
         .map((row) => {
           const item = row as Partial<{
@@ -228,7 +232,7 @@ export default function DiscipuladoConvertidosPage() {
           <p className="text-sm text-sky-700">Discipulado</p>
           <h2 className="text-xl font-semibold text-sky-950">Convertidos em acompanhamento</h2>
           <p className="mt-1 text-xs text-slate-600">
-            CCM visíveis sem case: {ccmMembersWithoutCase.length}
+            CCM visíveis: {visibleCcmMembersCount} • sem case: {ccmMembersWithoutCase.length}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -306,7 +310,9 @@ export default function DiscipuladoConvertidosPage() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {!ccmMembersWithoutCase.length ? (
             <div className="discipulado-panel p-4 text-sm text-slate-600">
-              Todos os membros visíveis do CCM já possuem case no discipulado.
+              {visibleCcmMembersCount === 0
+                ? "Nenhum membro do CCM está visível para este usuário. Verifique o perfil e a congregação vinculada."
+                : "Todos os membros visíveis do CCM já possuem case no discipulado."}
             </div>
           ) : null}
           {ccmMembersWithoutCase.slice(0, 60).map((item) => (
@@ -317,7 +323,16 @@ export default function DiscipuladoConvertidosPage() {
               </div>
               <div className="flex items-center justify-between">
                 <StatusBadge value="PENDENTE" />
-                <p className="text-xs text-slate-500">Sem case ativo</p>
+                {canCreateNovoConvertido ? (
+                  <Link
+                    href={`/discipulado/convertidos/novo?memberId=${encodeURIComponent(item.member_id)}`}
+                    className="rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+                  >
+                    Abrir case
+                  </Link>
+                ) : (
+                  <p className="text-xs text-slate-500">Sem case ativo</p>
+                )}
               </div>
             </article>
           ))}

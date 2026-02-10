@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
-import { supabaseClient } from "@/lib/supabaseClient";
+import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 
 export default function ContaPage() {
   const router = useRouter();
@@ -13,17 +13,13 @@ export default function ContaPage() {
     let active = true;
 
     async function checkRoles() {
-      if (!supabaseClient) return;
-      const { data } = await supabaseClient.rpc("get_my_roles");
+      const scope = await getAuthScope();
       if (!active) return;
-      const roles = (data ?? []) as string[];
-      const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-      const isDiscipuladoAccount =
-        !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
-      const isSmDiscipuladoOnly =
-        !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
+      const roles = scope.roles;
+      const isGlobalAdmin = scope.isAdminMaster;
+      const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
       if (isDiscipuladoAccount) {
-        router.replace(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+        router.replace(getDiscipuladoHomePath(roles));
         return;
       }
       if (roles.length === 1 && roles.includes("CADASTRADOR")) {

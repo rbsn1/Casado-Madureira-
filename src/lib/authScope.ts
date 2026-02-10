@@ -6,25 +6,48 @@ export type AuthScope = {
   isAdminMaster: boolean;
 };
 
+export const DISCIPULADO_ACCOUNT_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO"] as const;
+
+export function isDiscipuladoScopedAccount(roles: string[], isGlobalAdmin: boolean) {
+  if (isGlobalAdmin) return false;
+  return roles.some((role) => DISCIPULADO_ACCOUNT_ROLES.includes(role as (typeof DISCIPULADO_ACCOUNT_ROLES)[number]));
+}
+
+export function getDiscipuladoHomePath(roles: string[]) {
+  const isSmOnly = roles.length === 1 && roles.includes("SM_DISCIPULADO");
+  return isSmOnly ? "/discipulado/convertidos/novo" : "/discipulado";
+}
+
 export async function getAuthScope(): Promise<AuthScope> {
   if (!supabaseClient) {
     return { roles: [], congregationId: null, isAdminMaster: false };
   }
 
   const { data, error } = await supabaseClient.rpc("get_my_context");
-  if (error || !data) {
-    return { roles: [], congregationId: null, isAdminMaster: false };
+  if (!error && data) {
+    const payload = data as {
+      roles?: string[];
+      congregation_id?: string | null;
+      is_admin_master?: boolean;
+    };
+
+    const roles = payload.roles ?? [];
+    return {
+      roles,
+      congregationId: payload.congregation_id ?? null,
+      isAdminMaster:
+        Boolean(payload.is_admin_master) ||
+        roles.includes("ADMIN_MASTER") ||
+        roles.includes("SUPER_ADMIN")
+    };
   }
 
-  const payload = data as {
-    roles?: string[];
-    congregation_id?: string | null;
-    is_admin_master?: boolean;
-  };
+  const { data: legacyRoles } = await supabaseClient.rpc("get_my_roles");
+  const roles = (legacyRoles ?? []) as string[];
 
   return {
-    roles: payload.roles ?? [],
-    congregationId: payload.congregation_id ?? null,
-    isAdminMaster: Boolean(payload.is_admin_master)
+    roles,
+    congregationId: null,
+    isAdminMaster: roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN")
   };
 }

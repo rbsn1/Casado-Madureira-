@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 import styles from "./loginBackground.module.css";
 
 type LoginStatus = "idle" | "loading" | "error";
@@ -42,23 +43,16 @@ export default function DiscipuladoLoginPage() {
       return;
     }
 
-    const [{ data: rolesData }, { data: contextData }] = await Promise.all([
-      supabaseClient.rpc("get_my_roles"),
-      supabaseClient.rpc("get_my_context")
-    ]);
-    const roles = (rolesData ?? []) as string[];
-    const context = (contextData ?? {}) as { is_admin_master?: boolean };
-    const isGlobalAdmin =
-      Boolean(context.is_admin_master) || roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-    const isDiscipuladoAccount =
-      !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
-    const isSmDiscipuladoOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
+    const scope = await getAuthScope();
+    const roles = scope.roles;
+    const isGlobalAdmin = scope.isAdminMaster;
+    const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
     if (!isGlobalAdmin && roles.includes("CADASTRADOR")) {
       router.push("/discipulado/convertidos/novo");
       return;
     }
     if (isDiscipuladoAccount) {
-      router.push(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+      router.push(getDiscipuladoHomePath(roles));
       return;
     }
     if (isGlobalAdmin) {

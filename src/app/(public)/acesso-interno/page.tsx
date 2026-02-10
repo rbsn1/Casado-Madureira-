@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -41,16 +42,13 @@ export default function AcessoInternoPage() {
     }
 
     setStatus("idle");
-    const { data: rolesData } = await supabaseClient.rpc("get_my_roles");
-    const roles = (rolesData ?? []) as string[];
-    const isGlobalAdmin = roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-    const isDiscipuladoAccount =
-      !isGlobalAdmin && (roles.includes("DISCIPULADOR") || roles.includes("SM_DISCIPULADO"));
-    const isSmDiscipuladoOnly =
-      !isGlobalAdmin && roles.length === 1 && roles.includes("SM_DISCIPULADO");
+    const scope = await getAuthScope();
+    const roles = scope.roles;
+    const isGlobalAdmin = scope.isAdminMaster;
+    const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
 
     if (isDiscipuladoAccount) {
-      router.push(isSmDiscipuladoOnly ? "/discipulado/convertidos/novo" : "/discipulado");
+      router.push(getDiscipuladoHomePath(roles));
       return;
     }
 

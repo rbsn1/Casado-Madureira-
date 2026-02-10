@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
+import { syncLegacyProfileRoleForUser } from "@/lib/userProfileSync";
 
 export const runtime = "nodejs";
 
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
   const userId = String(body.userId ?? "");
   const role = String(body.role ?? "");
   const active = body.active !== false;
+  const incomingIsDiscipuladoOnly = DISCIPULADO_ONLY_ROLES.has(role);
   const requestedCongregationId = body.congregationId ? String(body.congregationId) : null;
 
   if (!auth.isGlobalAdmin && !DISCIPULADO_ONLY_ROLES.has(role)) {
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
   if (!userId || !role) {
     return NextResponse.json({ error: "userId and role are required" }, { status: 400 });
   }
-  if (DISCIPULADO_ONLY_ROLES.has(role) && active && !congregationId) {
+  if (incomingIsDiscipuladoOnly && active && !congregationId) {
     return NextResponse.json(
       { error: "congregationId is required for DISCIPULADOR and SM_DISCIPULADO roles" },
       { status: 400 }
@@ -114,21 +116,13 @@ export async function POST(request: Request) {
     }
 
     const currentRoles = ((activeRoles ?? []) as { role: string }[]).map((item) => item.role);
-    const incomingIsDiscipuladoOnly = DISCIPULADO_ONLY_ROLES.has(role);
     const hasActiveDiscipuladoOnlyRole = currentRoles.some((existingRole) =>
       DISCIPULADO_ONLY_ROLES.has(existingRole)
     );
-    const hasOtherActiveRoles = currentRoles.some((existingRole) => existingRole !== role);
 
     if (!incomingIsDiscipuladoOnly && hasActiveDiscipuladoOnlyRole) {
       return NextResponse.json(
         { error: "Usuário com perfil de discipulado ativo não pode receber papéis do CCM/admin." },
-        { status: 409 }
-      );
-    }
-    if (incomingIsDiscipuladoOnly && hasOtherActiveRoles) {
-      return NextResponse.json(
-        { error: "Usuário com perfil de discipulado não pode possuir outros papéis ativos." },
         { status: 409 }
       );
     }
@@ -149,6 +143,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nenhuma congregação disponível para vincular o papel." }, { status: 400 });
   }
 
+  if (active && incomingIsDiscipuladoOnly) {
+    const { error: deactivateRolesError } = await (supabaseAdmin as any)
+      .from("usuarios_perfis")
+      .update({ active: false })
+      .eq("user_id", userId)
+      .neq("role", role)
+      .eq("active", true);
+
+    if (deactivateRolesError) {
+      return NextResponse.json({ error: deactivateRolesError.message }, { status: 500 });
+    }
+  }
+
   const payload = hasCongregationId
     ? { user_id: userId, role, active, congregation_id: targetCongregationId }
     : { user_id: userId, role, active };
@@ -159,6 +166,8 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  await syncLegacyProfileRoleForUser(userId);
 
   return NextResponse.json({ ok: true });
 }

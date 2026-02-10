@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 
@@ -73,6 +74,7 @@ async function searchMembersWithFallback(term: string) {
 }
 
 export default function NovoConvertidoDiscipuladoPage() {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [members, setMembers] = useState<MemberResult[]>([]);
   const [selectedMember, setSelectedMember] = useState<MemberResult | null>(null);
@@ -95,6 +97,62 @@ export default function NovoConvertidoDiscipuladoPage() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function hydrateFromQuery() {
+      if (!supabaseClient || !hasAccess) return;
+      const memberId = searchParams.get("memberId");
+      if (!memberId || selectedMember) return;
+
+      const [{ data: person, error: personError }, { data: activeCases, error: casesError }] = await Promise.all([
+        supabaseClient
+          .from("pessoas")
+          .select("id, nome_completo, telefone_whatsapp")
+          .eq("id", memberId)
+          .single(),
+        supabaseClient
+          .from("discipleship_cases")
+          .select("id")
+          .eq("member_id", memberId)
+          .in("status", ["em_discipulado", "pausado"])
+          .limit(1)
+      ]);
+
+      if (!active) return;
+
+      if (personError) {
+        setStatus("error");
+        setMessage(personError.message);
+        return;
+      }
+      if (casesError) {
+        setStatus("error");
+        setMessage(casesError.message);
+        return;
+      }
+      if ((activeCases ?? []).length > 0) {
+        setStatus("error");
+        setMessage("Este membro já possui case ativo.");
+        return;
+      }
+
+      const member: MemberResult = {
+        id: String(person.id),
+        nome_completo: String(person.nome_completo),
+        telefone_whatsapp: person.telefone_whatsapp ?? null,
+        has_active_case: false
+      };
+      setSelectedMember(member);
+      setQuery(member.nome_completo);
+    }
+
+    hydrateFromQuery();
+    return () => {
+      active = false;
+    };
+  }, [hasAccess, searchParams, selectedMember]);
 
   useEffect(() => {
     let active = true;
