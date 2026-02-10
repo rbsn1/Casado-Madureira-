@@ -18,6 +18,13 @@ type CaseSummaryItem = {
   total_modules: number;
 };
 
+type CcmMemberWithoutCase = {
+  member_id: string;
+  member_name: string;
+  member_phone: string | null;
+  created_at: string | null;
+};
+
 type FallbackCaseRow = {
   id: string;
   member_id: string;
@@ -122,6 +129,7 @@ function statusLabel(status: CaseSummaryItem["status"]) {
 
 export default function DiscipuladoConvertidosPage() {
   const [cases, setCases] = useState<CaseSummaryItem[]>([]);
+  const [ccmMembersWithoutCase, setCcmMembersWithoutCase] = useState<CcmMemberWithoutCase[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
@@ -153,7 +161,44 @@ export default function DiscipuladoConvertidosPage() {
         setStatusMessage(errorMessage);
         return;
       }
-      setCases((caseSummaries ?? []) as CaseSummaryItem[]);
+      const safeCases = (caseSummaries ?? []) as CaseSummaryItem[];
+      setCases(safeCases);
+
+      const { data: peopleData, error: peopleError } = await supabaseClient
+        .from("pessoas")
+        .select("id, nome_completo, telefone_whatsapp, created_at")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (!active) return;
+      if (peopleError) {
+        setStatusMessage((prev) => prev || peopleError.message);
+        setCcmMembersWithoutCase([]);
+        return;
+      }
+
+      const caseMemberIds = new Set(safeCases.map((item) => item.member_id));
+      const ccmRows: unknown[] = Array.isArray(peopleData) ? peopleData : [];
+      const noCaseMembers = ccmRows
+        .map((row) => {
+          const item = row as Partial<{
+            id: string;
+            nome_completo: string;
+            telefone_whatsapp: string | null;
+            created_at: string | null;
+          }>;
+          if (!item.id || !item.nome_completo) return null;
+          if (caseMemberIds.has(item.id)) return null;
+          return {
+            member_id: String(item.id),
+            member_name: String(item.nome_completo),
+            member_phone: item.telefone_whatsapp ?? null,
+            created_at: item.created_at ?? null
+          } as CcmMemberWithoutCase;
+        })
+        .filter((item): item is CcmMemberWithoutCase => item !== null);
+
+      setCcmMembersWithoutCase(noCaseMembers);
     }
 
     load();
@@ -182,6 +227,9 @@ export default function DiscipuladoConvertidosPage() {
         <div>
           <p className="text-sm text-sky-700">Discipulado</p>
           <h2 className="text-xl font-semibold text-sky-950">Convertidos em acompanhamento</h2>
+          <p className="mt-1 text-xs text-slate-600">
+            CCM visíveis sem case: {ccmMembersWithoutCase.length}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -241,6 +289,40 @@ export default function DiscipuladoConvertidosPage() {
           );
         })}
       </div>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-sky-900">Membros do CCM sem case no Discipulado</h3>
+          {canCreateNovoConvertido ? (
+            <Link
+              href="/discipulado/convertidos/novo"
+              className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+            >
+              Iniciar novo case
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {!ccmMembersWithoutCase.length ? (
+            <div className="discipulado-panel p-4 text-sm text-slate-600">
+              Todos os membros visíveis do CCM já possuem case no discipulado.
+            </div>
+          ) : null}
+          {ccmMembersWithoutCase.slice(0, 60).map((item) => (
+            <article key={item.member_id} className="discipulado-panel space-y-2 p-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{item.member_name}</p>
+                <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
+              </div>
+              <div className="flex items-center justify-between">
+                <StatusBadge value="PENDENTE" />
+                <p className="text-xs text-slate-500">Sem case ativo</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

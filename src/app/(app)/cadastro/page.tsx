@@ -158,8 +158,8 @@ export default function CadastroInternoPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-        <form className="card min-w-0 p-5 md:p-6" onSubmit={handleSubmit}>
+      <div className="grid items-start gap-6 xl:grid-cols-[1fr_320px]">
+        <form className="card min-w-0 p-5 md:p-6 xl:col-start-1" onSubmit={handleSubmit}>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Nome completo</span>
@@ -295,7 +295,7 @@ export default function CadastroInternoPage() {
           ) : null}
         </form>
 
-        <aside className="card hidden h-fit p-5 xl:sticky xl:top-6 xl:block">
+        <aside className="card hidden p-5 xl:col-start-2 xl:block xl:self-start">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Checklist rápido</h3>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
             <li>Nome completo e telefone com DDD.</li>
