@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 import { formatDateBR } from "@/lib/date";
@@ -52,6 +52,7 @@ function getDiscipuladoRoleLabel(role: string) {
 }
 
 export default function DiscipuladoAdminPage() {
+  const lastLoadedCongregationRef = useRef<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [managerCongregationId, setManagerCongregationId] = useState<string | null>(null);
@@ -315,7 +316,9 @@ export default function DiscipuladoAdminPage() {
         ...prev,
         congregation_id: defaultCongregation || congregationItems[0]?.id || ""
       }));
-      await Promise.all([loadPanelData(defaultCongregation), loadDiscipleshipUsers(defaultCongregation)]);
+      await loadPanelData(defaultCongregation);
+      lastLoadedCongregationRef.current = defaultCongregation;
+      void loadDiscipleshipUsers(defaultCongregation);
       setLoading(false);
     }
 
@@ -327,6 +330,7 @@ export default function DiscipuladoAdminPage() {
 
   useEffect(() => {
     if (!hasAccess) return;
+    if (loading) return;
     setNewModule((prev) => ({
       ...prev,
       congregation_id: congregationFilter || prev.congregation_id
@@ -335,9 +339,11 @@ export default function DiscipuladoAdminPage() {
       ...prev,
       congregation_id: congregationFilter || prev.congregation_id
     }));
+    if (lastLoadedCongregationRef.current === congregationFilter) return;
+    lastLoadedCongregationRef.current = congregationFilter;
     loadPanelData(congregationFilter);
     loadDiscipleshipUsers(congregationFilter);
-  }, [congregationFilter, hasAccess, loadDiscipleshipUsers, loadPanelData]);
+  }, [congregationFilter, hasAccess, loading, loadDiscipleshipUsers, loadPanelData]);
 
   function updateDraft(id: string, patch: Partial<ModuleDraft>) {
     setModuleDrafts((prev) => ({
@@ -575,16 +581,16 @@ export default function DiscipuladoAdminPage() {
     }
   }
 
+  if (loading) {
+    return <div className="discipulado-panel p-6 text-sm text-slate-700">Carregando painel administrativo...</div>;
+  }
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
         Acesso restrito ao perfil administrativo do discipulado.
       </div>
     );
-  }
-
-  if (loading) {
-    return <div className="discipulado-panel p-6 text-sm text-slate-700">Carregando painel administrativo...</div>;
   }
 
   return (
