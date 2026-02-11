@@ -88,6 +88,9 @@ export default function DiscipuladoAdminPage() {
     description: "",
     sort_order: "1"
   });
+  const [confraternizationAtDraft, setConfraternizationAtDraft] = useState("");
+  const [calendarStatusMessage, setCalendarStatusMessage] = useState("");
+  const [calendarSuccessMessage, setCalendarSuccessMessage] = useState("");
 
   const congregationNameById = useMemo(() => {
     return congregations.reduce<Record<string, string>>((acc, item) => {
@@ -206,6 +209,8 @@ export default function DiscipuladoAdminPage() {
     if (!supabaseClient) return;
     setStatusMessage("");
     setSuccessMessage("");
+    setCalendarStatusMessage("");
+    setCalendarSuccessMessage("");
 
     let modulesQuery = supabaseClient
       .from("discipleship_modules")
@@ -222,23 +227,38 @@ export default function DiscipuladoAdminPage() {
       .from("discipleship_cases")
       .select("*", { count: "exact", head: true });
 
+    let calendarQuery = Promise.resolve({
+      data: null as { confraternization_at: string } | null,
+      error: null as { message?: string } | null
+    });
+
     if (targetCongregation) {
       modulesQuery = modulesQuery.eq("congregation_id", targetCongregation);
       openCasesQuery = openCasesQuery.eq("congregation_id", targetCongregation);
       totalCasesQuery = totalCasesQuery.eq("congregation_id", targetCongregation);
+      calendarQuery = (supabaseClient
+        .from("discipleship_calendar")
+        .select("confraternization_at")
+        .eq("congregation_id", targetCongregation)
+        .maybeSingle() as unknown) as Promise<{
+        data: { confraternization_at: string } | null;
+        error: { message?: string } | null;
+      }>;
     }
 
     const [
       { data: modulesData, error: modulesError },
       { count: openCases, error: openCasesError },
-      { count: totalCases, error: totalCasesError }
-    ] = await Promise.all([modulesQuery, openCasesQuery, totalCasesQuery]);
+      { count: totalCases, error: totalCasesError },
+      { data: calendarData, error: calendarError }
+    ] = await Promise.all([modulesQuery, openCasesQuery, totalCasesQuery, calendarQuery]);
 
-    if (modulesError || openCasesError || totalCasesError) {
+    if (modulesError || openCasesError || totalCasesError || calendarError) {
       setStatusMessage(
         modulesError?.message ??
           openCasesError?.message ??
           totalCasesError?.message ??
+          calendarError?.message ??
           "Falha ao carregar painel de admin."
       );
       return;
@@ -258,6 +278,16 @@ export default function DiscipuladoAdminPage() {
     );
     setOpenCasesCount(openCases ?? 0);
     setTotalCasesCount(totalCases ?? 0);
+
+    const confraIso = calendarData?.confraternization_at ?? "";
+    if (!confraIso) {
+      setConfraternizationAtDraft("");
+      return;
+    }
+    const local = new Date(confraIso);
+    const timezoneOffset = local.getTimezoneOffset() * 60000;
+    const localInput = new Date(local.getTime() - timezoneOffset).toISOString().slice(0, 16);
+    setConfraternizationAtDraft(localInput);
   }, []);
 
   useEffect(() => {
@@ -409,6 +439,74 @@ export default function DiscipuladoAdminPage() {
     } catch (error) {
       setCongregationStatusMessage((error as Error).message);
     }
+  }
+
+  async function handleSaveConfraternizationDate() {
+    if (!supabaseClient) return;
+    setCalendarStatusMessage("");
+    setCalendarSuccessMessage("");
+
+    const targetCongregation = congregationFilter || managerCongregationId || "";
+    if (!targetCongregation) {
+      setCalendarStatusMessage("Selecione uma congregação para configurar a data da confraternização.");
+      return;
+    }
+    if (!confraternizationAtDraft) {
+      setCalendarStatusMessage("Informe a data e hora da confraternização.");
+      return;
+    }
+
+    const parsedDate = new Date(confraternizationAtDraft);
+    if (Number.isNaN(parsedDate.getTime())) {
+      setCalendarStatusMessage("Data da confraternização inválida.");
+      return;
+    }
+
+    const { error: upsertError } = await supabaseClient.from("discipleship_calendar").upsert(
+      {
+        congregation_id: targetCongregation,
+        confraternization_at: parsedDate.toISOString()
+      },
+      { onConflict: "congregation_id" }
+    );
+
+    if (upsertError) {
+      setCalendarStatusMessage(upsertError.message);
+      return;
+    }
+
+    const { error: refreshError } = await supabaseClient.rpc("refresh_discipleship_case_criticality", {
+      target_congregation_id: targetCongregation,
+      target_case_id: null
+    });
+
+    if (refreshError) {
+      setCalendarStatusMessage(refreshError.message);
+      return;
+    }
+
+    setCalendarSuccessMessage("Data da confraternização salva. Criticidade recalculada para a congregação.");
+    await loadPanelData(targetCongregation);
+  }
+
+  async function handleRecalculateCriticalityNow() {
+    if (!supabaseClient) return;
+    setCalendarStatusMessage("");
+    setCalendarSuccessMessage("");
+
+    const targetCongregation = congregationFilter || managerCongregationId || null;
+    const { error } = await supabaseClient.rpc("refresh_discipleship_case_criticality", {
+      target_congregation_id: targetCongregation,
+      target_case_id: null
+    });
+
+    if (error) {
+      setCalendarStatusMessage(error.message);
+      return;
+    }
+
+    setCalendarSuccessMessage("Criticidade recalculada com sucesso.");
+    await loadPanelData(targetCongregation ?? "");
   }
 
   async function handleCreateModule(event: FormEvent<HTMLFormElement>) {
@@ -741,6 +839,52 @@ export default function DiscipuladoAdminPage() {
           <p className="mt-2 text-3xl font-bold text-sky-950">{activeDiscipleshipUsers}</p>
         </article>
       </div>
+
+      <section className="discipulado-panel p-5">
+        <h3 className="text-sm font-semibold text-sky-900">Confraternização da congregação</h3>
+        <p className="mt-1 text-sm text-slate-600">
+          A criticidade de contato usa esta data para calcular os dias restantes até a confra.
+        </p>
+        {calendarStatusMessage ? (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            {calendarStatusMessage}
+          </p>
+        ) : null}
+        {calendarSuccessMessage ? (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            {calendarSuccessMessage}
+          </p>
+        ) : null}
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Data e hora da confra</span>
+            <input
+              type="datetime-local"
+              value={confraternizationAtDraft}
+              onChange={(event) => setConfraternizationAtDraft(event.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleSaveConfraternizationDate}
+              className="w-full rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Salvar data da confra
+            </button>
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={handleRecalculateCriticalityNow}
+              className="w-full rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-50"
+            >
+              Recalcular criticidade agora
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Usuários do discipulado</h3>

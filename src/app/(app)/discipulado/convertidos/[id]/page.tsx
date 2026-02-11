@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 import { formatDateBR } from "@/lib/date";
+import { criticalityLabel, criticalityRank, isNegativeContactOutcome } from "@/lib/discipleshipCriticality";
 
 type CaseItem = {
   id: string;
@@ -15,6 +16,10 @@ type CaseItem = {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
+  criticality: "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
+  negative_contact_count: number;
+  days_to_confra: number | null;
+  last_negative_contact_at: string | null;
 };
 
 type MemberItem = {
@@ -75,6 +80,29 @@ type DepartmentLinkItem = {
   desde: string | null;
 };
 
+type ContactAttemptOutcome =
+  | "no_answer"
+  | "wrong_number"
+  | "refused"
+  | "sem_resposta"
+  | "contacted"
+  | "scheduled_visit";
+
+type ContactAttemptChannel = "whatsapp" | "ligacao" | "visita" | "outro";
+
+type ContactAttemptItem = {
+  id: string;
+  outcome: ContactAttemptOutcome;
+  channel: ContactAttemptChannel;
+  notes: string | null;
+  created_at: string;
+};
+
+type ToastState = {
+  kind: "success" | "warning";
+  message: string;
+} | null;
+
 const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "PENDENTE",
   "EM_ANDAMENTO",
@@ -93,6 +121,35 @@ function progressBadgeValue(status: ProgressItem["status"]) {
   if (status === "nao_iniciado") return "NAO_INICIADO";
   if (status === "em_andamento") return "EM_ANDAMENTO";
   return "CONCLUIDO";
+}
+
+function isMissingCriticalityCaseColumns(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("criticality") ||
+    message.includes("negative_contact_count") ||
+    message.includes("days_to_confra") ||
+    message.includes("last_negative_contact_at")
+  );
+}
+
+function isMissingContactAttemptsTable(message: string, code?: string) {
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("contact_attempts") ||
+    message.includes("relation")
+  );
+}
+
+function formatOutcomeLabel(value: ContactAttemptOutcome) {
+  if (value === "no_answer") return "Sem resposta";
+  if (value === "wrong_number") return "Número inválido";
+  if (value === "refused") return "Recusou";
+  if (value === "sem_resposta") return "Sem resposta";
+  if (value === "contacted") return "Contato realizado";
+  return "Visita agendada";
 }
 
 export default function DiscipulandoDetalhePage() {
@@ -115,6 +172,13 @@ export default function DiscipulandoDetalhePage() {
   const [departmentLinks, setDepartmentLinks] = useState<DepartmentLinkItem[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [departmentRoleDraft, setDepartmentRoleDraft] = useState("");
+  const [contactAttempts, setContactAttempts] = useState<ContactAttemptItem[]>([]);
+  const [contactOutcomeDraft, setContactOutcomeDraft] = useState<ContactAttemptOutcome>("contacted");
+  const [contactChannelDraft, setContactChannelDraft] = useState<ContactAttemptChannel>("whatsapp");
+  const [contactNotesDraft, setContactNotesDraft] = useState("");
+  const [toast, setToast] = useState<ToastState>(null);
+  const [hasCriticalityColumns, setHasCriticalityColumns] = useState(true);
+  const [hasContactAttemptsSupport, setHasContactAttemptsSupport] = useState(true);
   const [baptismDate, setBaptismDate] = useState("");
   const [baptismLocation, setBaptismLocation] = useState("");
   const [baptismNotes, setBaptismNotes] = useState("");
@@ -126,23 +190,51 @@ export default function DiscipulandoDetalhePage() {
 
     setLoading(true);
     setStatusMessage("");
+    let hasCaseCriticality = true;
+    let caseResult = await supabaseClient
+      .from("discipleship_cases")
+      .select(
+        "id, member_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at"
+      )
+      .eq("id", caseId)
+      .single();
 
-    const [{ data: caseResult, error: caseError }, { data: userData }] = await Promise.all([
-      supabaseClient
+    if (caseResult.error && isMissingCriticalityCaseColumns(caseResult.error.message, caseResult.error.code)) {
+      hasCaseCriticality = false;
+      caseResult = await supabaseClient
         .from("discipleship_cases")
         .select("id, member_id, status, notes, assigned_to, created_at, updated_at")
         .eq("id", caseId)
-        .single(),
-      supabaseClient.auth.getUser()
-    ]);
+        .single();
+    }
 
-    if (caseError) {
-      setStatusMessage(caseError.message);
+    const { data: userData } = await supabaseClient.auth.getUser();
+    if (caseResult.error) {
+      setStatusMessage(caseResult.error.message);
       setLoading(false);
       return;
     }
 
-    const currentCase = caseResult as CaseItem;
+    setHasCriticalityColumns(hasCaseCriticality);
+    if (!hasCaseCriticality) {
+      setStatusMessage(
+        "Criticidade indisponível neste ambiente. Aplique a migração 0025_discipulado_criticidade_contatos_confra.sql."
+      );
+    }
+    const baseCase = caseResult.data as Partial<CaseItem>;
+    const currentCase: CaseItem = {
+      id: String(baseCase.id ?? ""),
+      member_id: String(baseCase.member_id ?? ""),
+      status: (baseCase.status ?? "em_discipulado") as CaseItem["status"],
+      notes: baseCase.notes ?? null,
+      assigned_to: baseCase.assigned_to ?? null,
+      created_at: String(baseCase.created_at ?? new Date().toISOString()),
+      updated_at: String(baseCase.updated_at ?? new Date().toISOString()),
+      criticality: hasCaseCriticality ? (baseCase.criticality ?? "BAIXA") : "BAIXA",
+      negative_contact_count: hasCaseCriticality ? Number(baseCase.negative_contact_count ?? 0) : 0,
+      days_to_confra: hasCaseCriticality ? (baseCase.days_to_confra ?? null) : null,
+      last_negative_contact_at: hasCaseCriticality ? (baseCase.last_negative_contact_at ?? null) : null
+    };
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
 
@@ -172,7 +264,8 @@ export default function DiscipulandoDetalhePage() {
       { data: integrationResult, error: integrationError },
       { data: departmentsResult, error: departmentsError },
       { data: linksResult, error: linksError },
-      { data: baptismResult, error: baptismError }
+      { data: baptismResult, error: baptismError },
+      { data: attemptsResult, error: attemptsError }
     ] = await Promise.all([
       moduleIds.length
         ? supabaseClient
@@ -197,7 +290,13 @@ export default function DiscipulandoDetalhePage() {
         .select("id, data, local, observacoes, created_at")
         .eq("pessoa_id", currentCase.member_id)
         .order("data", { ascending: false })
-        .limit(5)
+        .limit(5),
+      supabaseClient
+        .from("contact_attempts")
+        .select("id, outcome, channel, notes, created_at")
+        .eq("case_id", currentCase.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
     ]);
 
     if (moduleError) {
@@ -279,6 +378,31 @@ export default function DiscipulandoDetalhePage() {
     setBaptisms(baptismRows);
     setBaptismDate((prev) => prev || new Date().toISOString().slice(0, 10));
 
+    if (attemptsError && isMissingContactAttemptsTable(attemptsError.message, attemptsError.code)) {
+      setHasContactAttemptsSupport(false);
+      setContactAttempts([]);
+    } else if (attemptsError) {
+      setHasContactAttemptsSupport(true);
+      setStatusMessage((prev) => prev || attemptsError.message);
+      setContactAttempts([]);
+    } else {
+      setHasContactAttemptsSupport(true);
+      const attemptRows = (Array.isArray(attemptsResult) ? attemptsResult : [])
+        .map((row) => {
+          const item = row as Partial<ContactAttemptItem>;
+          if (!item.id || !item.outcome || !item.channel || !item.created_at) return null;
+          return {
+            id: String(item.id),
+            outcome: item.outcome as ContactAttemptOutcome,
+            channel: item.channel as ContactAttemptChannel,
+            notes: item.notes ?? null,
+            created_at: String(item.created_at)
+          } as ContactAttemptItem;
+        })
+        .filter((item): item is ContactAttemptItem => item !== null);
+      setContactAttempts(attemptRows);
+    }
+
     const secondaryError =
       integrationError?.message ??
       departmentsError?.message ??
@@ -314,6 +438,12 @@ export default function DiscipulandoDetalhePage() {
       active = false;
     };
   }, [loadCase]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 4200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   const sortedProgress = useMemo(() => {
     return [...progress].sort((a, b) => {
@@ -465,6 +595,62 @@ export default function DiscipulandoDetalhePage() {
     await loadCase();
   }
 
+  async function handleRegisterContactAttempt() {
+    if (!supabaseClient || !caseData || !member) return;
+    if (!hasContactAttemptsSupport) {
+      setStatusMessage(
+        "Registro de tentativas indisponível neste ambiente. Aplique a migração 0025_discipulado_criticidade_contatos_confra.sql."
+      );
+      return;
+    }
+
+    const previousCriticality = caseData.criticality;
+    const previousDaysToConfra = caseData.days_to_confra;
+    setStatusMessage("");
+
+    const { error } = await supabaseClient.from("contact_attempts").insert({
+      case_id: caseData.id,
+      member_id: member.id,
+      outcome: contactOutcomeDraft,
+      channel: contactChannelDraft,
+      notes: contactNotesDraft.trim() || null,
+      attempted_by: currentUserId
+    });
+
+    if (error) {
+      setStatusMessage(error.message);
+      return;
+    }
+
+    const { data: refreshedCaseData } = await supabaseClient
+      .from("discipleship_cases")
+      .select("criticality, days_to_confra")
+      .eq("id", caseData.id)
+      .single();
+
+    setContactNotesDraft("");
+    await loadCase();
+
+    const nextCriticality = (refreshedCaseData?.criticality ?? previousCriticality) as CaseItem["criticality"];
+    const nextDaysToConfra = (refreshedCaseData?.days_to_confra ?? previousDaysToConfra) as number | null;
+    const criticalityRaised = criticalityRank(nextCriticality) > criticalityRank(previousCriticality);
+
+    if (isNegativeContactOutcome(contactOutcomeDraft) && criticalityRaised) {
+      setToast({
+        kind: "warning",
+        message: `Contato negativo registrado. Criticidade: ${criticalityLabel(
+          nextCriticality
+        )} (faltam ${nextDaysToConfra ?? "-"} dias para a confra).`
+      });
+      return;
+    }
+
+    setToast({
+      kind: "success",
+      message: `Tentativa registrada como ${formatOutcomeLabel(contactOutcomeDraft)}.`
+    });
+  }
+
   async function handleRegisterBaptism() {
     if (!supabaseClient || !member) return;
     if (!baptismDate) {
@@ -579,6 +765,20 @@ export default function DiscipulandoDetalhePage() {
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{statusMessage}</p>
       ) : null}
 
+      {toast ? (
+        <div className="fixed right-4 top-4 z-50">
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm shadow-lg ${
+              toast.kind === "warning"
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      ) : null}
+
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Dados do membro (CCM)</h3>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -599,6 +799,77 @@ export default function DiscipulandoDetalhePage() {
             <p className="text-sm font-semibold text-slate-900">{member?.bairro ?? "-"}</p>
           </div>
         </div>
+      </section>
+
+      <section className="discipulado-panel p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-sky-900">Urgência do contato</h3>
+            <p className="text-xs text-slate-600">
+              Classificação automática por contatos negativos + proximidade da confraternização.
+            </p>
+          </div>
+          <StatusBadge value={caseData?.criticality ?? "BAIXA"} />
+        </div>
+
+        {!hasCriticalityColumns ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Criticidade indisponível neste ambiente. Aplique a migração
+            {" "}
+            <code>0025_discipulado_criticidade_contatos_confra.sql</code>.
+          </p>
+        ) : null}
+
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <article className="rounded-lg border border-slate-100 bg-white px-3 py-3">
+            <p className="text-xs text-slate-500">Criticidade</p>
+            <p className="text-lg font-semibold text-slate-900">{criticalityLabel(caseData?.criticality)}</p>
+          </article>
+          <article className="rounded-lg border border-slate-100 bg-white px-3 py-3">
+            <p className="text-xs text-slate-500">Negativos acumulados</p>
+            <p className="text-lg font-semibold text-slate-900">{caseData?.negative_contact_count ?? 0}</p>
+          </article>
+          <article className="rounded-lg border border-slate-100 bg-white px-3 py-3">
+            <p className="text-xs text-slate-500">Dias até a confra</p>
+            <p className="text-lg font-semibold text-slate-900">{caseData?.days_to_confra ?? "-"}</p>
+          </article>
+        </div>
+
+        {caseData?.criticality === "CRITICA" ? (
+          <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-800">Ações sugeridas</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setStatusMessage("Sugestão: reatribuir responsável ao caso para resposta imediata.")}
+                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Reatribuir responsável
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusMessage("Sugestão: confirmar telefone e DDD com o membro antes da próxima tentativa.")}
+                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Confirmar telefone
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactChannelDraft("ligacao")}
+                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Tentar contato por ligação
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactChannelDraft("visita")}
+                className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
+              >
+                Visita presencial
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="discipulado-panel p-5">
@@ -713,7 +984,77 @@ export default function DiscipulandoDetalhePage() {
           <StatusBadge value={integrationStatusDraft} />
         </div>
 
-        <div className="mt-4 grid gap-5 lg:grid-cols-3">
+        <div className="mt-4 grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+            <h4 className="text-sm font-semibold text-slate-900">Tentativas de contato</h4>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Resultado</span>
+              <select
+                value={contactOutcomeDraft}
+                onChange={(event) => setContactOutcomeDraft(event.target.value as ContactAttemptOutcome)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                disabled={!hasContactAttemptsSupport}
+              >
+                <option value="contacted">Contato realizado</option>
+                <option value="scheduled_visit">Visita agendada</option>
+                <option value="no_answer">Sem resposta</option>
+                <option value="sem_resposta">Sem resposta (genérico)</option>
+                <option value="wrong_number">Número inválido</option>
+                <option value="refused">Recusou contato</option>
+              </select>
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Canal</span>
+              <select
+                value={contactChannelDraft}
+                onChange={(event) => setContactChannelDraft(event.target.value as ContactAttemptChannel)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                disabled={!hasContactAttemptsSupport}
+              >
+                <option value="whatsapp">WhatsApp</option>
+                <option value="ligacao">Ligação</option>
+                <option value="visita">Visita presencial</option>
+                <option value="outro">Outro</option>
+              </select>
+            </label>
+            <label className="mt-3 block space-y-1 text-sm">
+              <span className="text-slate-700">Observações</span>
+              <textarea
+                rows={2}
+                value={contactNotesDraft}
+                onChange={(event) => setContactNotesDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                disabled={!hasContactAttemptsSupport}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleRegisterContactAttempt}
+              disabled={!hasContactAttemptsSupport}
+              className="mt-3 rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Registrar tentativa
+            </button>
+            {!hasContactAttemptsSupport ? (
+              <p className="mt-2 text-xs text-amber-700">
+                Recurso indisponível neste banco. Aplique a migração
+                {" "}
+                <code>0025_discipulado_criticidade_contatos_confra.sql</code>.
+              </p>
+            ) : null}
+            {contactAttempts.length ? (
+              <ul className="mt-3 space-y-1 text-xs text-slate-600">
+                {contactAttempts.slice(0, 5).map((item) => (
+                  <li key={item.id}>
+                    {formatDateBR(item.created_at)} • {formatOutcomeLabel(item.outcome)} • {item.channel}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-slate-500">Sem tentativas registradas.</p>
+            )}
+          </article>
+
           <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
             <h4 className="text-sm font-semibold text-slate-900">Status de integração</h4>
             <p className="mt-1 text-xs text-slate-600">

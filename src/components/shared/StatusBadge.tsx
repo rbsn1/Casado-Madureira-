@@ -15,6 +15,10 @@ const variants: Record<string, string> = {
   CADASTRO: "bg-brand-100 text-brand-900",
   ENCAMINHADO_EVENTO: "bg-accent-100 text-accent-600",
   DEPTO_VINCULO: "bg-tea-100 text-tea-600",
+  BAIXA: "bg-slate-100 text-slate-700",
+  MEDIA: "bg-amber-100 text-amber-800",
+  ALTA: "bg-orange-100 text-orange-700",
+  CRITICA: "bg-rose-100 text-rose-700",
   ATIVO: "bg-success-100 text-success-600",
   INATIVO: "bg-surface text-text-muted"
 };

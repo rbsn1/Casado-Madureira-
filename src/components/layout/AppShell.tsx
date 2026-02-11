@@ -29,6 +29,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
     title: "Discipulado",
     items: [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
+      { href: "/discipulado/fila", label: "Fila", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["CADASTRADOR"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
