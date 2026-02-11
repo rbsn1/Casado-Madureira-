@@ -20,7 +20,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
-      { href: "/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SECRETARIA","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
       { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] },
       { href: "/manual/jornada-completa", label: "Manual do sistema" }
@@ -32,6 +31,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["CADASTRADOR"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
+      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] }
     ]
   },
