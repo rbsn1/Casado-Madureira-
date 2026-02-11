@@ -9,11 +9,14 @@ import { downloadCsv, parseCsv } from "@/lib/csv";
 import * as XLSX from "xlsx";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 import { formatDateBR } from "@/lib/date";
+import { formatCpfInput, parseCpf } from "@/lib/cpf";
 
 type PessoaItem = {
   id: string;
   nome_completo: string;
   telefone_whatsapp: string | null;
+  cpf?: string | null;
+  foto_url?: string | null;
   origem: string | null;
   igreja_origem?: string | null;
   bairro?: string | null;
@@ -38,6 +41,8 @@ type PessoaQueryRow = {
   id: string;
   nome_completo: string;
   telefone_whatsapp: string | null;
+  cpf?: string | null;
+  foto_url?: string | null;
   origem: string | null;
   igreja_origem: string | null;
   bairro: string | null;
@@ -51,6 +56,8 @@ type PessoaQueryRow = {
 function isMissingProfileCompletionColumnsError(message: string, code?: string) {
   return (
     code === "PGRST204" ||
+    message.includes("cpf") ||
+    message.includes("foto_url") ||
     message.includes("cadastro_completo_status") ||
     message.includes("cadastro_completo_at")
   );
@@ -67,6 +74,8 @@ function CadastrosContent() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [fotoUrl, setFotoUrl] = useState("");
   const [nome, setNome] = useState("");
   const [origem, setOrigem] = useState("");
   const [bairro, setBairro] = useState("");
@@ -79,6 +88,7 @@ function CadastrosContent() {
   const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
   const [canGenerateCompletionLink, setCanGenerateCompletionLink] = useState(false);
+  const [hasMemberProfileColumns, setHasMemberProfileColumns] = useState(true);
   const searchParams = useSearchParams();
 
   const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
@@ -137,7 +147,7 @@ function CadastrosContent() {
     };
 
     const baseColumns =
-      "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at";
+      "id, nome_completo, telefone_whatsapp, cpf, foto_url, origem, igreja_origem, bairro, data, observacoes, created_at";
     let pessoasResult = await buildPessoasQuery(`${baseColumns}, cadastro_completo_status, cadastro_completo_at`);
     let usingLegacyColumns = false;
 
@@ -146,7 +156,9 @@ function CadastrosContent() {
       isMissingProfileCompletionColumnsError(pessoasResult.error.message, pessoasResult.error.code)
     ) {
       usingLegacyColumns = true;
-      pessoasResult = await buildPessoasQuery(baseColumns);
+      pessoasResult = await buildPessoasQuery(
+        "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at"
+      );
     }
 
     if (pessoasResult.error) {
@@ -156,12 +168,15 @@ function CadastrosContent() {
     }
 
     const pessoasRows: unknown[] = Array.isArray(pessoasResult.data) ? pessoasResult.data : [];
+    setHasMemberProfileColumns(!usingLegacyColumns);
     const pessoasData: PessoaItem[] = pessoasRows.map((row) => {
       const item = row as Partial<PessoaQueryRow>;
       return {
         id: String(item.id ?? ""),
         nome_completo: String(item.nome_completo ?? ""),
         telefone_whatsapp: item.telefone_whatsapp ?? null,
+        cpf: usingLegacyColumns ? null : item.cpf ?? null,
+        foto_url: usingLegacyColumns ? null : item.foto_url ?? null,
         origem: item.origem ?? null,
         igreja_origem: item.igreja_origem ?? null,
         bairro: item.bairro ?? null,
@@ -287,6 +302,7 @@ function CadastrosContent() {
         !term ||
         pessoa.nome_completo.toLowerCase().includes(term) ||
         (pessoa.telefone_whatsapp ?? "").toLowerCase().includes(term) ||
+        (pessoa.cpf ?? "").toLowerCase().includes(term) ||
         (pessoa.origem ?? "").toLowerCase().includes(term) ||
         (pessoa.igreja_origem ?? "").toLowerCase().includes(term) ||
         (pessoa.bairro ?? "").toLowerCase().includes(term);
@@ -340,6 +356,8 @@ function CadastrosContent() {
   function resetForm() {
     setNome("");
     setTelefone("");
+    setCpf("");
+    setFotoUrl("");
     setOrigem("");
     setIgrejaSelecionada("Sede");
     setIgrejaOutra("");
@@ -358,6 +376,8 @@ function CadastrosContent() {
     setEditingPessoa(pessoa);
     setNome(pessoa.nome_completo ?? "");
     setTelefone(formatBrazilPhoneInput(pessoa.telefone_whatsapp ?? ""));
+    setCpf(formatCpfInput(pessoa.cpf ?? ""));
+    setFotoUrl(pessoa.foto_url ?? "");
     setOrigem(pessoa.origem ?? "");
     const igrejaAtual = pessoa.igreja_origem ?? "Sede";
     if (igrejaOptions.includes(igrejaAtual)) {
@@ -392,8 +412,14 @@ function CadastrosContent() {
       setStatusMessage("Informe a igreja de origem.");
       return;
     }
+    const cpfRaw = cpf.trim();
+    const parsedCpf = cpfRaw ? parseCpf(cpfRaw) : null;
+    if (cpfRaw && !parsedCpf) {
+      setStatusMessage("Informe um CPF válido.");
+      return;
+    }
     const igrejaOrigem = igrejaSelecionada === "Outra" ? igrejaOutra : igrejaSelecionada;
-    const payload = {
+    const payloadBase = {
       nome_completo: nome.trim(),
       telefone_whatsapp: telefoneParsed.formatted,
       origem: origem.trim(),
@@ -403,6 +429,19 @@ function CadastrosContent() {
       observacoes: observacoes.trim(),
       request_id: crypto.randomUUID()
     };
+    const payload = hasMemberProfileColumns
+      ? {
+          ...payloadBase,
+          cpf: parsedCpf?.digits ?? null,
+          foto_url: fotoUrl.trim() || null
+        }
+      : payloadBase;
+
+    if (!hasMemberProfileColumns && (cpfRaw || fotoUrl.trim())) {
+      setStatusMessage(
+        "CPF/Foto ainda não estão disponíveis neste banco. Aplique a migração de cadastro completo (0020)."
+      );
+    }
     if (editingPessoa) {
       const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
       if (error) {
@@ -432,9 +471,11 @@ function CadastrosContent() {
 
   function handleExport() {
     const rows = filtered.map((pessoa) => [
-      pessoa.nome_completo,
-      pessoa.telefone_whatsapp ?? "",
-      pessoa.origem ?? "",
+        pessoa.nome_completo,
+        pessoa.telefone_whatsapp ?? "",
+        pessoa.cpf ?? "",
+        pessoa.foto_url ?? "",
+        pessoa.origem ?? "",
       pessoa.igreja_origem ?? "",
       pessoa.bairro ?? "",
       pessoa.status ?? "",
@@ -443,7 +484,18 @@ function CadastrosContent() {
     ]);
     downloadCsv(
       "cadastros.csv",
-      ["nome", "telefone", "origem", "igreja_origem", "bairro", "status", "responsavel_id", "criado_em"],
+      [
+        "nome",
+        "telefone",
+        "cpf",
+        "foto_url",
+        "origem",
+        "igreja_origem",
+        "bairro",
+        "status",
+        "responsavel_id",
+        "criado_em"
+      ],
       rows
     );
   }
@@ -634,6 +686,11 @@ function CadastrosContent() {
 
       {showCreate ? (
         <form className="card grid gap-3 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
+          {!hasMemberProfileColumns ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:col-span-2">
+              Campos de perfil completo (CPF/Foto) indisponíveis neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
+            </p>
+          ) : null}
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Nome completo</span>
             <input
@@ -654,6 +711,40 @@ function CadastrosContent() {
               className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
               placeholder="(92) 99227-0057"
             />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">CPF</span>
+            <input
+              name="cpf"
+              value={cpf}
+              onChange={(event) => setCpf(formatCpfInput(event.target.value))}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="000.000.000-00"
+              disabled={!hasMemberProfileColumns}
+            />
+          </label>
+          <label className="space-y-1 text-sm md:col-span-2">
+            <span className="text-slate-700">Foto de perfil (URL)</span>
+            <input
+              name="foto_url"
+              type="url"
+              value={fotoUrl}
+              onChange={(event) => setFotoUrl(event.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              placeholder="https://..."
+              disabled={!hasMemberProfileColumns}
+            />
+            {fotoUrl ? (
+              <div className="pt-2">
+                {/* Preview simples para validar URL da foto antes de salvar */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fotoUrl}
+                  alt="Prévia da foto de perfil"
+                  className="h-16 w-16 rounded-full border border-slate-200 object-cover"
+                />
+              </div>
+            ) : null}
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-slate-700">Origem</span>
@@ -742,7 +833,7 @@ function CadastrosContent() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="search"
-            placeholder="Buscar por nome, telefone ou origem"
+            placeholder="Buscar por nome, telefone, CPF ou origem"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none md:w-80"
