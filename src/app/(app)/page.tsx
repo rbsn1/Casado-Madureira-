@@ -176,10 +176,10 @@ export default function DashboardPage() {
 
       const [casadosPrimary, discipleshipResult] = await Promise.all([
         supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation),
-        isAdminMaster || userRoles.includes("SUPER_ADMIN") || userRoles.includes("DISCIPULADOR")
+        userRoles.includes("DISCIPULADOR")
           ? supabaseClient.rpc("get_discipleship_dashboard", {
               stale_days: 14,
-              target_congregation_id: isAdminMaster ? congregationFilter || null : null
+              target_congregation_id: null
             })
           : Promise.resolve({ data: null, error: null } as any)
       ]);
@@ -352,7 +352,7 @@ export default function DashboardPage() {
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
 
-      {isAdminMaster || userRoles.includes("SUPER_ADMIN") || userRoles.includes("DISCIPULADOR") ? (
+      {userRoles.includes("DISCIPULADOR") ? (
         <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

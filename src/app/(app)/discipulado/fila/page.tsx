@@ -28,11 +28,7 @@ export default function DiscipuladoFilaPage() {
     async function load() {
       const scope = await getAuthScope();
       if (!active) return;
-      const allowed =
-        scope.isAdminMaster ||
-        scope.roles.includes("ADMIN_MASTER") ||
-        scope.roles.includes("SUPER_ADMIN") ||
-        scope.roles.includes("DISCIPULADOR");
+      const allowed = scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
       if (!allowed) return;
 
@@ -77,7 +73,7 @@ export default function DiscipuladoFilaPage() {
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito ao perfil de discipulador e administradores.
+        Acesso restrito aos perfis do Discipulado.
       </div>
     );
   }

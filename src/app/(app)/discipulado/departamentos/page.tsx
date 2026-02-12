@@ -47,9 +47,10 @@ const typeLabels: Record<DepartamentoItem["type"], string> = {
 export default function DepartamentosPage() {
   const [departamentos, setDepartamentos] = useState<DepartamentoItem[]>([]);
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
+  const [pessoasLoading, setPessoasLoading] = useState(false);
   const [pessoaDepto, setPessoaDepto] = useState<PessoaDepto[]>([]);
   const [deptPublicos, setDeptPublicos] = useState<DepartamentoPublico[]>([]);
-  const [hasAccess, setHasAccess] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedDept, setSelectedDept] = useState<DepartamentoItem | null>(null);
@@ -60,42 +61,50 @@ export default function DepartamentosPage() {
     ativo: true
   });
 
+  async function loadPessoasForModal() {
+    if (!supabaseClient || pessoas.length || pessoasLoading) return;
+    setPessoasLoading(true);
+    const { data, error } = await supabaseClient.from("pessoas").select("id, nome_completo").order("nome_completo");
+    if (error) {
+      setStatusMessage((prev) => prev || "Falha ao carregar pessoas para vincular ao departamento.");
+      setPessoasLoading(false);
+      return;
+    }
+    setPessoas(data ?? []);
+    setPessoasLoading(false);
+  }
+
   async function loadData() {
     if (!supabaseClient) {
       setStatusMessage("Supabase não configurado.");
       return;
     }
     const scope = await getAuthScope();
-    const allowed =
-      scope.isAdminMaster ||
-      scope.roles.includes("ADMIN_MASTER") ||
-      scope.roles.includes("SUPER_ADMIN") ||
-      scope.roles.includes("DISCIPULADOR");
+    const allowed = scope.roles.includes("DISCIPULADOR");
     setHasAccess(allowed);
     if (!allowed) {
       setStatusMessage("Acesso restrito à gestão de departamentos no módulo de Discipulado.");
       setDepartamentos([]);
       setPessoas([]);
+      setPessoasLoading(false);
       setPessoaDepto([]);
       setDeptPublicos([]);
       return;
     }
     setStatusMessage("");
-    const [deptResult, pessoasResult, pessoaDeptoResult, publicDeptResult] = await Promise.all([
+    const [deptResult, pessoaDeptoResult, publicDeptResult] = await Promise.all([
       supabaseClient
         .from("departamentos")
         .select("id, nome, descricao, responsavel_id, ativo, type, parent_id")
         .order("nome"),
-      supabaseClient.from("pessoas").select("id, nome_completo").order("nome_completo"),
       supabaseClient.from("pessoa_departamento").select("id, pessoa_id, departamento_id, funcao, status, desde"),
       supabaseClient.from("departamentos_publicos").select("id, nome, responsavel, contato, ativo").order("nome")
     ]);
-    if (deptResult.error || pessoasResult.error || pessoaDeptoResult.error || publicDeptResult.error) {
+    if (deptResult.error || pessoaDeptoResult.error || publicDeptResult.error) {
       setStatusMessage("Não foi possível carregar os departamentos.");
       return;
     }
     setDepartamentos(deptResult.data ?? []);
-    setPessoas(pessoasResult.data ?? []);
     setPessoaDepto(pessoaDeptoResult.data ?? []);
     setDeptPublicos(publicDeptResult.data ?? []);
   }
@@ -372,7 +381,10 @@ export default function DepartamentosPage() {
                   Editar
                 </button>
                 <button
-                  onClick={() => setSelectedDept(dept)}
+                  onClick={() => {
+                    setSelectedDept(dept);
+                    loadPessoasForModal();
+                  }}
                   className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
                 >
                   Gerir membros
@@ -422,9 +434,12 @@ export default function DepartamentosPage() {
                 <select
                   name="pessoa_id"
                   required
+                  disabled={pessoasLoading}
                   className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
                 >
-                  <option value="">Selecione</option>
+                  <option value="">
+                    {pessoasLoading ? "Carregando pessoas..." : "Selecione"}
+                  </option>
                   {pessoas.map((pessoa) => (
                     <option key={pessoa.id} value={pessoa.id}>
                       {pessoa.nome_completo}

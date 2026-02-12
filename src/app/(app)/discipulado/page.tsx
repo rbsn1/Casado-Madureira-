@@ -85,28 +85,16 @@ export default function DiscipuladoDashboardPage() {
       const scope = await getAuthScope();
       if (!active) return;
 
-      const isGlobalAdmin =
-        scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
       const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
-      const allowed = isGlobalAdmin || hasDiscipuladorRole;
+      const allowed = hasDiscipuladorRole;
       setHasAccess(allowed);
-      setIsAdminMaster(isGlobalAdmin);
-      setCanManageDiscipulado(isGlobalAdmin || hasDiscipuladorRole);
-      setCanCreateNovoConvertido(scope.roles.includes("CADASTRADOR"));
+      setIsAdminMaster(false);
+      setCanManageDiscipulado(hasDiscipuladorRole);
+      setCanCreateNovoConvertido(scope.roles.includes("DISCIPULADOR") || scope.roles.includes("SM_DISCIPULADO"));
 
       if (!allowed) return;
 
-      if (scope.isAdminMaster) {
-        const { data } = await supabaseClient
-          .from("congregations")
-          .select("id, name")
-          .eq("is_active", true)
-          .order("name");
-        if (!active) return;
-        setCongregations((data ?? []) as Congregation[]);
-      }
-
-      await loadDashboard(scope.isAdminMaster, "");
+      await loadDashboard(false, "");
     }
 
     bootstrap();
@@ -124,7 +112,7 @@ export default function DiscipuladoDashboardPage() {
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito ao perfil de discipulador e administradores.
+        Acesso restrito aos perfis do Discipulado.
       </div>
     );
   }

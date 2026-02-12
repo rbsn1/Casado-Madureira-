@@ -69,15 +69,6 @@ export async function requireDiscipuladoAdmin(request: Request) {
   if ("error" in authUser) return authUser;
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .select("role")
-    .eq("id", authUser.user.id)
-    .maybeSingle();
-
-  const profileRole = (profile as { role?: string } | null)?.role;
-  const profileAdmin = !profileError && profileRole === "admin";
-
   const { data: activeRoles, error: rolesError } = await (supabaseAdmin as any)
     .from("usuarios_perfis")
     .select("role, congregation_id")
@@ -91,28 +82,21 @@ export async function requireDiscipuladoAdmin(request: Request) {
   const roles = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).map(
     (item) => item.role
   );
-  const isGlobalAdmin =
-    profileAdmin || roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN");
-
-  if (isGlobalAdmin) {
-    return {
-      user: authUser.user,
-      isGlobalAdmin: true,
-      congregationId: null as string | null
-    };
-  }
-
-  const discipuladoRole = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).find(
+  const discipuladorRole = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).find(
     (item) => item.role === "DISCIPULADOR" && Boolean(item.congregation_id)
   );
 
-  if (!discipuladoRole?.congregation_id) {
+  if (!roles.includes("DISCIPULADOR")) {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 
+  const congregationId = discipuladorRole?.congregation_id
+    ? String(discipuladorRole.congregation_id)
+    : null;
+
   return {
     user: authUser.user,
-    isGlobalAdmin: false,
-    congregationId: String(discipuladoRole.congregation_id)
+    isGlobalAdmin: congregationId === null,
+    congregationId
   };
 }

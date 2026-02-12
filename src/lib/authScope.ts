@@ -7,6 +7,15 @@ export type AuthScope = {
 };
 
 export const DISCIPULADO_ACCOUNT_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO"] as const;
+export const DISCIPULADO_ADMIN_ROLES = ["DISCIPULADOR"] as const;
+
+export function hasDiscipuladoAccessRole(roles: string[]) {
+  return roles.some((role) => DISCIPULADO_ACCOUNT_ROLES.includes(role as (typeof DISCIPULADO_ACCOUNT_ROLES)[number]));
+}
+
+export function hasDiscipuladoAdminRole(roles: string[]) {
+  return roles.some((role) => DISCIPULADO_ADMIN_ROLES.includes(role as (typeof DISCIPULADO_ADMIN_ROLES)[number]));
+}
 
 export function isDiscipuladoScopedAccount(roles: string[], isGlobalAdmin: boolean) {
   if (isGlobalAdmin) return false;

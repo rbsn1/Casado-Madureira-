@@ -305,14 +305,12 @@ export default function DiscipuladoAdminPage() {
       const scope = await getAuthScope();
       if (!active) return;
 
-      const isGlobalAdmin =
-        scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
       const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
-      setHasAccess(isGlobalAdmin || hasDiscipuladorRole);
-      setIsGlobalAdmin(isGlobalAdmin);
+      setHasAccess(hasDiscipuladorRole);
+      setIsGlobalAdmin(false);
       setManagerCongregationId(scope.congregationId ?? null);
 
-      if (!isGlobalAdmin && !hasDiscipuladorRole) {
+      if (!hasDiscipuladorRole) {
         setLoading(false);
         return;
       }

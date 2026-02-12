@@ -163,7 +163,7 @@ export default function DiscipulandoDetalhePage() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
-  const [isAdminMaster, setIsAdminMaster] = useState(false);
+  const [canManageAdminActions, setCanManageAdminActions] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [integrationData, setIntegrationData] = useState<IntegrationItem | null>(null);
   const [integrationStatusDraft, setIntegrationStatusDraft] = useState<IntegrationStatus>("PENDENTE");
@@ -421,11 +421,9 @@ export default function DiscipulandoDetalhePage() {
     async function bootstrap() {
       const scope = await getAuthScope();
       if (!active) return;
-      const isGlobalAdmin =
-        scope.isAdminMaster || scope.roles.includes("ADMIN_MASTER") || scope.roles.includes("SUPER_ADMIN");
-      const allowed = isGlobalAdmin || scope.roles.includes("DISCIPULADOR");
+      const allowed = scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
-      setIsAdminMaster(isGlobalAdmin);
+      setCanManageAdminActions(scope.roles.includes("DISCIPULADOR"));
       if (!allowed) {
         setLoading(false);
         return;
@@ -516,7 +514,7 @@ export default function DiscipulandoDetalhePage() {
   }
 
   async function handleModuleReopen(item: ProgressItem) {
-    if (!supabaseClient || !caseData || !isAdminMaster) return;
+    if (!supabaseClient || !caseData || !canManageAdminActions) return;
     setStatusMessage("");
     const { error } = await supabaseClient
       .from("discipleship_progress")
@@ -732,7 +730,7 @@ export default function DiscipulandoDetalhePage() {
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito ao perfil de discipulador e administradores.
+        Acesso restrito aos perfis do Discipulado.
       </div>
     );
   }
@@ -958,7 +956,7 @@ export default function DiscipulandoDetalhePage() {
                   >
                     Salvar observações
                   </button>
-                  {isAdminMaster && item.status === "concluido" ? (
+                  {canManageAdminActions && item.status === "concluido" ? (
                     <button
                       onClick={() => handleModuleReopen(item)}
                       className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"

@@ -5,7 +5,12 @@ import { FormEvent, ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
+import {
+  getAuthScope,
+  getDiscipuladoHomePath,
+  hasDiscipuladoAccessRole,
+  isDiscipuladoScopedAccount
+} from "@/lib/authScope";
 
 type NavItem = {
   href: string;
@@ -28,12 +33,12 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Discipulado",
     items: [
-      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/fila", label: "Fila", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["CADASTRADOR"] },
-      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] },
-      { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_MASTER","SUPER_ADMIN","DISCIPULADOR"] }
+      { href: "/discipulado", label: "Dashboard", roles: ["DISCIPULADOR"] },
+      { href: "/discipulado/fila", label: "Fila", roles: ["DISCIPULADOR"] },
+      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["DISCIPULADOR","SM_DISCIPULADO"] },
+      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["DISCIPULADOR"] },
+      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["DISCIPULADOR"] },
+      { href: "/discipulado/admin", label: "Admin", roles: ["DISCIPULADOR"] }
     ]
   },
   {
@@ -58,9 +63,9 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [authResolved, setAuthResolved] = useState(false);
   const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
-  const hasCadastradorRole = roles.includes("CADASTRADOR");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
   const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
+  const hasDiscipuladoRole = hasDiscipuladoAccessRole(roles);
   const isDiscipuladoConsole = current.startsWith("/discipulado");
   const shouldMaskContent = !authResolved || (isDiscipuladoAccount && !isDiscipuladoConsole);
   const accessRoleHint =
@@ -76,11 +81,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     .filter((section) => section.items.length > 0);
 
   function canAccessItem(item: NavItem) {
+    if (item.href.startsWith("/discipulado")) {
+      if (!hasDiscipuladoRole) return false;
+      if (!item.roles?.length) return true;
+      return item.roles.some((role) => roles.includes(role));
+    }
     if (isGlobalAdmin) return true;
     if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
-    if (item.href === "/discipulado/convertidos/novo") {
-      return hasCadastradorRole || hasSmDiscipuladoRole;
-    }
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
   }
@@ -269,7 +276,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   ? "Cadastro"
                   : isDiscipuladoAccount
                     ? "Painel Discipulado"
-                    : hasCadastradorRole || hasSmDiscipuladoRole
+                    : hasSmDiscipuladoRole
                     ? "Cadastro de Convertidos"
                     : isDiscipuladoConsole
                       ? "Painel Discipulado"
