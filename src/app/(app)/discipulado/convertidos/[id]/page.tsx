@@ -7,6 +7,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 import { formatDateBR } from "@/lib/date";
 import { criticalityLabel, criticalityRank, isNegativeContactOutcome } from "@/lib/discipleshipCriticality";
+import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
 type CaseItem = {
   id: string;
@@ -29,6 +30,7 @@ type MemberItem = {
   origem: string | null;
   igreja_origem: string | null;
   bairro: string | null;
+  observacoes: string | null;
 };
 
 type ProgressItem = {
@@ -143,6 +145,10 @@ function isMissingContactAttemptsTable(message: string, code?: string) {
   );
 }
 
+function isMissingMemberEditFunctionError(message: string, code?: string) {
+  return code === "PGRST202" || message.includes("update_ccm_member_profile_from_discipleship");
+}
+
 function formatOutcomeLabel(value: ContactAttemptOutcome) {
   if (value === "no_answer") return "Sem resposta";
   if (value === "wrong_number") return "Número inválido";
@@ -158,6 +164,13 @@ export default function DiscipulandoDetalhePage() {
   const caseId = String(params?.id ?? "");
   const [caseData, setCaseData] = useState<CaseItem | null>(null);
   const [member, setMember] = useState<MemberItem | null>(null);
+  const [isEditingMember, setIsEditingMember] = useState(false);
+  const [memberNameDraft, setMemberNameDraft] = useState("");
+  const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
+  const [memberOriginDraft, setMemberOriginDraft] = useState("");
+  const [memberChurchDraft, setMemberChurchDraft] = useState("");
+  const [memberNeighborhoodDraft, setMemberNeighborhoodDraft] = useState("");
+  const [memberNotesDraft, setMemberNotesDraft] = useState("");
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [modules, setModules] = useState<Record<string, ModuleItem>>({});
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
@@ -242,7 +255,7 @@ export default function DiscipulandoDetalhePage() {
       await Promise.all([
         supabaseClient
           .from("pessoas")
-          .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro")
+          .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, observacoes")
           .eq("id", currentCase.member_id)
           .single(),
         supabaseClient
@@ -315,7 +328,14 @@ export default function DiscipulandoDetalhePage() {
       return acc;
     }, {});
 
-    setMember(memberResult as MemberItem);
+    const memberData = memberResult as MemberItem;
+    setMember(memberData);
+    setMemberNameDraft(memberData.nome_completo ?? "");
+    setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
+    setMemberOriginDraft(memberData.origem ?? "");
+    setMemberChurchDraft(memberData.igreja_origem ?? "");
+    setMemberNeighborhoodDraft(memberData.bairro ?? "");
+    setMemberNotesDraft(memberData.observacoes ?? "");
     setProgress(progressRows);
     setModules(moduleMap);
     setNoteDrafts(drafts);
@@ -558,6 +578,58 @@ export default function DiscipulandoDetalhePage() {
     await loadCase();
   }
 
+  async function handleSaveMemberProfile() {
+    if (!supabaseClient || !member) return;
+
+    const normalizedName = memberNameDraft.trim();
+    if (normalizedName.length < 3) {
+      setStatusMessage("Informe o nome completo com ao menos 3 caracteres.");
+      return;
+    }
+
+    const parsedPhone = parseBrazilPhone(memberPhoneDraft);
+    if (!parsedPhone) {
+      setStatusMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
+      return;
+    }
+
+    const trimmedNeighborhood = memberNeighborhoodDraft.trim();
+    if (trimmedNeighborhood && trimmedNeighborhood.length < 2) {
+      setStatusMessage("O bairro precisa ter ao menos 2 caracteres.");
+      return;
+    }
+
+    setStatusMessage("");
+
+    const { error } = await supabaseClient.rpc("update_ccm_member_profile_from_discipleship", {
+      target_member_id: member.id,
+      full_name: normalizedName,
+      phone_whatsapp: parsedPhone.formatted,
+      origin: memberOriginDraft.trim() || null,
+      origin_church: memberChurchDraft.trim() || null,
+      neighborhood: trimmedNeighborhood || null,
+      notes: memberNotesDraft.trim() || null
+    });
+
+    if (error) {
+      if (isMissingMemberEditFunctionError(error.message, error.code)) {
+        setStatusMessage(
+          "Edição de cadastro indisponível neste ambiente. Aplique a migração 0029_discipulado_editar_cadastro_ccm.sql."
+        );
+        return;
+      }
+      setStatusMessage(error.message);
+      return;
+    }
+
+    setIsEditingMember(false);
+    setToast({
+      kind: "success",
+      message: "Cadastro do membro atualizado com sucesso."
+    });
+    await loadCase();
+  }
+
   async function handleSaveIntegration() {
     if (!supabaseClient || !member) return;
     setStatusMessage("");
@@ -778,25 +850,121 @@ export default function DiscipulandoDetalhePage() {
       ) : null}
 
       <section className="discipulado-panel p-5">
-        <h3 className="text-sm font-semibold text-sky-900">Dados do membro (CCM)</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
-            <p className="text-xs text-slate-500">Telefone</p>
-            <p className="text-sm font-semibold text-slate-900">{member?.telefone_whatsapp ?? "-"}</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
-            <p className="text-xs text-slate-500">Origem</p>
-            <p className="text-sm font-semibold text-slate-900">{member?.origem ?? "-"}</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
-            <p className="text-xs text-slate-500">Igreja de origem</p>
-            <p className="text-sm font-semibold text-slate-900">{member?.igreja_origem ?? "-"}</p>
-          </div>
-          <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
-            <p className="text-xs text-slate-500">Bairro</p>
-            <p className="text-sm font-semibold text-slate-900">{member?.bairro ?? "-"}</p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-sky-900">Dados do membro (CCM)</h3>
+          {isEditingMember ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveMemberProfile}
+                className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800"
+              >
+                Salvar cadastro
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingMember(false);
+                  setMemberNameDraft(member?.nome_completo ?? "");
+                  setMemberPhoneDraft(formatBrazilPhoneInput(member?.telefone_whatsapp ?? ""));
+                  setMemberOriginDraft(member?.origem ?? "");
+                  setMemberChurchDraft(member?.igreja_origem ?? "");
+                  setMemberNeighborhoodDraft(member?.bairro ?? "");
+                  setMemberNotesDraft(member?.observacoes ?? "");
+                }}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
+              >
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditingMember(true)}
+              className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+            >
+              Editar cadastro
+            </button>
+          )}
         </div>
+
+        {isEditingMember ? (
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Nome completo</span>
+              <input
+                value={memberNameDraft}
+                onChange={(event) => setMemberNameDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Telefone (WhatsApp)</span>
+              <input
+                value={memberPhoneDraft}
+                onChange={(event) => setMemberPhoneDraft(formatBrazilPhoneInput(event.target.value))}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                placeholder="(92) 99227-0057"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Origem</span>
+              <input
+                value={memberOriginDraft}
+                onChange={(event) => setMemberOriginDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Igreja de origem</span>
+              <input
+                value={memberChurchDraft}
+                onChange={(event) => setMemberChurchDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Bairro</span>
+              <input
+                value={memberNeighborhoodDraft}
+                onChange={(event) => setMemberNeighborhoodDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-700">Observações</span>
+              <textarea
+                rows={2}
+                value={memberNotesDraft}
+                onChange={(event) => setMemberNotesDraft(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              />
+            </label>
+          </div>
+        ) : (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Telefone</p>
+              <p className="text-sm font-semibold text-slate-900">{member?.telefone_whatsapp ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Origem</p>
+              <p className="text-sm font-semibold text-slate-900">{member?.origem ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Igreja de origem</p>
+              <p className="text-sm font-semibold text-slate-900">{member?.igreja_origem ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
+              <p className="text-xs text-slate-500">Bairro</p>
+              <p className="text-sm font-semibold text-slate-900">{member?.bairro ?? "-"}</p>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-white px-3 py-2 sm:col-span-2 lg:col-span-4">
+              <p className="text-xs text-slate-500">Observações</p>
+              <p className="text-sm font-semibold text-slate-900">{member?.observacoes ?? "-"}</p>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="discipulado-panel p-5">
