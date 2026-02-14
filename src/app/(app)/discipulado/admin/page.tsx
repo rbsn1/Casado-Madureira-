@@ -43,10 +43,11 @@ type UserItem = {
   whatsapp?: string | null;
 };
 
-const DISCIPULADO_USER_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO"] as const;
+const DISCIPULADO_USER_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"] as const;
 type DiscipuladoUserRole = (typeof DISCIPULADO_USER_ROLES)[number];
 
 function getDiscipuladoRoleLabel(role: string) {
+  if (role === "SECRETARIA_DISCIPULADO") return "Secretária Discipulado (Cadastro)";
   if (role === "SM_DISCIPULADO") return "SM Discipulado (Cadastro)";
   return "Discipulador";
 }
@@ -784,7 +785,8 @@ export default function DiscipuladoAdminPage() {
             </button>
           </div>
           <div className="flex items-end text-xs text-slate-500">
-            Cada congregação criada já pode receber usuários DISCIPULADOR ou SM_DISCIPULADO vinculados.
+            Cada congregação criada já pode receber usuários DISCIPULADOR, SM_DISCIPULADO ou
+            SECRETARIA_DISCIPULADO vinculados.
           </div>
         </form>
 
@@ -887,8 +889,8 @@ export default function DiscipuladoAdminPage() {
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Usuários do discipulado</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Contas com papéis <strong>DISCIPULADOR</strong> e <strong>SM_DISCIPULADO</strong> acessam apenas o módulo
-          de discipulado.
+          Contas com papéis <strong>DISCIPULADOR</strong>, <strong>SM_DISCIPULADO</strong> e{" "}
+          <strong>SECRETARIA_DISCIPULADO</strong> acessam apenas o módulo de discipulado.
         </p>
 
         {userStatusMessage ? (
@@ -917,6 +919,7 @@ export default function DiscipuladoAdminPage() {
             >
               <option value="DISCIPULADOR">Discipulador (completo)</option>
               <option value="SM_DISCIPULADO">SM Discipulado (somente cadastro)</option>
+              <option value="SECRETARIA_DISCIPULADO">Secretária Discipulado (somente cadastro)</option>
             </select>
           </label>
           {isGlobalAdmin ? (

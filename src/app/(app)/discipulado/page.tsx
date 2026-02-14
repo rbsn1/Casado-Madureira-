@@ -90,7 +90,11 @@ export default function DiscipuladoDashboardPage() {
       setHasAccess(allowed);
       setIsAdminMaster(false);
       setCanManageDiscipulado(hasDiscipuladorRole);
-      setCanCreateNovoConvertido(scope.roles.includes("DISCIPULADOR") || scope.roles.includes("SM_DISCIPULADO"));
+      setCanCreateNovoConvertido(
+        scope.roles.includes("DISCIPULADOR") ||
+          scope.roles.includes("SM_DISCIPULADO") ||
+          scope.roles.includes("SECRETARIA_DISCIPULADO")
+      );
 
       if (!allowed) return;
 

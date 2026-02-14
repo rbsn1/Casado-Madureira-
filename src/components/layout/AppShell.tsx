@@ -35,7 +35,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/discipulado", label: "Dashboard", roles: ["DISCIPULADOR"] },
       { href: "/discipulado/fila", label: "Fila", roles: ["DISCIPULADOR"] },
-      { href: "/discipulado/convertidos/novo", label: "Novo convertido", roles: ["DISCIPULADOR","SM_DISCIPULADO"] },
+      {
+        href: "/discipulado/convertidos/novo",
+        label: "Novo convertido",
+        roles: ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["DISCIPULADOR"] },
       { href: "/discipulado/departamentos", label: "Departamentos", roles: ["DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["DISCIPULADOR"] }
@@ -62,7 +66,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [authResolved, setAuthResolved] = useState(false);
-  const hasSmDiscipuladoRole = roles.includes("SM_DISCIPULADO");
+  const hasCadastroDiscipuladoRole =
+    roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
   const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
   const hasDiscipuladoRole = hasDiscipuladoAccessRole(roles);
@@ -70,8 +75,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const shouldMaskContent = !authResolved || (isDiscipuladoAccount && !isDiscipuladoConsole);
   const accessRoleHint =
     isDiscipuladoAccount && !isGlobalAdmin
-      ? "RBAC: DISCIPULADOR, SM_DISCIPULADO"
-      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO";
+      ? "RBAC: DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO"
+      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO";
 
   const visibleSections = navSections
     .map((section) => ({
@@ -276,7 +281,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   ? "Cadastro"
                   : isDiscipuladoAccount
                     ? "Painel Discipulado"
-                    : hasSmDiscipuladoRole
+                    : hasCadastroDiscipuladoRole
                     ? "Cadastro de Convertidos"
                     : isDiscipuladoConsole
                       ? "Painel Discipulado"

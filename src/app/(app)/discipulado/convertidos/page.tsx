@@ -16,16 +16,11 @@ type CcmMemberWithoutCase = {
   member_name: string;
   member_phone: string | null;
   created_at: string | null;
+  has_active_case: boolean;
 };
 
-type WithoutCaseSnapshot = {
-  visible_count: number;
-  without_case_count: number;
-  rows: CcmMemberWithoutCase[];
-};
-
-function isMissingWithoutCaseSnapshotFunctionError(message: string, code?: string) {
-  return code === "PGRST202" || message.includes("get_discipleship_without_case_snapshot");
+function isMissingMembersListFunctionError(message: string, code?: string) {
+  return code === "PGRST202" || message.includes("list_ccm_members_for_discipleship");
 }
 
 function statusLabel(status: CaseSummaryItem["status"]) {
@@ -36,7 +31,7 @@ function statusLabel(status: CaseSummaryItem["status"]) {
 
 export default function DiscipuladoConvertidosPage() {
   const [cases, setCases] = useState<CaseSummaryItem[]>([]);
-  const [ccmMembersWithoutCase, setCcmMembersWithoutCase] = useState<CcmMemberWithoutCase[]>([]);
+  const [ccmMembers, setCcmMembers] = useState<CcmMemberWithoutCase[]>([]);
   const [visibleCcmMembersCount, setVisibleCcmMembersCount] = useState(0);
   const [withoutCaseTotalCount, setWithoutCaseTotalCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
@@ -58,7 +53,9 @@ export default function DiscipuladoConvertidosPage() {
       const allowed = scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
       setCanCreateNovoConvertido(
-        scope.roles.includes("DISCIPULADOR") || scope.roles.includes("SM_DISCIPULADO")
+        scope.roles.includes("DISCIPULADOR") ||
+          scope.roles.includes("SM_DISCIPULADO") ||
+          scope.roles.includes("SECRETARIA_DISCIPULADO")
       );
       if (!allowed) return;
 
@@ -77,18 +74,22 @@ export default function DiscipuladoConvertidosPage() {
       const safeCases = (caseSummaries ?? []) as CaseSummaryItem[];
       setCases(safeCases);
 
-      const { data: snapshotData, error: snapshotError } = await supabaseClient.rpc(
-        "get_discipleship_without_case_snapshot",
-        {
-          target_congregation_id: null,
-          rows_limit: 60
-        }
-      );
+      const batchSize = 500;
+      const collectedMembers: CcmMemberWithoutCase[] = [];
+      let offset = 0;
+      let listError: { message: string; code?: string } | null = null;
 
-      if (!active) return;
-      if (!snapshotError) {
-        const payload = (snapshotData ?? {}) as Partial<WithoutCaseSnapshot>;
-        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+      while (true) {
+        const { data: listData, error } = await supabaseClient.rpc("list_ccm_members_for_discipleship", {
+          search_text: null,
+          rows_limit: batchSize,
+          rows_offset: offset
+        });
+        if (error) {
+          listError = error;
+          break;
+        }
+        const rows = Array.isArray(listData) ? listData : [];
         const normalizedRows = rows
           .map((row) => {
             const item = row as Partial<CcmMemberWithoutCase>;
@@ -97,64 +98,92 @@ export default function DiscipuladoConvertidosPage() {
               member_id: String(item.member_id),
               member_name: String(item.member_name),
               member_phone: item.member_phone ?? null,
-              created_at: item.created_at ?? null
+              created_at: item.created_at ?? null,
+              has_active_case: Boolean(item.has_active_case)
             } as CcmMemberWithoutCase;
           })
           .filter((item): item is CcmMemberWithoutCase => item !== null);
 
-        setVisibleCcmMembersCount(Number(payload.visible_count ?? 0));
-        setWithoutCaseTotalCount(Number(payload.without_case_count ?? normalizedRows.length));
-        setCcmMembersWithoutCase(normalizedRows);
-        return;
+        collectedMembers.push(...normalizedRows);
+        if (normalizedRows.length < batchSize) break;
+        offset += batchSize;
       }
-
-      if (!isMissingWithoutCaseSnapshotFunctionError(snapshotError.message, snapshotError.code)) {
-        setStatusMessage((prev) => prev || snapshotError.message);
-        setCcmMembersWithoutCase([]);
-        setVisibleCcmMembersCount(0);
-        setWithoutCaseTotalCount(0);
-        return;
-      }
-
-      const { data: peopleData, error: peopleError } = await supabaseClient
-        .from("pessoas")
-        .select("id, nome_completo, telefone_whatsapp, created_at")
-        .order("created_at", { ascending: false })
-        .limit(350);
 
       if (!active) return;
-      if (peopleError) {
-        setStatusMessage((prev) => prev || peopleError.message);
-        setCcmMembersWithoutCase([]);
+      if (!listError) {
+        setCcmMembers(collectedMembers);
+        setVisibleCcmMembersCount(collectedMembers.length);
+        setWithoutCaseTotalCount(collectedMembers.filter((item) => !item.has_active_case).length);
+        return;
+      }
+
+      if (!isMissingMembersListFunctionError(listError.message, listError.code)) {
+        setStatusMessage((prev) => prev || listError.message);
+        setCcmMembers([]);
         setVisibleCcmMembersCount(0);
         setWithoutCaseTotalCount(0);
         return;
       }
 
-      const caseMemberIds = new Set(safeCases.map((item) => item.member_id));
-      const ccmRows: unknown[] = Array.isArray(peopleData) ? peopleData : [];
-      const noCaseMembers = ccmRows
+      const ccmRows: Array<{
+        id: string;
+        nome_completo: string;
+        telefone_whatsapp: string | null;
+        created_at: string | null;
+      }> = [];
+      let from = 0;
+
+      while (true) {
+        const to = from + batchSize - 1;
+        const { data: peopleData, error: peopleError } = await supabaseClient
+          .from("pessoas")
+          .select("id, nome_completo, telefone_whatsapp, created_at")
+          .order("created_at", { ascending: false })
+          .range(from, to);
+
+        if (peopleError) {
+          if (!active) return;
+          setStatusMessage((prev) => prev || peopleError.message);
+          setCcmMembers([]);
+          setVisibleCcmMembersCount(0);
+          setWithoutCaseTotalCount(0);
+          return;
+        }
+
+        const batch = Array.isArray(peopleData)
+          ? (peopleData as Array<{
+              id: string;
+              nome_completo: string;
+              telefone_whatsapp: string | null;
+              created_at: string | null;
+            }>)
+          : [];
+        ccmRows.push(...batch);
+        if (batch.length < batchSize) break;
+        from += batchSize;
+      }
+
+      if (!active) return;
+      const activeCaseMemberIds = new Set(
+        safeCases
+          .filter((item) => item.status === "em_discipulado" || item.status === "pausado")
+          .map((item) => item.member_id)
+      );
+      const mappedMembers = ccmRows
         .map((row) => {
-          const item = row as Partial<{
-            id: string;
-            nome_completo: string;
-            telefone_whatsapp: string | null;
-            created_at: string | null;
-          }>;
-          if (!item.id || !item.nome_completo) return null;
-          if (caseMemberIds.has(item.id)) return null;
           return {
-            member_id: String(item.id),
-            member_name: String(item.nome_completo),
-            member_phone: item.telefone_whatsapp ?? null,
-            created_at: item.created_at ?? null
+            member_id: String(row.id),
+            member_name: String(row.nome_completo),
+            member_phone: row.telefone_whatsapp ?? null,
+            created_at: row.created_at ?? null,
+            has_active_case: activeCaseMemberIds.has(row.id)
           } as CcmMemberWithoutCase;
         })
         .filter((item): item is CcmMemberWithoutCase => item !== null);
 
-      setVisibleCcmMembersCount(ccmRows.length);
-      setWithoutCaseTotalCount(noCaseMembers.length);
-      setCcmMembersWithoutCase(noCaseMembers.slice(0, 60));
+      setCcmMembers(mappedMembers);
+      setVisibleCcmMembersCount(mappedMembers.length);
+      setWithoutCaseTotalCount(mappedMembers.filter((item) => !item.has_active_case).length);
     }
 
     load();
@@ -252,7 +281,7 @@ export default function DiscipuladoConvertidosPage() {
 
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-sky-900">Membros do CCM sem case no Discipulado</h3>
+          <h3 className="text-sm font-semibold text-sky-900">Cadastros do CCM disponíveis para o Discipulado</h3>
           {canCreateNovoConvertido ? (
             <Link
               href="/discipulado/convertidos/novo"
@@ -264,22 +293,20 @@ export default function DiscipuladoConvertidosPage() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {!ccmMembersWithoutCase.length ? (
+          {!ccmMembers.length ? (
             <div className="discipulado-panel p-4 text-sm text-slate-600">
-              {visibleCcmMembersCount === 0
-                ? "Nenhum membro do CCM está visível para este usuário. Verifique o perfil e a congregação vinculada."
-                : "Todos os membros visíveis do CCM já possuem case no discipulado."}
+              Nenhum membro do CCM está visível para este usuário. Verifique o perfil e a congregação vinculada.
             </div>
           ) : null}
-          {ccmMembersWithoutCase.map((item) => (
+          {ccmMembers.map((item) => (
             <article key={item.member_id} className="discipulado-panel space-y-2 p-4">
               <div>
                 <p className="text-sm font-semibold text-slate-900">{item.member_name}</p>
                 <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
               </div>
               <div className="flex items-center justify-between">
-                <StatusBadge value="PENDENTE" />
-                {canCreateNovoConvertido ? (
+                <StatusBadge value={item.has_active_case ? "EM_DISCIPULADO" : "PENDENTE"} />
+                {canCreateNovoConvertido && !item.has_active_case ? (
                   <Link
                     href={`/discipulado/convertidos/novo?memberId=${encodeURIComponent(item.member_id)}`}
                     className="rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
@@ -287,17 +314,12 @@ export default function DiscipuladoConvertidosPage() {
                     Abrir case
                   </Link>
                 ) : (
-                  <p className="text-xs text-slate-500">Sem case ativo</p>
+                  <p className="text-xs text-slate-500">{item.has_active_case ? "Case ativo" : "Sem case ativo"}</p>
                 )}
               </div>
             </article>
           ))}
         </div>
-        {withoutCaseTotalCount > ccmMembersWithoutCase.length ? (
-          <p className="text-xs text-slate-500">
-            Exibindo {ccmMembersWithoutCase.length} de {withoutCaseTotalCount} membros sem case.
-          </p>
-        ) : null}
       </section>
     </div>
   );

@@ -5,7 +5,7 @@ import { syncLegacyProfileRoleForUser } from "@/lib/userProfileSync";
 
 export const runtime = "nodejs";
 
-const DISCIPULADO_ONLY_ROLES = new Set(["DISCIPULADOR", "SM_DISCIPULADO"]);
+const DISCIPULADO_ONLY_ROLES = new Set(["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]);
 
 async function hasCongregationColumn() {
   const supabaseAdmin = getSupabaseAdmin();
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   }
   if (incomingIsDiscipuladoOnly && active && !congregationId) {
     return NextResponse.json(
-      { error: "congregationId is required for DISCIPULADOR and SM_DISCIPULADO roles" },
+      { error: "congregationId is required for DISCIPULADOR, SM_DISCIPULADO and SECRETARIA_DISCIPULADO roles" },
       { status: 400 }
     );
   }
