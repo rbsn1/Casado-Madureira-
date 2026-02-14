@@ -18,6 +18,7 @@ function statusLabel(status: DiscipleshipCaseSummaryItem["status"]) {
 
 export default function DiscipuladoFilaPage() {
   const [hasAccess, setHasAccess] = useState(false);
+  const [canOpenCase, setCanOpenCase] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [statusFilter, setStatusFilter] = useState("ativos");
@@ -28,8 +29,12 @@ export default function DiscipuladoFilaPage() {
     async function load() {
       const scope = await getAuthScope();
       if (!active) return;
-      const allowed = scope.roles.includes("DISCIPULADOR");
+      const allowed =
+        scope.roles.includes("DISCIPULADOR") ||
+        scope.roles.includes("SM_DISCIPULADO") ||
+        scope.roles.includes("SECRETARIA_DISCIPULADO");
       setHasAccess(allowed);
+      setCanOpenCase(scope.roles.includes("DISCIPULADOR"));
       if (!allowed) return;
 
       const { data, errorMessage, hasCriticalityColumns } = await loadDiscipleshipCaseSummariesWithFallback();
@@ -116,12 +121,8 @@ export default function DiscipuladoFilaPage() {
         ) : null}
         {orderedCases.map((item) => {
           const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
-          return (
-            <Link
-              key={item.case_id}
-              href={`/discipulado/convertidos/${item.case_id}`}
-              className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300"
-            >
+          const cardContent = (
+            <div className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
@@ -145,6 +146,16 @@ export default function DiscipuladoFilaPage() {
                   Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
                 </p>
               </div>
+            </div>
+          );
+
+          if (!canOpenCase) {
+            return <div key={item.case_id}>{cardContent}</div>;
+          }
+
+          return (
+            <Link key={item.case_id} href={`/discipulado/convertidos/${item.case_id}`}>
+              {cardContent}
             </Link>
           );
         })}
