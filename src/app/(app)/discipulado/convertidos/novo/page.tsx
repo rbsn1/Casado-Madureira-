@@ -31,8 +31,12 @@ async function listMembersWithFallback() {
   const sb = supabaseClient;
 
   const batchSize = 500;
-  async function enrichCasePresence(baseMembers: MemberResult[]) {
-    if (!baseMembers.length) return baseMembers;
+  async function enrichCasePresence(
+    baseMembers: MemberResult[]
+  ): Promise<{ members: MemberResult[]; errorMessage: string }> {
+    if (!baseMembers.length) {
+      return { members: baseMembers, errorMessage: "" };
+    }
     const memberIds = baseMembers.map((item) => item.id);
     const anyCaseMembers = new Set<string>();
     const activeCaseMembers = new Set<string>();
