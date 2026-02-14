@@ -1,242 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { StatCard } from "@/components/cards/StatCard";
 import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { getAuthScope } from "@/lib/authScope";
-import { formatDateBR } from "@/lib/date";
-import { useRouter } from "next/navigation";
-
-type InsightEntry = { label: string; count: number };
-type GrowthEntry = {
-  label: string;
-  current: number;
-  previous: number;
-  delta: number;
-  delta_pct: number | null;
-};
-type MonthlyEntry = {
-  month: number;
-  count: number;
-};
-
-type DiscipleshipCards = {
-  em_discipulado: number;
-  concluidos: number;
-  parados: number;
-  pendentes_criticos: number;
-  proximos_a_concluir: number;
-};
-
-type Congregation = {
-  id: string;
-  name: string;
-};
-
-function formatDate(value: Date) {
-  return formatDateBR(value);
-}
-
-function getPeriodRange(period: string, customStart?: string, customEnd?: string) {
-  const now = new Date();
-  if (period === "Personalizado" && customStart && customEnd) {
-    return {
-      start: new Date(customStart),
-      end: new Date(customEnd)
-    };
-  }
-  if (period === "Hoje") {
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    return { start, end };
-  }
-  if (period === "Semana") {
-    const end = now;
-    const start = new Date(now);
-    start.setDate(now.getDate() - 7);
-    return { start, end };
-  }
-  if (period === "Mês") {
-    const end = now;
-    const start = new Date(now);
-    start.setDate(now.getDate() - 30);
-    return { start, end };
-  }
-  return { start: null, end: null };
-}
-
-function formatDelta(delta: number, pct: number | null) {
-  if (pct === null) return `${delta >= 0 ? "+" : ""}${delta}`;
-  return `${delta >= 0 ? "+" : ""}${delta} (${delta >= 0 ? "+" : ""}${pct}%)`;
-}
-
-function isMissingRpcSignature(message: string | undefined, fnName: string) {
-  if (!message) return false;
-  return (
-    message.includes(`Could not find the function public.${fnName}`) ||
-    message.includes(`function public.${fnName}`)
-  );
-}
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { formatDate, getPeriodRange, formatDelta } from "@/lib/dashboard-utils";
 
 export default function DashboardPage() {
   const router = useRouter();
   const currentYear = new Date().getFullYear();
-  const [kpi, setKpi] = useState({
-    totalCasados: 0,
-    cultoManha: 0,
-    cultoNoite: 0
-  });
-  const [origem, setOrigem] = useState<InsightEntry[]>([]);
-  const [igrejas, setIgrejas] = useState<InsightEntry[]>([]);
-  const [bairros, setBairros] = useState<InsightEntry[]>([]);
-  const [crescimentoBairros, setCrescimentoBairros] = useState<GrowthEntry[]>([]);
-  const [crescimentoIgrejas, setCrescimentoIgrejas] = useState<GrowthEntry[]>([]);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [period, setPeriod] = useState("Mês");
-  const [customStart, setCustomStart] = useState("");
-  const [customEnd, setCustomEnd] = useState("");
-  const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
-  const [anoSelecionado, setAnoSelecionado] = useState<number>(currentYear);
-  const [mensal, setMensal] = useState<MonthlyEntry[]>([]);
-  const [checkingRoles, setCheckingRoles] = useState(true);
-  const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
-  const [userRoles, setUserRoles] = useState<string[]>([]);
-  const [isAdminMaster, setIsAdminMaster] = useState(false);
-  const [congregationFilter, setCongregationFilter] = useState("");
-  const [congregations, setCongregations] = useState<Congregation[]>([]);
-  const [discipleshipCards, setDiscipleshipCards] = useState<DiscipleshipCards>({
-    em_discipulado: 0,
-    concluidos: 0,
-    parados: 0,
-    pendentes_criticos: 0,
-    proximos_a_concluir: 0
-  });
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
-  useEffect(() => {
-    let active = true;
-
-    async function checkRoles() {
-      if (!supabaseClient) {
-        if (active) setCheckingRoles(false);
-        return;
-      }
-      const scope = await getAuthScope();
-      if (!active) return;
-      const roles = scope.roles;
-      const onlyCadastrador = roles.length === 1 && roles.includes("CADASTRADOR");
-      const isGlobalAdmin = scope.isAdminMaster || roles.includes("SUPER_ADMIN") || roles.includes("ADMIN_MASTER");
-      setIsCadastradorOnly(onlyCadastrador);
-      setUserRoles(roles);
-      setIsAdminMaster(isGlobalAdmin);
-      if (isGlobalAdmin) {
-        const { data } = await supabaseClient
-          .from("congregations")
-          .select("id, name")
-          .eq("is_active", true)
-          .order("name");
-        if (!active) return;
-        setCongregations((data ?? []) as Congregation[]);
-      }
-      setCheckingRoles(false);
-      if (onlyCadastrador) {
-        router.replace("/cadastro");
-      }
-    }
-
-    checkRoles();
-
-    return () => {
-      active = false;
-    };
-  }, [router]);
-
-  useEffect(() => {
-    if (checkingRoles || isCadastradorOnly) return;
-
-    async function loadDashboard() {
-      if (!supabaseClient) {
-        setStatusMessage("Supabase não configurado.");
-        return;
-      }
-
-      const range = getPeriodRange(period, customStart, customEnd);
-      const casadosParams = {
-        start_ts: range.start ? range.start.toISOString() : null,
-        end_ts: range.end ? range.end.toISOString() : null,
-        year: anoSelecionado
-      };
-      const casadosWithCongregation = {
-        ...casadosParams,
-        target_congregation_id: isAdminMaster ? congregationFilter || null : null
-      };
-
-      const [casadosPrimary, discipleshipResult] = await Promise.all([
-        supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation),
-        userRoles.includes("DISCIPULADOR")
-          ? supabaseClient.rpc("get_discipleship_dashboard", {
-              stale_days: 14,
-              target_congregation_id: null
-            })
-          : Promise.resolve({ data: null, error: null } as any)
-      ]);
-
-      const casadosResult =
-        casadosPrimary.error && isMissingRpcSignature(casadosPrimary.error.message, "get_casados_dashboard")
-          ? await supabaseClient.rpc("get_casados_dashboard", casadosParams)
-          : casadosPrimary;
-      const data = casadosResult.data;
-      const error = casadosResult.error;
-
-      if (error) {
-        setStatusMessage(error.message);
-        return;
-      }
-
-      const origemEntries = (data?.origem ?? []).map((item: any) => ({ label: item.label, count: item.count }));
-      const manha = origemEntries.find((item: InsightEntry) => item.label === "Manhã")?.count ?? 0;
-      const noite = origemEntries.find((item: InsightEntry) => item.label === "Noite")?.count ?? 0;
-
-      setKpi({
-        totalCasados: data?.total ?? 0,
-        cultoManha: manha,
-        cultoNoite: noite
-      });
-      setOrigem(origemEntries);
-      setIgrejas((data?.igrejas ?? []).map((item: any) => ({ label: item.label, count: item.count })));
-      setBairros((data?.bairros ?? []).map((item: any) => ({ label: item.label, count: item.count })));
-      setCrescimentoBairros((data?.crescimento_bairros ?? []) as GrowthEntry[]);
-      setCrescimentoIgrejas((data?.crescimento_igrejas ?? []) as GrowthEntry[]);
-      setAnosDisponiveis(data?.anos_disponiveis ?? []);
-      if (!data?.anos_disponiveis?.includes(anoSelecionado) && data?.ano_selecionado) {
-        setAnoSelecionado(data.ano_selecionado);
-      }
-      setMensal((data?.cadastros_mensais ?? []) as MonthlyEntry[]);
-
-      if (!discipleshipResult?.error && discipleshipResult?.data?.cards) {
-        setDiscipleshipCards(discipleshipResult.data.cards as DiscipleshipCards);
-      }
-    }
-
-    loadDashboard();
-  }, [
+  const {
+    kpi,
+    origem,
+    igrejas,
+    bairros,
+    crescimentoBairros,
+    crescimentoIgrejas,
+    statusMessage,
     period,
+    setPeriod,
     customStart,
+    setCustomStart,
     customEnd,
+    setCustomEnd,
+    anosDisponiveis,
     anoSelecionado,
-    checkingRoles,
-    isCadastradorOnly,
-    congregationFilter,
+    setAnoSelecionado,
+    mensal,
     isAdminMaster,
+    congregationFilter,
+    setCongregationFilter,
+    congregations,
+    discipleshipCards,
     userRoles
-  ]);
+  } = useDashboardData();
 
   function handleMonthClick(year: number, month: number) {
     const monthValue = String(month).padStart(2, "0");
-    window.location.href = `/cadastros?mes=${year}-${monthValue}`;
+    router.push(`/cadastros?mes=${year}-${monthValue}`);
   }
 
   const sugestao = useMemo(() => {
@@ -292,11 +98,10 @@ export default function DashboardPage() {
               <button
                 key={label}
                 onClick={() => setPeriod(label)}
-                className={`rounded-full border border-brand-100 px-3 py-1 text-sm font-medium transition ${
-                  period === label
+                className={`rounded-full border border-brand-100 px-3 py-1 text-sm font-medium transition ${period === label
                     ? "bg-brand-900 text-white shadow-sm"
                     : "bg-white text-brand-900 hover:bg-brand-100/70"
-                }`}
+                  }`}
               >
                 {label}
               </button>

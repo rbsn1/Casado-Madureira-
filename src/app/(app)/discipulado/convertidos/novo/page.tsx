@@ -11,6 +11,7 @@ type MemberResult = {
   nome_completo: string;
   telefone_whatsapp: string | null;
   has_active_case: boolean;
+  has_any_case: boolean;
 };
 
 type EntryMode = "existing" | "new";
@@ -29,6 +30,46 @@ async function listMembersWithFallback() {
   }
 
   const batchSize = 500;
+  async function enrichCasePresence(baseMembers: MemberResult[]) {
+    if (!baseMembers.length) return baseMembers;
+    const memberIds = baseMembers.map((item) => item.id);
+    const anyCaseMembers = new Set<string>();
+    const activeCaseMembers = new Set<string>();
+
+    for (let i = 0; i < memberIds.length; i += batchSize) {
+      const chunk = memberIds.slice(i, i + batchSize);
+      const { data: casesData, error: casesError } = await supabaseClient
+        .from("discipleship_cases")
+        .select("member_id, status")
+        .in("member_id", chunk);
+
+      if (casesError) {
+        return {
+          members: [] as MemberResult[],
+          errorMessage: casesError.message
+        };
+      }
+
+      (casesData ?? []).forEach((item) => {
+        if (!item.member_id) return;
+        const memberId = String(item.member_id);
+        anyCaseMembers.add(memberId);
+        if (item.status === "em_discipulado" || item.status === "pausado") {
+          activeCaseMembers.add(memberId);
+        }
+      });
+    }
+
+    return {
+      members: baseMembers.map((member) => ({
+        ...member,
+        has_any_case: anyCaseMembers.has(member.id),
+        has_active_case: member.has_active_case || activeCaseMembers.has(member.id)
+      })),
+      errorMessage: ""
+    };
+  }
+
   const collectedMembers: MemberResult[] = [];
   let offset = 0;
   let listError: { message: string; code?: string } | null = null;
@@ -59,7 +100,8 @@ async function listMembersWithFallback() {
           id: String(item.member_id),
           nome_completo: String(item.member_name),
           telefone_whatsapp: item.member_phone ?? null,
-          has_active_case: Boolean(item.has_active_case)
+          has_active_case: Boolean(item.has_active_case),
+          has_any_case: false
         } as MemberResult;
       })
       .filter((item): item is MemberResult => item !== null);
@@ -70,7 +112,11 @@ async function listMembersWithFallback() {
   }
 
   if (!listError) {
-    return { data: collectedMembers, errorMessage: "" };
+    const enriched = await enrichCasePresence(collectedMembers);
+    if (enriched.errorMessage) {
+      return { data: [] as MemberResult[], errorMessage: enriched.errorMessage };
+    }
+    return { data: enriched.members, errorMessage: "" };
   }
 
   if (!isMissingMembersListFunctionError(listError.message, listError.code)) {
@@ -106,21 +152,26 @@ async function listMembersWithFallback() {
   }
 
   const activeCaseMemberIds = new Set<string>();
+  const anyCaseMemberIds = new Set<string>();
   const memberIds = peopleRows.map((item) => item.id);
   for (let i = 0; i < memberIds.length; i += batchSize) {
     const chunk = memberIds.slice(i, i + batchSize);
     const { data: casesData, error: casesError } = await supabaseClient
       .from("discipleship_cases")
-      .select("member_id")
-      .in("member_id", chunk)
-      .in("status", ["em_discipulado", "pausado"]);
+      .select("member_id, status")
+      .in("member_id", chunk);
 
     if (casesError) {
       return { data: [] as MemberResult[], errorMessage: casesError.message };
     }
 
     (casesData ?? []).forEach((item) => {
-      if (item.member_id) activeCaseMemberIds.add(String(item.member_id));
+      if (!item.member_id) return;
+      const memberId = String(item.member_id);
+      anyCaseMemberIds.add(memberId);
+      if (item.status === "em_discipulado" || item.status === "pausado") {
+        activeCaseMemberIds.add(memberId);
+      }
     });
   }
 
@@ -128,6 +179,7 @@ async function listMembersWithFallback() {
     id: String(member.id),
     nome_completo: String(member.nome_completo),
     telefone_whatsapp: member.telefone_whatsapp ?? null,
+    has_any_case: anyCaseMemberIds.has(String(member.id)),
     has_active_case: activeCaseMemberIds.has(String(member.id))
   }));
 
@@ -196,9 +248,9 @@ export default function NovoConvertidoDiscipuladoPage() {
       if (!memberId) return;
       const memberFromQuery = loadedMembers.find((item) => item.id === memberId);
       if (!memberFromQuery) return;
-      if (memberFromQuery.has_active_case) {
+      if (memberFromQuery.has_any_case) {
         setStatus("error");
-        setMessage("Este membro já possui case ativo.");
+        setMessage("Este membro já possui case no discipulado.");
         return;
       }
       setSelectedMember(memberFromQuery);
@@ -275,7 +327,9 @@ export default function NovoConvertidoDiscipuladoPage() {
       setStatus("success");
       setMessage("Novo convertido cadastrado com sucesso.");
       setMembers((prev) =>
-        prev.map((item) => (item.id === selectedMember.id ? { ...item, has_active_case: true } : item))
+        prev.map((item) =>
+          item.id === selectedMember.id ? { ...item, has_any_case: true, has_active_case: true } : item
+        )
       );
       resetForm({ preserveFeedback: true });
       return;
@@ -417,7 +471,7 @@ export default function NovoConvertidoDiscipuladoPage() {
                   {membersLoading ? "Carregando membros..." : "Selecione um membro"}
                 </option>
                 {members
-                  .filter((item) => !item.has_active_case)
+                  .filter((item) => !item.has_any_case)
                   .map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.nome_completo} {member.telefone_whatsapp ? `(${member.telefone_whatsapp})` : ""}
@@ -426,8 +480,8 @@ export default function NovoConvertidoDiscipuladoPage() {
               </select>
               <p className="text-xs text-slate-500">
                 Total no CCM: {members.length} • disponíveis para novo case:{" "}
-                {members.filter((item) => !item.has_active_case).length} • já com case ativo:{" "}
-                {members.filter((item) => item.has_active_case).length}
+                {members.filter((item) => !item.has_any_case).length} • já com case no discipulado:{" "}
+                {members.filter((item) => item.has_any_case).length}
               </p>
             </label>
 
