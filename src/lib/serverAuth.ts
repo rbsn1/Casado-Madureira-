@@ -82,16 +82,16 @@ export async function requireDiscipuladoAdmin(request: Request) {
   const roles = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).map(
     (item) => item.role
   );
-  const discipuladorRole = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).find(
-    (item) => item.role === "DISCIPULADOR" && Boolean(item.congregation_id)
+  const adminDiscipuladoRole = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).find(
+    (item) => item.role === "ADMIN_DISCIPULADO" && Boolean(item.congregation_id)
   );
 
-  if (!roles.includes("DISCIPULADOR")) {
+  if (!roles.includes("ADMIN_DISCIPULADO")) {
     return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
   }
 
-  const congregationId = discipuladorRole?.congregation_id
-    ? String(discipuladorRole.congregation_id)
+  const congregationId = adminDiscipuladoRole?.congregation_id
+    ? String(adminDiscipuladoRole.congregation_id)
     : null;
 
   return {

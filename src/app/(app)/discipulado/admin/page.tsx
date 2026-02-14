@@ -43,10 +43,16 @@ type UserItem = {
   whatsapp?: string | null;
 };
 
-const DISCIPULADO_USER_ROLES = ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"] as const;
+const DISCIPULADO_USER_ROLES = [
+  "ADMIN_DISCIPULADO",
+  "DISCIPULADOR",
+  "SM_DISCIPULADO",
+  "SECRETARIA_DISCIPULADO"
+] as const;
 type DiscipuladoUserRole = (typeof DISCIPULADO_USER_ROLES)[number];
 
 function getDiscipuladoRoleLabel(role: string) {
+  if (role === "ADMIN_DISCIPULADO") return "Admin Discipulado";
   if (role === "SECRETARIA_DISCIPULADO") return "Secretária Discipulado (Cadastro)";
   if (role === "SM_DISCIPULADO") return "SM Discipulado (Cadastro)";
   return "Discipulador";
@@ -306,12 +312,12 @@ export default function DiscipuladoAdminPage() {
       const scope = await getAuthScope();
       if (!active) return;
 
-      const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
-      setHasAccess(hasDiscipuladorRole);
+      const hasAdminDiscipuladoRole = scope.roles.includes("ADMIN_DISCIPULADO");
+      setHasAccess(hasAdminDiscipuladoRole);
       setIsGlobalAdmin(false);
       setManagerCongregationId(scope.congregationId ?? null);
 
-      if (!hasDiscipuladorRole) {
+      if (!hasAdminDiscipuladoRole) {
         setLoading(false);
         return;
       }
@@ -785,7 +791,7 @@ export default function DiscipuladoAdminPage() {
             </button>
           </div>
           <div className="flex items-end text-xs text-slate-500">
-            Cada congregação criada já pode receber usuários DISCIPULADOR, SM_DISCIPULADO ou
+            Cada congregação criada já pode receber usuários ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO ou
             SECRETARIA_DISCIPULADO vinculados.
           </div>
         </form>
@@ -889,8 +895,9 @@ export default function DiscipuladoAdminPage() {
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Usuários do discipulado</h3>
         <p className="mt-1 text-sm text-slate-600">
-          Contas com papéis <strong>DISCIPULADOR</strong>, <strong>SM_DISCIPULADO</strong> e{" "}
-          <strong>SECRETARIA_DISCIPULADO</strong> acessam apenas o módulo de discipulado.
+          Contas com papéis <strong>ADMIN_DISCIPULADO</strong>, <strong>DISCIPULADOR</strong>,{" "}
+          <strong>SM_DISCIPULADO</strong> e <strong>SECRETARIA_DISCIPULADO</strong> acessam apenas o módulo de
+          discipulado.
         </p>
 
         {userStatusMessage ? (
@@ -917,6 +924,7 @@ export default function DiscipuladoAdminPage() {
               }
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
             >
+              <option value="ADMIN_DISCIPULADO">Admin Discipulado</option>
               <option value="DISCIPULADOR">Discipulador (completo)</option>
               <option value="SM_DISCIPULADO">SM Discipulado (somente cadastro)</option>
               <option value="SECRETARIA_DISCIPULADO">Secretária Discipulado (somente cadastro)</option>

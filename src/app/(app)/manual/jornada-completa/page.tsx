@@ -28,6 +28,7 @@ const mindMap = `PORTAL CCM + DISCIPULADO (JORNADA COMPLETA)
 │  └─ Admin geral com visão global
 ├─ 6) Perfis e Segurança
 │  ├─ CADASTRADOR (cadastro operacional)
+│  ├─ ADMIN_DISCIPULADO (administração do módulo)
 │  ├─ DISCIPULADOR (gestão do discipulado)
 │  ├─ SM_DISCIPULADO (escopo restrito, se ativo)
 │  └─ ADMIN_MASTER / SUPER_ADMIN (governança)
@@ -114,6 +115,11 @@ export default function ManualJornadaCompletaPage() {
                 <td className="px-3 py-2 font-medium text-text">CADASTRADOR</td>
                 <td className="px-3 py-2">Cadastro e operação de entrada</td>
                 <td className="px-3 py-2">Garantir qualidade da captação inicial</td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="px-3 py-2 font-medium text-text">ADMIN_DISCIPULADO</td>
+                <td className="px-3 py-2">Administração do Discipulado</td>
+                <td className="px-3 py-2">Gerir usuários, módulos e configurações do módulo</td>
               </tr>
               <tr className="border-b border-border">
                 <td className="px-3 py-2 font-medium text-text">DISCIPULADOR</td>

@@ -86,10 +86,11 @@ export default function DiscipuladoDashboardPage() {
       if (!active) return;
 
       const hasDiscipuladorRole = scope.roles.includes("DISCIPULADOR");
+      const hasAdminDiscipuladoRole = scope.roles.includes("ADMIN_DISCIPULADO");
       const allowed = hasDiscipuladorRole;
       setHasAccess(allowed);
       setIsAdminMaster(false);
-      setCanManageDiscipulado(hasDiscipuladorRole);
+      setCanManageDiscipulado(hasAdminDiscipuladoRole);
       setCanCreateNovoConvertido(
         scope.roles.includes("DISCIPULADOR") ||
           scope.roles.includes("SM_DISCIPULADO") ||

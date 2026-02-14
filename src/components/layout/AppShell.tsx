@@ -45,7 +45,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/discipulado/manual", label: "Manual", roles: ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"] },
       { href: "/discipulado/convertidos", label: "Convertidos", roles: ["DISCIPULADOR"] },
       { href: "/discipulado/departamentos", label: "Departamentos", roles: ["DISCIPULADOR"] },
-      { href: "/discipulado/admin", label: "Admin", roles: ["DISCIPULADOR"] }
+      { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_DISCIPULADO"] }
     ]
   },
   {
@@ -78,8 +78,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const shouldMaskContent = !authResolved || (isDiscipuladoAccount && !isDiscipuladoConsole);
   const accessRoleHint =
     isDiscipuladoAccount && !isGlobalAdmin
-      ? "RBAC: DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO"
-      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO";
+      ? "RBAC: ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO"
+      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO";
 
   const visibleSections = navSections
     .map((section) => ({

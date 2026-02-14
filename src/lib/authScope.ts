@@ -7,11 +7,12 @@ export type AuthScope = {
 };
 
 export const DISCIPULADO_ACCOUNT_ROLES = [
+  "ADMIN_DISCIPULADO",
   "DISCIPULADOR",
   "SM_DISCIPULADO",
   "SECRETARIA_DISCIPULADO"
 ] as const;
-export const DISCIPULADO_ADMIN_ROLES = ["DISCIPULADOR"] as const;
+export const DISCIPULADO_ADMIN_ROLES = ["ADMIN_DISCIPULADO"] as const;
 
 export function hasDiscipuladoAccessRole(roles: string[]) {
   return roles.some((role) => DISCIPULADO_ACCOUNT_ROLES.includes(role as (typeof DISCIPULADO_ACCOUNT_ROLES)[number]));
@@ -27,6 +28,9 @@ export function isDiscipuladoScopedAccount(roles: string[], isGlobalAdmin: boole
 }
 
 export function getDiscipuladoHomePath(roles: string[]) {
+  if (roles.includes("ADMIN_DISCIPULADO")) {
+    return "/discipulado/admin";
+  }
   const hasCadastroOnlyRole =
     !roles.includes("DISCIPULADOR") &&
     (roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO"));

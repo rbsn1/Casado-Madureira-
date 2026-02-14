@@ -82,6 +82,9 @@ export default function ManualGuiaPraticoPage() {
         <h3 className="text-base font-semibold text-text">Perfis e o que cada um faz</h3>
         <div className="mt-3 space-y-2 text-sm text-text-muted">
           <p>
+            <strong>ADMIN_DISCIPULADO</strong>: acesso administrativo do módulo (usuários, módulos e configurações).
+          </p>
+          <p>
             <strong>DISCIPULADOR</strong>: visão completa do Discipulado.
           </p>
           <p>
