@@ -25,10 +25,10 @@ function isMissingMembersListFunctionError(message: string, code?: string) {
 }
 
 async function listMembersWithFallback() {
-  const sb = supabaseClient;
-  if (!sb) {
+  if (!supabaseClient) {
     return { data: [] as MemberResult[], errorMessage: "Supabase não configurado." };
   }
+  const sb = supabaseClient;
 
   const batchSize = 500;
   async function enrichCasePresence(baseMembers: MemberResult[]) {
