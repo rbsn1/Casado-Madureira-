@@ -12,6 +12,7 @@ import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 type CaseItem = {
   id: string;
   member_id: string;
+  congregation_id: string;
   status: "em_discipulado" | "concluido" | "pausado";
   notes: string | null;
   assigned_to: string | null;
@@ -47,6 +48,7 @@ type ModuleItem = {
   title: string;
   description: string | null;
   sort_order: number;
+  is_active: boolean;
 };
 
 type IntegrationStatus = "PENDENTE" | "EM_ANDAMENTO" | "CONTATO" | "INTEGRADO" | "BATIZADO";
@@ -174,9 +176,11 @@ export default function DiscipulandoDetalhePage() {
   const [progress, setProgress] = useState<ProgressItem[]>([]);
   const [modules, setModules] = useState<Record<string, ModuleItem>>({});
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [moduleStatusDrafts, setModuleStatusDrafts] = useState<Record<string, ProgressItem["status"]>>({});
+  const [enrollmentModuleId, setEnrollmentModuleId] = useState("");
+  const [enrollmentStatusDraft, setEnrollmentStatusDraft] = useState<ProgressItem["status"]>("nao_iniciado");
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
-  const [canManageAdminActions, setCanManageAdminActions] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [integrationData, setIntegrationData] = useState<IntegrationItem | null>(null);
   const [integrationStatusDraft, setIntegrationStatusDraft] = useState<IntegrationStatus>("PENDENTE");
@@ -207,7 +211,7 @@ export default function DiscipulandoDetalhePage() {
     let caseResult = await supabaseClient
       .from("discipleship_cases")
       .select(
-        "id, member_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at"
+        "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at"
       )
       .eq("id", caseId)
       .single();
@@ -216,7 +220,7 @@ export default function DiscipulandoDetalhePage() {
       hasCaseCriticality = false;
       caseResult = await supabaseClient
         .from("discipleship_cases")
-        .select("id, member_id, status, notes, assigned_to, created_at, updated_at")
+        .select("id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at")
         .eq("id", caseId)
         .single();
     }
@@ -238,6 +242,7 @@ export default function DiscipulandoDetalhePage() {
     const currentCase: CaseItem = {
       id: String(baseCase.id ?? ""),
       member_id: String(baseCase.member_id ?? ""),
+      congregation_id: String(baseCase.congregation_id ?? ""),
       status: (baseCase.status ?? "em_discipulado") as CaseItem["status"],
       notes: baseCase.notes ?? null,
       assigned_to: baseCase.assigned_to ?? null,
@@ -271,7 +276,6 @@ export default function DiscipulandoDetalhePage() {
     }
 
     const progressRows = (progressResult ?? []) as ProgressItem[];
-    const moduleIds = [...new Set(progressRows.map((item) => item.module_id))];
     const [
       { data: moduleResult, error: moduleError },
       { data: integrationResult, error: integrationError },
@@ -280,12 +284,12 @@ export default function DiscipulandoDetalhePage() {
       { data: baptismResult, error: baptismError },
       { data: attemptsResult, error: attemptsError }
     ] = await Promise.all([
-      moduleIds.length
-        ? supabaseClient
-            .from("discipleship_modules")
-            .select("id, title, description, sort_order")
-            .in("id", moduleIds)
-        : Promise.resolve({ data: [], error: null as any }),
+      supabaseClient
+        .from("discipleship_modules")
+        .select("id, title, description, sort_order, is_active")
+        .eq("congregation_id", currentCase.congregation_id)
+        .order("sort_order", { ascending: true })
+        .order("title", { ascending: true }),
       supabaseClient
         .from("integracao_novos_convertidos")
         .select("id, pessoa_id, status, notas, responsavel_id, ultima_interacao, updated_at")
@@ -327,6 +331,10 @@ export default function DiscipulandoDetalhePage() {
       acc[item.id] = item.notes ?? "";
       return acc;
     }, {});
+    const statusDrafts = progressRows.reduce<Record<string, ProgressItem["status"]>>((acc, item) => {
+      acc[item.id] = item.status;
+      return acc;
+    }, {});
 
     const memberData = memberResult as MemberItem;
     setMember(memberData);
@@ -339,6 +347,7 @@ export default function DiscipulandoDetalhePage() {
     setProgress(progressRows);
     setModules(moduleMap);
     setNoteDrafts(drafts);
+    setModuleStatusDrafts(statusDrafts);
     const integrationRows: unknown[] = Array.isArray(integrationResult) ? integrationResult : [];
     const integrationCandidate = integrationRows[0] as Partial<IntegrationItem> | undefined;
     const integrationRow: IntegrationItem | null =
@@ -443,7 +452,6 @@ export default function DiscipulandoDetalhePage() {
       if (!active) return;
       const allowed = scope.roles.includes("DISCIPULADOR");
       setHasAccess(allowed);
-      setCanManageAdminActions(scope.roles.includes("DISCIPULADOR"));
       if (!allowed) {
         setLoading(false);
         return;
@@ -473,6 +481,15 @@ export default function DiscipulandoDetalhePage() {
       return (moduleA?.title ?? "").localeCompare(moduleB?.title ?? "");
     });
   }, [modules, progress]);
+  const availableModulesForEnrollment = useMemo(() => {
+    const enrolledModuleIds = new Set(progress.map((item) => item.module_id));
+    return Object.values(modules)
+      .filter((item) => item.is_active && !enrolledModuleIds.has(item.id))
+      .sort((a, b) => {
+        if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+        return a.title.localeCompare(b.title);
+      });
+  }, [modules, progress]);
 
   const departmentNameById = useMemo(
     () =>
@@ -487,6 +504,14 @@ export default function DiscipulandoDetalhePage() {
     () => sortedProgress.filter((item) => item.status === "concluido").length,
     [sortedProgress]
   );
+
+  useEffect(() => {
+    setEnrollmentModuleId((prev) => {
+      if (prev && availableModulesForEnrollment.some((item) => item.id === prev)) return prev;
+      return availableModulesForEnrollment[0]?.id ?? "";
+    });
+  }, [availableModulesForEnrollment]);
+
   const totalModules = sortedProgress.length;
   const progressPercent = totalModules ? Math.round((doneModules / totalModules) * 100) : 0;
 
@@ -513,16 +538,19 @@ export default function DiscipulandoDetalhePage() {
     await handleCaseStatus("concluido");
   }
 
-  async function handleModuleComplete(item: ProgressItem) {
-    if (!supabaseClient) return;
+  async function handleSaveModuleStatus(item: ProgressItem) {
+    if (!supabaseClient || !caseData) return;
+    const nextStatus = moduleStatusDrafts[item.id] ?? item.status;
     setStatusMessage("");
+
+    const completedAt = nextStatus === "concluido" ? new Date().toISOString() : null;
+    const completedBy = nextStatus === "concluido" ? currentUserId : null;
     const { error } = await supabaseClient
       .from("discipleship_progress")
       .update({
-        status: "concluido",
-        completed_at: new Date().toISOString(),
-        completed_by: currentUserId,
-        notes: noteDrafts[item.id] || null
+        status: nextStatus,
+        completed_at: completedAt,
+        completed_by: completedBy
       })
       .eq("id", item.id);
 
@@ -530,27 +558,46 @@ export default function DiscipulandoDetalhePage() {
       setStatusMessage(error.message);
       return;
     }
+
+    if (caseData.status === "concluido" && nextStatus !== "concluido") {
+      const { error: caseError } = await supabaseClient
+        .from("discipleship_cases")
+        .update({ status: "em_discipulado" })
+        .eq("id", caseData.id);
+      if (caseError) {
+        setStatusMessage(caseError.message);
+        return;
+      }
+    }
+
     await loadCase();
   }
 
-  async function handleModuleReopen(item: ProgressItem) {
-    if (!supabaseClient || !caseData || !canManageAdminActions) return;
+  async function handleEnrollInModule() {
+    if (!supabaseClient || !caseData || !enrollmentModuleId) return;
     setStatusMessage("");
-    const { error } = await supabaseClient
-      .from("discipleship_progress")
-      .update({
-        status: "em_andamento",
-        completed_at: null,
-        completed_by: null
-      })
-      .eq("id", item.id);
+    const completedAt = enrollmentStatusDraft === "concluido" ? new Date().toISOString() : null;
+    const completedBy = enrollmentStatusDraft === "concluido" ? currentUserId : null;
+
+    const { error } = await supabaseClient.from("discipleship_progress").insert({
+      case_id: caseData.id,
+      module_id: enrollmentModuleId,
+      status: enrollmentStatusDraft,
+      completed_at: completedAt,
+      completed_by: completedBy,
+      notes: null
+    });
 
     if (error) {
+      if (error.code === "23505") {
+        setStatusMessage("Este membro já está matriculado nesse módulo.");
+        return;
+      }
       setStatusMessage(error.message);
       return;
     }
 
-    if (caseData.status === "concluido") {
+    if (caseData.status === "concluido" && enrollmentStatusDraft !== "concluido") {
       const { error: caseError } = await supabaseClient
         .from("discipleship_cases")
         .update({ status: "em_discipulado" })
@@ -1077,7 +1124,59 @@ export default function DiscipulandoDetalhePage() {
           <div className="h-2 rounded-full bg-sky-600" style={{ width: `${progressPercent}%` }} />
         </div>
 
+        <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
+          <h4 className="text-sm font-semibold text-slate-900">Matrícula em módulos</h4>
+          <p className="mt-1 text-xs text-slate-600">
+            O mesmo membro pode ser matriculado em vários módulos. Selecione um módulo ativo para adicionar.
+          </p>
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-700">Módulo disponível</span>
+              <select
+                value={enrollmentModuleId}
+                onChange={(event) => setEnrollmentModuleId(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                disabled={!availableModulesForEnrollment.length}
+              >
+                {availableModulesForEnrollment.length ? null : <option value="">Nenhum módulo disponível</option>}
+                {availableModulesForEnrollment.map((moduleItem) => (
+                  <option key={moduleItem.id} value={moduleItem.id}>
+                    {moduleItem.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Status inicial</span>
+              <select
+                value={enrollmentStatusDraft}
+                onChange={(event) => setEnrollmentStatusDraft(event.target.value as ProgressItem["status"])}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                <option value="nao_iniciado">Não iniciado</option>
+                <option value="em_andamento">Em andamento</option>
+                <option value="concluido">Concluído</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleEnrollInModule}
+              disabled={!enrollmentModuleId || !availableModulesForEnrollment.length}
+              className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Matricular em módulo
+            </button>
+          </div>
+        </div>
+
         <div className="mt-4 space-y-3">
+          {!sortedProgress.length ? (
+            <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
+              Nenhum módulo matriculado para este membro.
+            </p>
+          ) : null}
           {sortedProgress.map((item) => {
             const moduleItem = modules[item.module_id];
             return (
@@ -1106,31 +1205,39 @@ export default function DiscipulandoDetalhePage() {
                 </label>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {item.status !== "concluido" ? (
-                    <button
-                      onClick={() => handleModuleComplete(item)}
-                      className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800"
+                  <label className="space-y-1 text-xs">
+                    <span className="text-slate-600">Status do módulo</span>
+                    <select
+                      value={moduleStatusDrafts[item.id] ?? item.status}
+                      onChange={(event) =>
+                        setModuleStatusDrafts((prev) => ({
+                          ...prev,
+                          [item.id]: event.target.value as ProgressItem["status"]
+                        }))
+                      }
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-sky-400 focus:outline-none"
                     >
-                      Marcar como concluído
-                    </button>
-                  ) : (
-                    <span className="text-xs text-emerald-700">
-                      Concluído em {item.completed_at ? formatDateBR(item.completed_at) : "-"}
-                    </span>
-                  )}
+                      <option value="nao_iniciado">Não iniciado</option>
+                      <option value="em_andamento">Em andamento</option>
+                      <option value="concluido">Concluído</option>
+                    </select>
+                  </label>
+                  <button
+                    onClick={() => handleSaveModuleStatus(item)}
+                    className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800"
+                  >
+                    Salvar status
+                  </button>
                   <button
                     onClick={() => handleSaveNotes(item)}
                     className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
                   >
                     Salvar observações
                   </button>
-                  {canManageAdminActions && item.status === "concluido" ? (
-                    <button
-                      onClick={() => handleModuleReopen(item)}
-                      className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
-                    >
-                      Reabrir módulo
-                    </button>
+                  {item.status === "concluido" ? (
+                    <span className="text-xs text-emerald-700">
+                      Concluído em {item.completed_at ? formatDateBR(item.completed_at) : "-"}
+                    </span>
                   ) : null}
                 </div>
               </article>

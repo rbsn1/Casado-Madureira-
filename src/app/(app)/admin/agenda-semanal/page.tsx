@@ -34,6 +34,9 @@ export default function AdminAgendaSemanalPage() {
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "ativos" | "inativos">("todos");
+  const [weekdayFilter, setWeekdayFilter] = useState<number | "todos">("todos");
   const [form, setForm] = useState({
     title: "",
     weekday: 0,
@@ -147,7 +150,7 @@ export default function AdminAgendaSemanalPage() {
   }
 
   async function handleDelete(event: WeeklyEvent) {
-    const confirmDelete = window.confirm("Deseja remover este evento?");
+    const confirmDelete = window.confirm(`Deseja remover o evento "${event.title}"?`);
     if (!confirmDelete) return;
     setMessage("");
     try {
@@ -164,6 +167,23 @@ export default function AdminAgendaSemanalPage() {
   }
 
   const modalTitle = useMemo(() => (editingId ? "Editar evento" : "Adicionar evento"), [editingId]);
+  const filteredEvents = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return events.filter((event) => {
+      const matchesTerm =
+        !term ||
+        event.title.toLowerCase().includes(term) ||
+        (event.location ?? "").toLowerCase().includes(term) ||
+        (event.notes ?? "").toLowerCase().includes(term);
+      const matchesStatus =
+        statusFilter === "todos" ||
+        (statusFilter === "ativos" && event.is_active) ||
+        (statusFilter === "inativos" && !event.is_active);
+      const matchesWeekday = weekdayFilter === "todos" || event.weekday === weekdayFilter;
+
+      return matchesTerm && matchesStatus && matchesWeekday;
+    });
+  }, [events, searchTerm, statusFilter, weekdayFilter]);
 
   if (loading) {
     return (
@@ -212,11 +232,54 @@ export default function AdminAgendaSemanalPage() {
             Atualizar
           </button>
         </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Buscar evento</span>
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Título, local ou observação"
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Dia da semana</span>
+            <select
+              value={weekdayFilter}
+              onChange={(event) =>
+                setWeekdayFilter(event.target.value === "todos" ? "todos" : Number(event.target.value))
+              }
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="todos">Todos os dias</option>
+              {weekdayOptions.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-slate-700">Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as "todos" | "ativos" | "inativos")}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            >
+              <option value="todos">Todos</option>
+              <option value="ativos">Ativos</option>
+              <option value="inativos">Inativos</option>
+            </select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Exibindo {filteredEvents.length} de {events.length} evento(s).
+        </p>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {["Dia", "Hora", "Título", "Ativo", "Ações"].map((col) => (
+                {["Dia", "Hora", "Título", "Local", "Observações", "Ativo", "Ações"].map((col) => (
                   <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
                     {col}
                   </th>
@@ -226,25 +289,27 @@ export default function AdminAgendaSemanalPage() {
             <tbody className="divide-y divide-slate-100">
               {status === "loading" ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">
                     Carregando agenda...
                   </td>
                 </tr>
               ) : null}
-              {status !== "loading" && !events.length ? (
+              {status !== "loading" && !filteredEvents.length ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
-                    Nenhum evento encontrado.
+                  <td colSpan={7} className="px-4 py-6 text-center text-sm text-slate-500">
+                    Nenhum evento encontrado com os filtros atuais.
                   </td>
                 </tr>
               ) : null}
-              {events.map((event) => (
+              {filteredEvents.map((event) => (
                 <tr key={event.id}>
                   <td className="px-4 py-3 text-slate-700">
                     {weekdayOptions.find((item) => item.value === event.weekday)?.label ?? "-"}
                   </td>
                   <td className="px-4 py-3 text-slate-700">{event.start_time.slice(0, 5)}</td>
                   <td className="px-4 py-3 text-slate-700">{event.title}</td>
+                  <td className="px-4 py-3 text-slate-700">{event.location ?? "-"}</td>
+                  <td className="px-4 py-3 text-slate-700">{event.notes ?? "-"}</td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
