@@ -526,7 +526,7 @@ export default function NovoConvertidoDiscipuladoPage() {
           </button>
           <button
             type="button"
-            onClick={resetForm}
+            onClick={() => resetForm()}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
           >
             Cancelar
