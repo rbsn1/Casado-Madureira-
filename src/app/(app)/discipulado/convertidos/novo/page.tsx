@@ -15,66 +15,120 @@ type MemberResult = {
 
 type EntryMode = "existing" | "new";
 
-function isMissingSearchMembersFunctionError(message: string, code?: string) {
-  return code === "PGRST202" || message.includes("search_ccm_members_for_discipleship");
-}
-
 function isMissingCreateMemberFunctionError(message: string, code?: string) {
   return code === "PGRST202" || message.includes("create_ccm_member_from_discipleship");
 }
 
-async function searchMembersWithFallback(term: string) {
+function isMissingMembersListFunctionError(message: string, code?: string) {
+  return code === "PGRST202" || message.includes("list_ccm_members_for_discipleship");
+}
+
+async function listMembersWithFallback() {
   if (!supabaseClient) {
     return { data: [] as MemberResult[], errorMessage: "Supabase não configurado." };
   }
 
-  const { data: rpcData, error: rpcError } = await supabaseClient.rpc("search_ccm_members_for_discipleship", {
-    search_text: term,
-    rows_limit: 8,
-    target_congregation_id: null
-  });
+  const batchSize = 500;
+  const collectedMembers: MemberResult[] = [];
+  let offset = 0;
+  let listError: { message: string; code?: string } | null = null;
 
-  if (!rpcError) {
-    return { data: (rpcData ?? []) as MemberResult[], errorMessage: "" };
+  while (true) {
+    const { data: listData, error } = await supabaseClient.rpc("list_ccm_members_for_discipleship", {
+      search_text: null,
+      rows_limit: batchSize,
+      rows_offset: offset
+    });
+
+    if (error) {
+      listError = error;
+      break;
+    }
+
+    const rows = Array.isArray(listData) ? listData : [];
+    const normalizedRows = rows
+      .map((row) => {
+        const item = row as Partial<{
+          member_id: string;
+          member_name: string;
+          member_phone: string | null;
+          has_active_case: boolean;
+        }>;
+        if (!item.member_id || !item.member_name) return null;
+        return {
+          id: String(item.member_id),
+          nome_completo: String(item.member_name),
+          telefone_whatsapp: item.member_phone ?? null,
+          has_active_case: Boolean(item.has_active_case)
+        } as MemberResult;
+      })
+      .filter((item): item is MemberResult => item !== null);
+
+    collectedMembers.push(...normalizedRows);
+    if (normalizedRows.length < batchSize) break;
+    offset += batchSize;
   }
 
-  if (!isMissingSearchMembersFunctionError(rpcError.message, rpcError.code)) {
-    return { data: [] as MemberResult[], errorMessage: rpcError.message };
+  if (!listError) {
+    return { data: collectedMembers, errorMessage: "" };
   }
 
-  const { data: peopleData, error: peopleError } = await supabaseClient
-    .from("pessoas")
-    .select("id, nome_completo, telefone_whatsapp")
-    .or(`nome_completo.ilike.%${term}%,telefone_whatsapp.ilike.%${term}%`)
-    .order("nome_completo", { ascending: true })
-    .limit(8);
-
-  if (peopleError) {
-    return { data: [] as MemberResult[], errorMessage: peopleError.message };
+  if (!isMissingMembersListFunctionError(listError.message, listError.code)) {
+    return { data: [] as MemberResult[], errorMessage: listError.message };
   }
 
-  const members = (peopleData ?? []) as { id: string; nome_completo: string; telefone_whatsapp: string | null }[];
-  if (!members.length) {
+  const peopleRows: Array<{ id: string; nome_completo: string; telefone_whatsapp: string | null }> = [];
+  let from = 0;
+
+  while (true) {
+    const to = from + batchSize - 1;
+    const { data: peopleData, error: peopleError } = await supabaseClient
+      .from("pessoas")
+      .select("id, nome_completo, telefone_whatsapp, created_at")
+      .order("created_at", { ascending: false })
+      .range(from, to);
+
+    if (peopleError) {
+      return { data: [] as MemberResult[], errorMessage: peopleError.message };
+    }
+
+    const batch = Array.isArray(peopleData)
+      ? (peopleData as Array<{ id: string; nome_completo: string; telefone_whatsapp: string | null }>)
+      : [];
+
+    peopleRows.push(...batch);
+    if (batch.length < batchSize) break;
+    from += batchSize;
+  }
+
+  if (!peopleRows.length) {
     return { data: [] as MemberResult[], errorMessage: "" };
   }
 
-  const memberIds = members.map((item) => item.id);
-  const { data: casesData, error: casesError } = await supabaseClient
-    .from("discipleship_cases")
-    .select("member_id, status")
-    .in("member_id", memberIds)
-    .in("status", ["em_discipulado", "pausado"]);
+  const activeCaseMemberIds = new Set<string>();
+  const memberIds = peopleRows.map((item) => item.id);
+  for (let i = 0; i < memberIds.length; i += batchSize) {
+    const chunk = memberIds.slice(i, i + batchSize);
+    const { data: casesData, error: casesError } = await supabaseClient
+      .from("discipleship_cases")
+      .select("member_id")
+      .in("member_id", chunk)
+      .in("status", ["em_discipulado", "pausado"]);
 
-  if (casesError) {
-    return { data: [] as MemberResult[], errorMessage: casesError.message };
+    if (casesError) {
+      return { data: [] as MemberResult[], errorMessage: casesError.message };
+    }
+
+    (casesData ?? []).forEach((item) => {
+      if (item.member_id) activeCaseMemberIds.add(String(item.member_id));
+    });
   }
 
-  const activeCaseMembers = new Set((casesData ?? []).map((item) => item.member_id));
-  const fallbackData: MemberResult[] = members.map((member) => ({
-    id: member.id,
-    nome_completo: member.nome_completo,
-    telefone_whatsapp: member.telefone_whatsapp,
-    has_active_case: activeCaseMembers.has(member.id)
+  const fallbackData: MemberResult[] = peopleRows.map((member) => ({
+    id: String(member.id),
+    nome_completo: String(member.nome_completo),
+    telefone_whatsapp: member.telefone_whatsapp ?? null,
+    has_active_case: activeCaseMemberIds.has(String(member.id))
   }));
 
   return { data: fallbackData, errorMessage: "" };
@@ -83,8 +137,8 @@ async function searchMembersWithFallback(term: string) {
 export default function NovoConvertidoDiscipuladoPage() {
   const searchParams = useSearchParams();
   const [entryMode, setEntryMode] = useState<EntryMode>("existing");
-  const [query, setQuery] = useState("");
   const [members, setMembers] = useState<MemberResult[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<MemberResult | null>(null);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberPhone, setNewMemberPhone] = useState("");
@@ -119,101 +173,45 @@ export default function NovoConvertidoDiscipuladoPage() {
   useEffect(() => {
     let active = true;
 
-    async function hydrateFromQuery() {
+    async function loadMembers() {
       if (!supabaseClient || !hasAccess || entryMode !== "existing") return;
-      const memberId = searchParams.get("memberId");
-      if (!memberId || selectedMember) return;
-
-      const [{ data: person, error: personError }, { data: activeCases, error: casesError }] = await Promise.all([
-        supabaseClient
-          .from("pessoas")
-          .select("id, nome_completo, telefone_whatsapp")
-          .eq("id", memberId)
-          .single(),
-        supabaseClient
-          .from("discipleship_cases")
-          .select("id")
-          .eq("member_id", memberId)
-          .in("status", ["em_discipulado", "pausado"])
-          .limit(1)
-      ]);
-
-      if (!active) return;
-
-      if (personError) {
-        setStatus("error");
-        setMessage(personError.message);
-        return;
-      }
-      if (casesError) {
-        setStatus("error");
-        setMessage(casesError.message);
-        return;
-      }
-      if ((activeCases ?? []).length > 0) {
-        setStatus("error");
-        setMessage("Este membro já possui case ativo.");
-        return;
-      }
-
-      const member: MemberResult = {
-        id: String(person.id),
-        nome_completo: String(person.nome_completo),
-        telefone_whatsapp: person.telefone_whatsapp ?? null,
-        has_active_case: false
-      };
-      setSelectedMember(member);
-      setQuery(member.nome_completo);
-    }
-
-    hydrateFromQuery();
-    return () => {
-      active = false;
-    };
-  }, [entryMode, hasAccess, searchParams, selectedMember]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function searchMembers() {
-      const term = query.trim();
-      if (entryMode !== "existing" || !supabaseClient || selectedMember) {
-        return;
-      }
-      if (term.length < 2) {
-        if (active) {
-          setMembers([]);
-          if (status === "error") {
-            setStatus("idle");
-            setMessage("");
-          }
-        }
-        return;
-      }
-
-      const { data, errorMessage } = await searchMembersWithFallback(term);
+      setMembersLoading(true);
+      setMessage("");
+      setStatus((prev) => (prev === "error" ? "idle" : prev));
+      const { data, errorMessage } = await listMembersWithFallback();
 
       if (!active) return;
       if (errorMessage) {
         setMembers([]);
-        setMessage(`Falha ao buscar membros do CCM: ${errorMessage}`);
+        setMessage(`Falha ao listar membros do CCM: ${errorMessage}`);
         setStatus("error");
+        setMembersLoading(false);
         return;
       }
-      setMembers((data ?? []) as MemberResult[]);
+      const loadedMembers = (data ?? []) as MemberResult[];
+      setMembers(loadedMembers);
+      setMembersLoading(false);
+
+      const memberId = searchParams.get("memberId");
+      if (!memberId) return;
+      const memberFromQuery = loadedMembers.find((item) => item.id === memberId);
+      if (!memberFromQuery) return;
+      if (memberFromQuery.has_active_case) {
+        setStatus("error");
+        setMessage("Este membro já possui case ativo.");
+        return;
+      }
+      setSelectedMember(memberFromQuery);
     }
 
-    const timeout = window.setTimeout(searchMembers, 260);
+    loadMembers();
     return () => {
       active = false;
-      window.clearTimeout(timeout);
     };
-  }, [entryMode, query, selectedMember, status]);
+  }, [entryMode, hasAccess, searchParams]);
 
-  function resetForm() {
+  function resetForm(options?: { preserveFeedback?: boolean }) {
     setSelectedMember(null);
-    setQuery("");
-    setMembers([]);
     setNewMemberName("");
     setNewMemberPhone("");
     setNewMemberOrigin("");
@@ -221,8 +219,10 @@ export default function NovoConvertidoDiscipuladoPage() {
     setNewMemberNeighborhood("");
     setNewMemberObservations("");
     setNotes("");
-    setMessage("");
-    setStatus("idle");
+    if (!options?.preserveFeedback) {
+      setMessage("");
+      setStatus("idle");
+    }
   }
 
   async function createCase(memberId: string) {
@@ -272,7 +272,10 @@ export default function NovoConvertidoDiscipuladoPage() {
 
       setStatus("success");
       setMessage("Novo convertido cadastrado com sucesso.");
-      resetForm();
+      setMembers((prev) =>
+        prev.map((item) => (item.id === selectedMember.id ? { ...item, has_active_case: true } : item))
+      );
+      resetForm({ preserveFeedback: true });
       return;
     }
 
@@ -339,7 +342,7 @@ export default function NovoConvertidoDiscipuladoPage() {
 
     setStatus("success");
     setMessage("Membro cadastrado no CCM e case de discipulado criado com sucesso.");
-    resetForm();
+    resetForm({ preserveFeedback: true });
   }
 
   if (!hasAccess) {
@@ -356,7 +359,7 @@ export default function NovoConvertidoDiscipuladoPage() {
         <p className="text-sm text-sky-700">Discipulado</p>
         <h2 className="text-xl font-semibold text-sky-950">Novo convertido</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Selecione um membro do CCM ou faça o cadastro direto no formulário do Discipulado.
+          Selecione um membro da lista do CCM ou faça o cadastro direto no formulário do Discipulado.
         </p>
       </div>
 
@@ -382,8 +385,6 @@ export default function NovoConvertidoDiscipuladoPage() {
             onClick={() => {
               setEntryMode("new");
               setSelectedMember(null);
-              setQuery("");
-              setMembers([]);
               setMessage("");
               setStatus("idle");
             }}
@@ -400,45 +401,38 @@ export default function NovoConvertidoDiscipuladoPage() {
         {entryMode === "existing" ? (
           <>
             <label className="block space-y-1 text-sm">
-              <span className="text-slate-700">Buscar membro (CCM)</span>
-              <input
-                value={selectedMember ? selectedMember.nome_completo : query}
+              <span className="text-slate-700">Lista de membros (CCM)</span>
+              <select
+                value={selectedMember?.id ?? ""}
                 onChange={(event) => {
-                  setSelectedMember(null);
-                  setQuery(event.target.value);
+                  const member = members.find((item) => item.id === event.target.value) ?? null;
+                  setSelectedMember(member);
                 }}
-                placeholder="Digite nome ou sobrenome"
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-              />
-              {!selectedMember && query.trim().length > 0 && query.trim().length < 2 ? (
-                <p className="text-xs text-slate-500">Digite ao menos 2 caracteres para buscar.</p>
-              ) : null}
+                disabled={membersLoading || !members.length}
+              >
+                <option value="">
+                  {membersLoading ? "Carregando membros..." : "Selecione um membro"}
+                </option>
+                {members
+                  .filter((item) => !item.has_active_case)
+                  .map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.nome_completo} {member.telefone_whatsapp ? `(${member.telefone_whatsapp})` : ""}
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-slate-500">
+                Total no CCM: {members.length} • disponíveis para novo case:{" "}
+                {members.filter((item) => !item.has_active_case).length} • já com case ativo:{" "}
+                {members.filter((item) => item.has_active_case).length}
+              </p>
             </label>
 
-            {!selectedMember && members.length ? (
-              <div className="rounded-lg border border-slate-100 bg-white p-2">
-                {members.map((member) => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    disabled={member.has_active_case}
-                    onClick={() => {
-                      setSelectedMember(member);
-                      setQuery(member.nome_completo);
-                      setMembers([]);
-                    }}
-                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    <span className="font-medium text-slate-900">{member.nome_completo}</span>
-                    <span className="text-right text-xs text-slate-600">
-                      {member.telefone_whatsapp ?? "-"}
-                      {member.has_active_case ? (
-                        <span className="mt-1 block font-semibold text-amber-700">Case ativo</span>
-                      ) : null}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            {!membersLoading && !members.length ? (
+              <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+                Nenhum membro encontrado no CCM para sua congregação.
+              </p>
             ) : null}
 
             {selectedMember ? (
