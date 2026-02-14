@@ -25,7 +25,8 @@ function isMissingMembersListFunctionError(message: string, code?: string) {
 }
 
 async function listMembersWithFallback() {
-  if (!supabaseClient) {
+  const sb = supabaseClient;
+  if (!sb) {
     return { data: [] as MemberResult[], errorMessage: "Supabase não configurado." };
   }
 
@@ -38,7 +39,7 @@ async function listMembersWithFallback() {
 
     for (let i = 0; i < memberIds.length; i += batchSize) {
       const chunk = memberIds.slice(i, i + batchSize);
-      const { data: casesData, error: casesError } = await supabaseClient
+      const { data: casesData, error: casesError } = await sb
         .from("discipleship_cases")
         .select("member_id, status")
         .in("member_id", chunk);
@@ -75,7 +76,7 @@ async function listMembersWithFallback() {
   let listError: { message: string; code?: string } | null = null;
 
   while (true) {
-    const { data: listData, error } = await supabaseClient.rpc("list_ccm_members_for_discipleship", {
+    const { data: listData, error } = await sb.rpc("list_ccm_members_for_discipleship", {
       search_text: null,
       rows_limit: batchSize,
       rows_offset: offset
@@ -128,7 +129,7 @@ async function listMembersWithFallback() {
 
   while (true) {
     const to = from + batchSize - 1;
-    const { data: peopleData, error: peopleError } = await supabaseClient
+    const { data: peopleData, error: peopleError } = await sb
       .from("pessoas")
       .select("id, nome_completo, telefone_whatsapp, created_at")
       .order("created_at", { ascending: false })
@@ -156,7 +157,7 @@ async function listMembersWithFallback() {
   const memberIds = peopleRows.map((item) => item.id);
   for (let i = 0; i < memberIds.length; i += batchSize) {
     const chunk = memberIds.slice(i, i + batchSize);
-    const { data: casesData, error: casesError } = await supabaseClient
+    const { data: casesData, error: casesError } = await sb
       .from("discipleship_cases")
       .select("member_id, status")
       .in("member_id", chunk);
