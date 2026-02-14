@@ -227,9 +227,11 @@ export default function NovoConvertidoDiscipuladoPage() {
 
   async function createCase(memberId: string) {
     if (!supabaseClient) return { ok: false as const, errorMessage: "Supabase não configurado." };
+    const { data: authData } = await supabaseClient.auth.getUser();
 
     const payload = {
       member_id: memberId,
+      assigned_to: authData.user?.id ?? null,
       notes: notes.trim() || null,
       request_id: crypto.randomUUID()
     };

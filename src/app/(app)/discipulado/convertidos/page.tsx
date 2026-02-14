@@ -272,6 +272,9 @@ export default function DiscipuladoConvertidosPage() {
                   Urgência: {criticalityLabel(item.criticality)} • negativos: {item.negative_contact_count} • faltam{" "}
                   {item.days_to_confra ?? "-"} dias
                 </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
+                </p>
               </div>
               <p className="text-xs text-slate-600">{item.notes || "Sem observações gerais."}</p>
             </Link>

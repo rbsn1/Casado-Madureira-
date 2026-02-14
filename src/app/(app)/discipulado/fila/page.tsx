@@ -138,6 +138,9 @@ export default function DiscipuladoFilaPage() {
                 Negativos: <strong>{item.negative_contact_count}</strong> • Faltam{" "}
                 <strong>{item.days_to_confra ?? "-"}</strong> dias para a confra
               </p>
+              <p className="text-xs text-slate-600">
+                Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
+              </p>
               <div>
                 <div className="h-2 rounded-full bg-slate-100">
                   <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />

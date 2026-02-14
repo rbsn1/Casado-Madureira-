@@ -7,6 +7,8 @@ export type DiscipleshipCaseSummaryItem = {
   member_id: string;
   member_name: string;
   member_phone: string | null;
+  assigned_to: string | null;
+  discipulador_email: string | null;
   status: DiscipleshipCaseStatus;
   notes: string | null;
   updated_at: string;
@@ -20,6 +22,7 @@ export type DiscipleshipCaseSummaryItem = {
 type FallbackCaseRow = {
   id: string;
   member_id: string;
+  assigned_to: string | null;
   status: DiscipleshipCaseStatus;
   notes: string | null;
   updated_at: string;
@@ -66,6 +69,8 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
         member_id: String(item.member_id ?? ""),
         member_name: String(item.member_name ?? "Membro"),
         member_phone: item.member_phone ?? null,
+        assigned_to: item.assigned_to ?? null,
+        discipulador_email: item.discipulador_email ?? null,
         status: (item.status ?? "em_discipulado") as DiscipleshipCaseStatus,
         notes: item.notes ?? null,
         updated_at: String(item.updated_at ?? new Date().toISOString()),
@@ -84,7 +89,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
   }
 
   const baseSelect =
-    "id, member_id, status, notes, updated_at, criticality, negative_contact_count, days_to_confra";
+    "id, member_id, assigned_to, status, notes, updated_at, criticality, negative_contact_count, days_to_confra";
   let hasCriticalityColumns = true;
   let casesResult: {
     data: unknown[] | null;
@@ -99,7 +104,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
     hasCriticalityColumns = false;
     casesResult = await supabaseClient
       .from("discipleship_cases")
-      .select("id, member_id, status, notes, updated_at")
+      .select("id, member_id, assigned_to, status, notes, updated_at")
       .order("updated_at", { ascending: false })
       .limit(500);
   }
@@ -154,6 +159,8 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
       member_id: item.member_id,
       member_name: member?.name ?? "Membro",
       member_phone: member?.phone ?? null,
+      assigned_to: item.assigned_to ?? null,
+      discipulador_email: item.assigned_to ? `ID ${item.assigned_to.slice(0, 8)}` : null,
       status: item.status,
       notes: item.notes,
       updated_at: item.updated_at,
