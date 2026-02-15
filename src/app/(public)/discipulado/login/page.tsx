@@ -124,7 +124,7 @@ export default function DiscipuladoLoginPage() {
       }
     >
       <div className={styles.layout}>
-        <section className={styles.heroPanel} aria-label="Mensagem inspiracional do discipulado">
+        <section className={`${styles.heroPanel} ${styles.hero}`} aria-label="Mensagem inspiracional do discipulado">
           <div className={`${styles.heroImage} ${styles.heroOverlay}`} aria-hidden="true" />
           <div className={styles.texture} aria-hidden="true" />
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">

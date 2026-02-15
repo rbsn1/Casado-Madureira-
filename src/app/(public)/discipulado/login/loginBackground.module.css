@@ -16,6 +16,28 @@
   overflow: hidden;
 }
 
+.hero {
+  position: relative;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 40% 35%, rgba(255, 180, 90, 0.25) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: url("/noise.png");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
 .heroImage {
   position: absolute;
   inset: 0;
@@ -59,13 +81,13 @@
 }
 
 .quoteCard {
-  backdrop-filter: blur(12px);
-  background: rgba(15, 23, 42, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 20px;
   padding: 32px;
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 20px 40px -34px rgba(15, 23, 42, 0.9);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
 }
 
 .glow {
@@ -109,9 +131,9 @@
     rgba(255, 140, 60, 0.35) 35%,
     transparent 70%
   );
-  filter: blur(14px);
-  opacity: 0.9;
-  animation: flicker 2.8s ease-in-out infinite;
+  filter: blur(24px);
+  opacity: 1;
+  animation: breathe 3.5s ease-in-out infinite;
 }
 
 .flameWrap::after {
@@ -148,6 +170,18 @@
   }
   50% {
     transform: translateY(-1px) scale(1.02);
+    opacity: 1;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.05);
     opacity: 1;
   }
 }
