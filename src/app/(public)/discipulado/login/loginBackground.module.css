@@ -16,46 +16,15 @@
   overflow: hidden;
 }
 
-.hero {
-  position: relative;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    circle at 35% 40%,
-    rgba(255, 170, 80, 0.35) 0%,
-    rgba(255, 170, 80, 0.15) 30%,
-    transparent 60%
-  );
-  pointer-events: none;
-}
-
-.hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
-  pointer-events: none;
-}
-
 .heroImage {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(180deg, var(--login-hero-top, rgba(2, 6, 23, 0.88)) 0%, var(--login-hero-middle, rgba(15, 23, 42, 0.48)) 48%, var(--login-hero-bottom, rgba(2, 6, 23, 0.92)) 100%),
-    radial-gradient(circle at 50% 20%, rgba(245, 158, 11, 0.18), transparent 50%),
     url("/hero.jpg"),
-    linear-gradient(135deg, #1e293b 0%, #0f172a 42%, #1d4ed8 100%);
+    linear-gradient(135deg, #0b1220 0%, #0f1b2d 45%, #0a0f1c 100%);
   background-size: cover;
   background-position: center;
   transform: scale(1.03);
-}
-
-.heroOverlay {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
 }
 
 .texture {
