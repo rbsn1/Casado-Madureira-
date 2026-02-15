@@ -215,7 +215,8 @@ export default function NovoConvertidoDiscipuladoPage() {
       const scope = await getAuthScope();
       if (!active) return;
       setHasAccess(
-        scope.roles.includes("DISCIPULADOR") ||
+        scope.roles.includes("ADMIN_DISCIPULADO") ||
+          scope.roles.includes("DISCIPULADOR") ||
           scope.roles.includes("SM_DISCIPULADO") ||
           scope.roles.includes("SECRETARIA_DISCIPULADO")
       );
@@ -409,7 +410,7 @@ export default function NovoConvertidoDiscipuladoPage() {
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
-        Acesso restrito aos perfis DISCIPULADOR, SM_DISCIPULADO e SECRETARIA_DISCIPULADO.
+        Acesso restrito aos perfis ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO e SECRETARIA_DISCIPULADO.
       </div>
     );
   }

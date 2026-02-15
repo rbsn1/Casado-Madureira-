@@ -450,7 +450,7 @@ export default function DiscipulandoDetalhePage() {
     async function bootstrap() {
       const scope = await getAuthScope();
       if (!active) return;
-      const allowed = scope.roles.includes("DISCIPULADOR");
+      const allowed = scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO");
       setHasAccess(allowed);
       if (!allowed) {
         setLoading(false);

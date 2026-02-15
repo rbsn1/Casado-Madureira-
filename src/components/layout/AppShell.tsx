@@ -35,16 +35,24 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Discipulado",
     items: [
-      { href: "/discipulado", label: "Dashboard", roles: ["DISCIPULADOR"] },
-      { href: "/discipulado/fila", label: "Fila", roles: ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"] },
+      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
+      {
+        href: "/discipulado/fila",
+        label: "Fila",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
       {
         href: "/discipulado/convertidos/novo",
         label: "Novo convertido",
-        roles: ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
       },
-      { href: "/discipulado/manual", label: "Manual", roles: ["DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"] },
-      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["DISCIPULADOR"] },
-      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["DISCIPULADOR"] },
+      {
+        href: "/discipulado/manual",
+        label: "Manual",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
+      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
+      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_DISCIPULADO"] }
     ]
   },

@@ -15,7 +15,7 @@ export default function DiscipuladoManualPage() {
         <h3 className="text-sm font-semibold text-sky-900">1. Primeiro acesso</h3>
         <div className="mt-3 space-y-2 text-sm text-slate-700">
           <p>1. Faça login no Portal Discipulado.</p>
-          <p>2. Se seu perfil for ADMIN_DISCIPULADO, você entra direto no painel de Admin.</p>
+          <p>2. Se seu perfil for ADMIN_DISCIPULADO, você tem acesso a todos os painéis (incluindo o Admin).</p>
           <p>3. Se seu perfil for de cadastro, você entra direto em Novo convertido.</p>
           <p>4. Se aparecer erro de permissão, peça ajuste de perfil ao administrador.</p>
         </div>

@@ -30,11 +30,12 @@ export default function DiscipuladoFilaPage() {
       const scope = await getAuthScope();
       if (!active) return;
       const allowed =
+        scope.roles.includes("ADMIN_DISCIPULADO") ||
         scope.roles.includes("DISCIPULADOR") ||
         scope.roles.includes("SM_DISCIPULADO") ||
         scope.roles.includes("SECRETARIA_DISCIPULADO");
       setHasAccess(allowed);
-      setCanOpenCase(scope.roles.includes("DISCIPULADOR"));
+      setCanOpenCase(scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO"));
       if (!allowed) return;
 
       const { data, errorMessage, hasCriticalityColumns } = await loadDiscipleshipCaseSummariesWithFallback();

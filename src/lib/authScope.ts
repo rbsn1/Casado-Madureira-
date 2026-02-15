@@ -28,9 +28,6 @@ export function isDiscipuladoScopedAccount(roles: string[], isGlobalAdmin: boole
 }
 
 export function getDiscipuladoHomePath(roles: string[]) {
-  if (roles.includes("ADMIN_DISCIPULADO")) {
-    return "/discipulado/admin";
-  }
   const hasCadastroOnlyRole =
     !roles.includes("DISCIPULADOR") &&
     (roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO"));

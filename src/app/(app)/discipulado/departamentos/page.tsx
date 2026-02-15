@@ -80,7 +80,7 @@ export default function DepartamentosPage() {
       return;
     }
     const scope = await getAuthScope();
-    const allowed = scope.roles.includes("DISCIPULADOR");
+    const allowed = scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO");
     setHasAccess(allowed);
     if (!allowed) {
       setStatusMessage("Acesso restrito à gestão de departamentos no módulo de Discipulado.");
