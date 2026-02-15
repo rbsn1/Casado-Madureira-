@@ -570,18 +570,19 @@ function CadastrosContent() {
     if (!confirmed) return;
     setStatusMessage("");
     setDeletingId(pessoa.id);
-    const { error: integracaoError } = await supabaseClient
-      .from("integracao_novos_convertidos")
-      .delete()
-      .eq("pessoa_id", pessoa.id);
-    if (integracaoError) {
-      setStatusMessage(integracaoError.message);
-      setDeletingId(null);
-      return;
-    }
+    // FK cascades should take care of dependent CCM rows (integracao/timeline/etc).
+    // If the member has an active/old Discipulado case, the FK is RESTRICT and we must block deletion.
     const { error } = await supabaseClient.from("pessoas").delete().eq("id", pessoa.id);
     if (error) {
-      setStatusMessage(error.message);
+      const msg = String(error.message ?? "");
+      const code = (error as { code?: string } | null)?.code ?? "";
+      if (code === "23503" && msg.includes("discipleship_cases_member_id_fkey")) {
+        setStatusMessage(
+          "Não é possível excluir: este membro está vinculado ao Discipulado. Conclua/encerre o case no Discipulado ou mantenha o cadastro e apenas atualize os dados."
+        );
+      } else {
+        setStatusMessage(msg || "Não foi possível excluir o cadastro.");
+      }
       setDeletingId(null);
       return;
     }
