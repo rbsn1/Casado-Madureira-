@@ -125,7 +125,8 @@ export default function DiscipuladoLoginPage() {
     >
       <div className={styles.layout}>
         <section className={styles.heroPanel} aria-label="Mensagem inspiracional do discipulado">
-          <div className={styles.heroImage} aria-hidden="true" />
+          <div className={`${styles.heroImage} ${styles.heroOverlay}`} aria-hidden="true" />
+          <div className={styles.texture} aria-hidden="true" />
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-bold text-white shadow-[0_8px_26px_-16px_rgba(15,23,42,0.85)] backdrop-blur">
@@ -138,7 +139,22 @@ export default function DiscipuladoLoginPage() {
             </div>
 
             <div className="max-w-2xl space-y-4">
-              <article className={styles.quoteCard}>
+              <article className={`${styles.quoteCard} ${styles.glow}`}>
+                <div className={styles.flameWrap}>
+                  <svg className={styles.flame} viewBox="0 0 64 64" aria-hidden="true">
+                    <path
+                      d="M32 6c6 10 16 16 16 30 0 10-7 18-16 18s-16-8-16-18c0-8 4-14 8-20 2-3 4-6 8-10z"
+                      fill="url(#flameGradient)"
+                    />
+                    <defs>
+                      <linearGradient id="flameGradient" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0" stopColor="#FFD29A" />
+                        <stop offset="0.55" stopColor="#FF9A3D" />
+                        <stop offset="1" stopColor="#FF6A00" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
                 <p className="text-[clamp(1.04rem,1.4vw,1.56rem)] font-medium leading-relaxed italic text-white/95">
                   “Ide, portanto, fazei discípulos de todas as nações...”
                 </p>
@@ -149,7 +165,7 @@ export default function DiscipuladoLoginPage() {
           </div>
         </section>
 
-        <section className={styles.formPanel}>
+        <section className={`${styles.formPanel} ${styles.authBg}`}>
           <Card className={styles.loginCard}>
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <Link
@@ -278,7 +294,7 @@ export default function DiscipuladoLoginPage() {
                 </a>
               </p>
               <Separator className="my-4" />
-              <p className="text-center text-xs text-slate-500">© 2024 Casados com MADU</p>
+              <p className="text-center text-xs text-slate-500">© 2026 Discipulado Madureira</p>
             </CardFooter>
           </Card>
         </section>

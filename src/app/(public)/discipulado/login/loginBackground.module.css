@@ -29,6 +29,20 @@
   transform: scale(1.03);
 }
 
+.heroOverlay {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.6));
+}
+
+.texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("/gold-dust.png");
+  background-repeat: repeat;
+  opacity: 0.05;
+  mix-blend-mode: screen;
+}
+
 .heroImage::before {
   content: "";
   position: absolute;
@@ -45,13 +59,97 @@
 }
 
 .quoteCard {
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.28), rgba(15, 23, 42, 0.45));
   backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px;
   -webkit-backdrop-filter: blur(12px);
-  padding: 1.25rem 1.2rem;
   box-shadow: 0 20px 40px -34px rgba(15, 23, 42, 0.9);
+}
+
+.glow {
+  position: relative;
+}
+
+.glow::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 300px;
+  height: 120px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 200, 120, 0.5) 0%,
+    rgba(255, 160, 60, 0.2) 40%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+}
+
+.flameWrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 0.75rem;
+}
+
+.flameWrap::before {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  background: radial-gradient(
+    circle at 50% 60%,
+    rgba(255, 190, 120, 0.7) 0%,
+    rgba(255, 140, 60, 0.35) 35%,
+    transparent 70%
+  );
+  filter: blur(14px);
+  opacity: 0.9;
+  animation: flicker 2.8s ease-in-out infinite;
+}
+
+.flameWrap::after {
+  content: "";
+  position: absolute;
+  width: 120px;
+  height: 42px;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 200, 120, 0.3) 0%,
+    transparent 70%
+  );
+  filter: blur(18px);
+  opacity: 0.8;
+}
+
+.flame {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 26px;
+  filter: drop-shadow(0 6px 18px rgba(255, 160, 60, 0.35));
+  animation: flicker 3.2s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: translateY(-1px) scale(1.02);
+    opacity: 1;
+  }
 }
 
 .formPanel {
@@ -66,13 +164,34 @@
     var(--login-off-white, #f8fafc);
 }
 
-.formPanel::before {
+.authBg {
+  position: relative;
+  background:
+    radial-gradient(900px circle at 70% 30%, rgba(59, 130, 246, 0.1), transparent 55%),
+    radial-gradient(700px circle at 30% 70%, rgba(249, 115, 22, 0.08), transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.authBg::after {
   content: "";
   position: absolute;
   inset: 0;
   opacity: 0.12;
   pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='%230f172a' fill-opacity='0.18'%3E%3Ccircle cx='10' cy='12' r='0.8'/%3E%3Ccircle cx='34' cy='88' r='0.8'/%3E%3Ccircle cx='95' cy='44' r='0.8'/%3E%3Ccircle cx='120' cy='108' r='0.8'/%3E%3C/g%3E%3C/svg%3E");
+  background: radial-gradient(circle at center, transparent 40%, rgba(2, 6, 23, 0.1) 100%);
+}
+
+.authBg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0 1px, transparent 1px 2px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0 1px, transparent 1px 2px);
+  mix-blend-mode: overlay;
+  filter: blur(0.2px);
 }
 
 .loginCard {
