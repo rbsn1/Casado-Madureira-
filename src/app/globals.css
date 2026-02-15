@@ -5,6 +5,17 @@
 :root {
   color-scheme: light;
   --tea-green: #dcebe2;
+  --brand-900: 30 58 95;
+  --brand-800: 39 76 119;
+  --brand-700: 46 94 138;
+  --accent-500: 230 167 86;
+  --accent-400: 242 192 120;
+  --accent-600: 217 152 66;
+  --bg-0: 255 255 255;
+  --bg-50: 245 247 250;
+  --slate-900: 11 28 45;
+  --slate-600: 107 122 144;
+  --border: 226 232 240;
 }
 
 body {

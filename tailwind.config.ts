@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-const config: Config = {
+export default {
   content: [
     "./src/app/**/*.{js,ts,jsx,tsx}",
     "./src/components/**/*.{js,ts,jsx,tsx}"
@@ -9,25 +9,36 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          900: "#1E5A3F",
-          700: "#2E7A55",
-          100: "#E3F0EA"
+          900: "rgb(var(--brand-900) / <alpha-value>)",
+          800: "rgb(var(--brand-800) / <alpha-value>)",
+          700: "rgb(var(--brand-700) / <alpha-value>)",
+          100: "#EAF1F7"
         },
         accent: {
-          700: "#D99200",
-          600: "#F2A900",
+          700: "#C6883D",
+          600: "rgb(var(--accent-600) / <alpha-value>)",
+          500: "rgb(var(--accent-500) / <alpha-value>)",
+          400: "rgb(var(--accent-400) / <alpha-value>)",
           300: "#F6C453",
           100: "#FFF4DA"
+        },
+        app: {
+          0: "rgb(var(--bg-0) / <alpha-value>)",
+          50: "rgb(var(--bg-50) / <alpha-value>)"
+        },
+        ink: {
+          900: "rgb(var(--slate-900) / <alpha-value>)",
+          600: "rgb(var(--slate-600) / <alpha-value>)"
         },
         tea: {
           600: "#2E7A55",
           100: "#E3F0EA"
         },
-        surface: "#F8FAF9",
-        border: "#E3E8E6",
-        text: "#1F2933",
-        "text-muted": "#6B7280",
-        bg: "#FFFFFF",
+        surface: "rgb(var(--bg-50) / <alpha-value>)",
+        border: "rgb(var(--border) / <alpha-value>)",
+        text: "rgb(var(--slate-900) / <alpha-value>)",
+        "text-muted": "rgb(var(--slate-600) / <alpha-value>)",
+        bg: "rgb(var(--bg-0) / <alpha-value>)",
         success: {
           600: "#2F9E6F",
           100: "#DDF3EA"
@@ -72,6 +83,4 @@ const config: Config = {
     }
   },
   plugins: []
-};
-
-export default config;
+} satisfies Config;

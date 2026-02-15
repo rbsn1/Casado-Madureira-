@@ -139,8 +139,10 @@ export default function DiscipuladoLoginPage() {
             </div>
 
             <div className="max-w-2xl space-y-4">
-              <article className={`${styles.quoteCard} ${styles.glow}`}>
-                <div className={styles.flameWrap}>
+              <article
+                className={`${styles.quoteCard} ${styles.glow} border border-white/5 bg-ink-900/50 shadow-[0_30px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl`}
+              >
+                <div className={`${styles.flameWrap} text-accent-500 drop-shadow-[0_12px_30px_rgba(230,167,86,0.35)]`}>
                   <span className={styles.lineGlow} aria-hidden="true" />
                   <svg className={styles.flame} viewBox="0 0 64 64" aria-hidden="true">
                     <path
@@ -166,7 +168,7 @@ export default function DiscipuladoLoginPage() {
           </div>
         </section>
 
-        <section className={`${styles.formPanel} ${styles.authBg}`}>
+        <section className={`${styles.formPanel} ${styles.authBg} bg-gradient-to-br from-app-0 to-app-50`}>
           <Card className={styles.loginCard}>
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <Link
@@ -202,7 +204,7 @@ export default function DiscipuladoLoginPage() {
                       placeholder="voce@casados.com"
                       value={emailValue}
                       onChange={(event) => setEmailValue(event.target.value)}
-                      className="h-12 pl-11"
+                      className="h-12 pl-11 focus:border-brand-700 focus:ring-4 focus:ring-brand-700/10"
                     />
                   </div>
                 </div>
@@ -232,7 +234,7 @@ export default function DiscipuladoLoginPage() {
                       autoComplete={keepConnected ? "current-password" : "off"}
                       required
                       placeholder="••••••••"
-                      className="h-12 pl-11 pr-12"
+                      className="h-12 pl-11 pr-12 focus:border-brand-700 focus:ring-4 focus:ring-brand-700/10"
                     />
                     <Button
                       type="button"
@@ -260,7 +262,11 @@ export default function DiscipuladoLoginPage() {
                   </label>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={status === "loading"}>
+                <Button
+                  type="submit"
+                  className="w-full bg-brand-800 text-white hover:bg-brand-900"
+                  disabled={status === "loading"}
+                >
                   {status === "loading" ? "Acessando..." : "Acessar"}
                 </Button>
 
