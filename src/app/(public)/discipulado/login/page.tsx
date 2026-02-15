@@ -141,6 +141,7 @@ export default function DiscipuladoLoginPage() {
             <div className="max-w-2xl space-y-4">
               <article className={`${styles.quoteCard} ${styles.glow}`}>
                 <div className={styles.flameWrap}>
+                  <span className={styles.lineGlow} aria-hidden="true" />
                   <svg className={styles.flame} viewBox="0 0 64 64" aria-hidden="true">
                     <path
                       d="M32 6c6 10 16 16 16 30 0 10-7 18-16 18s-16-8-16-18c0-8 4-14 8-20 2-3 4-6 8-10z"
