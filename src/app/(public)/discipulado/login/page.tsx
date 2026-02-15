@@ -1,24 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { type CSSProperties, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 import styles from "./loginBackground.module.css";
 
 type LoginStatus = "idle" | "loading" | "error";
 
-const cardClass =
-  "w-full max-w-md rounded-[1.35rem] border border-amber-50/80 bg-white/82 p-6 shadow-[0_32px_86px_-38px_rgba(53,41,20,0.42)] backdrop-blur-xl";
-const inputClass =
-  "w-full rounded-xl border border-slate-200/90 bg-white/92 px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-100";
+const LOGIN_TOKENS = {
+  primary: "#0B6AAE",
+  primaryDeep: "#075985",
+  offWhite: "#F8FAFC",
+  neutral900: "#0F172A",
+  neutral600: "#475569",
+  heroTop: "rgba(2, 6, 23, 0.88)",
+  heroMiddle: "rgba(15, 23, 42, 0.48)",
+  heroBottom: "rgba(2, 6, 23, 0.92)"
+} as const;
 
 export default function DiscipuladoLoginPage() {
   const router = useRouter();
   const [status, setStatus] = useState<LoginStatus>("idle");
   const [message, setMessage] = useState("");
   const [emailValue, setEmailValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [keepConnected, setKeepConnected] = useState(true);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,96 +108,181 @@ export default function DiscipuladoLoginPage() {
   }
 
   return (
-    <div className={styles.page}>
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
-        <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-700 text-xs font-semibold text-white">
-              DC
+    <main
+      className={styles.page}
+      style={
+        {
+          "--login-primary": LOGIN_TOKENS.primary,
+          "--login-primary-deep": LOGIN_TOKENS.primaryDeep,
+          "--login-off-white": LOGIN_TOKENS.offWhite,
+          "--login-neutral-900": LOGIN_TOKENS.neutral900,
+          "--login-neutral-600": LOGIN_TOKENS.neutral600,
+          "--login-hero-top": LOGIN_TOKENS.heroTop,
+          "--login-hero-middle": LOGIN_TOKENS.heroMiddle,
+          "--login-hero-bottom": LOGIN_TOKENS.heroBottom
+        } as CSSProperties
+      }
+    >
+      <div className={styles.layout}>
+        <section className={styles.heroPanel} aria-label="Mensagem inspiracional do discipulado">
+          <div className={styles.heroImage} aria-hidden="true" />
+          <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-bold text-white shadow-[0_8px_26px_-16px_rgba(15,23,42,0.85)] backdrop-blur">
+                DC
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.24em] text-white/75">Portal</p>
+                <p className="text-2xl font-semibold text-white">Discipulado</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-                Portal Discipulado
-              </p>
-              <p className="text-sm font-semibold text-sky-900">Acesso do módulo</p>
-            </div>
-          </div>
-          <Link
-            href="/login"
-            className="text-sm font-semibold text-sky-800 transition hover:text-sky-900"
-          >
-            Voltar ao portal →
-          </Link>
-        </header>
 
-        <section className="flex flex-1 items-center justify-center pt-10">
-          <div className={cardClass}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">Discipulado</p>
-            <h1 className="mt-2 text-2xl font-semibold text-sky-950">Entrar no módulo</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Use seu e-mail institucional para acessar o acompanhamento de discipulado.
-            </p>
-            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="email">
-                  E-mail
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="voce@casados.com"
-                  value={emailValue}
-                  onChange={(event) => setEmailValue(event.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="password">
-                  Senha
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className={inputClass}
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
-                  Manter conectado
-                </label>
-                <button
-                  type="button"
-                  onClick={handlePasswordReset}
-                  className="font-semibold text-sky-800 hover:text-sky-900"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-gradient-to-r from-sky-700 via-teal-700 to-amber-700 px-4 py-2 text-sm font-semibold text-white shadow transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-amber-100 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={status === "loading"}
-              >
-                {status === "loading" ? "Entrando..." : "Entrar no discipulado"}
-              </button>
-              {status === "error" ? (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  {message || "Não foi possível entrar. Verifique suas credenciais."}
+            <div className="max-w-2xl space-y-4">
+              <article className={styles.quoteCard}>
+                <p className="text-[clamp(1.04rem,1.4vw,1.56rem)] font-medium leading-relaxed italic text-white/95">
+                  “Ide, portanto, fazei discípulos de todas as nações...”
                 </p>
-              ) : null}
-              {status === "idle" && message ? (
-                <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                  {message}
-                </p>
-              ) : null}
-            </form>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">Mateus 28:19</p>
+              </article>
+              <p className="text-lg text-white/80">Acompanhe, registre e cuide de cada discípulo.</p>
+            </div>
           </div>
         </section>
+
+        <section className={styles.formPanel}>
+          <Card className={styles.loginCard}>
+            <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
+              <Link
+                href="/login"
+                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-500 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/10"
+              >
+                <ArrowLeft size={18} />
+                Voltar ao portal
+              </Link>
+              <div className="space-y-2">
+                <CardTitle>Entrar no módulo</CardTitle>
+                <CardDescription>Acesse sua conta institucional para gerenciar o discipulado.</CardDescription>
+              </div>
+            </CardHeader>
+
+            <CardContent className="px-8 pb-5 sm:px-10">
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-800" htmlFor="email">
+                    E-mail
+                  </label>
+                  <div className="relative">
+                    <Mail
+                      size={18}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      placeholder="voce@casados.com"
+                      value={emailValue}
+                      onChange={(event) => setEmailValue(event.target.value)}
+                      className="h-12 pl-11"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-sm font-semibold text-slate-800" htmlFor="password">
+                      Senha
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handlePasswordReset}
+                      className="text-sm font-medium text-slate-500 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/10"
+                    >
+                      Esqueceu a senha?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock
+                      size={18}
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete={keepConnected ? "current-password" : "off"}
+                      required
+                      placeholder="••••••••"
+                      className="h-12 pl-11 pr-12"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showPassword}
+                      onClick={() => setShowPassword((current) => !current)}
+                      className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 rounded-lg"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="keep-connected"
+                    name="keep-connected"
+                    checked={keepConnected}
+                    onChange={(event) => setKeepConnected(event.currentTarget.checked)}
+                  />
+                  <label htmlFor="keep-connected" className="text-sm font-medium text-slate-700">
+                    Manter conectado
+                  </label>
+                </div>
+
+                <Button type="submit" className="w-full" disabled={status === "loading"}>
+                  {status === "loading" ? "Acessando..." : "Acessar"}
+                </Button>
+
+                {status === "error" ? (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                  >
+                    {message || "Não foi possível entrar. Verifique suas credenciais."}
+                  </p>
+                ) : null}
+                {status === "idle" && message ? (
+                  <p
+                    role="status"
+                    aria-live="polite"
+                    className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700"
+                  >
+                    {message}
+                  </p>
+                ) : null}
+              </form>
+            </CardContent>
+
+            <CardFooter className="flex-col px-8 pb-8 pt-0 sm:px-10 sm:pb-10">
+              <p className="text-center text-sm text-slate-500">
+                Ainda não tem acesso?{" "}
+                <a
+                  href="mailto:discipulado@casados.com?subject=Acesso%20Portal%20Discipulado"
+                  className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900"
+                >
+                  Entre em contato
+                </a>
+              </p>
+              <Separator className="my-4" />
+              <p className="text-center text-xs text-slate-500">© 2024 Casados com MADU</p>
+            </CardFooter>
+          </Card>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
