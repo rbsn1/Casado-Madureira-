@@ -93,7 +93,12 @@ export default function NovoConvertidoCadastroPage() {
       request_id: crypto.randomUUID()
     };
 
-    const { error } = await supabaseClient.from("pessoas").insert(payload);
+    let { error } = await supabaseClient.from("pessoas").insert(payload);
+    // Ambientes legados podem não ter a coluna request_id ou o schema cache pode estar desatualizado.
+    if (error && error.code === "PGRST204" && error.message.includes("request_id")) {
+      const { request_id: _requestId, ...fallbackPayload } = payload;
+      ({ error } = await supabaseClient.from("pessoas").insert(fallbackPayload));
+    }
 
     if (error) {
       if (error.code === "23505") {

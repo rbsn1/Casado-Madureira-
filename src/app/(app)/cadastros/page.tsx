@@ -53,6 +53,10 @@ type PessoaQueryRow = {
   cadastro_completo_at?: string | null;
 };
 
+function isMissingRequestIdColumnError(message: string, code?: string) {
+  return code === "PGRST204" && message.includes("request_id");
+}
+
 function isMissingProfileCompletionColumnsError(message: string, code?: string) {
   return (
     code === "PGRST204" ||
@@ -426,8 +430,7 @@ function CadastrosContent() {
       igreja_origem: igrejaOrigem || null,
       bairro: bairroInput || null,
       data: data || null,
-      observacoes: observacoes.trim(),
-      request_id: crypto.randomUUID()
+      observacoes: observacoes.trim()
     };
     const payload = hasMemberProfileColumns
       ? {
@@ -443,13 +446,21 @@ function CadastrosContent() {
       );
     }
     if (editingPessoa) {
+      // Nunca atualiza request_id (idempotência é somente para inserts).
       const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
       if (error) {
         setStatusMessage(error.message);
         return;
       }
     } else {
-      const { error } = await supabaseClient.from("pessoas").insert(payload);
+      const insertPayload = { ...payload, request_id: crypto.randomUUID() };
+      let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
+
+      // Ambientes legados podem não ter a coluna request_id ou o schema cache pode estar desatualizado.
+      if (error && isMissingRequestIdColumnError(error.message, error.code)) {
+        ({ error } = await supabaseClient.from("pessoas").insert(payload));
+      }
+
       if (error) {
         if (error.code === "23505") {
           setStatusMessage("Cadastro duplicado detectado e ignorado com segurança.");
@@ -554,7 +565,11 @@ function CadastrosContent() {
       );
       return;
     }
-    const { error } = await supabaseClient.from("pessoas").insert(payload);
+    let { error } = await supabaseClient.from("pessoas").insert(payload);
+    if (error && isMissingRequestIdColumnError(error.message, error.code)) {
+      const fallbackPayload = payload.map(({ request_id: _requestId, ...rest }) => rest);
+      ({ error } = await supabaseClient.from("pessoas").insert(fallbackPayload));
+    }
     if (error) {
       setStatusMessage(error.message);
       return;
