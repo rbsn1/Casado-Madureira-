@@ -57,6 +57,74 @@ function isMissingRequestIdColumnError(message: string, code?: string) {
   return code === "PGRST204" && message.includes("request_id");
 }
 
+function toTwoDigits(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function normalizeImportDate(value: string) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  // Already ISO date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  // Excel serial
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    const serial = Number(raw);
+    if (!Number.isFinite(serial)) return null;
+    const parsed = (XLSX as any)?.SSF?.parse_date_code?.(serial) as
+      | { y: number; m: number; d: number }
+      | null
+      | undefined;
+    if (parsed?.y && parsed?.m && parsed?.d) {
+      return `${parsed.y}-${toTwoDigits(parsed.m)}-${toTwoDigits(parsed.d)}`;
+    }
+  }
+
+  // dd/mm/yyyy or mm/dd/yyyy
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    const y = Number(m[3]);
+    if (!a || !b || !y) return null;
+
+    // Disambiguate based on values:
+    // - if b > 12 it's definitely mm/dd (e.g. 4/20/2025)
+    // - if a > 12 it's definitely dd/mm
+    let day = a;
+    let month = b;
+    if (b > 12 && a <= 12) {
+      month = a;
+      day = b;
+    }
+    if (a > 12 && b <= 12) {
+      day = a;
+      month = b;
+    }
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${y}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+  }
+
+  // dd-mm-yyyy
+  const m2 = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (m2) {
+    const day = Number(m2[1]);
+    const month = Number(m2[2]);
+    const y = Number(m2[3]);
+    if (!day || !month || !y) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${y}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+  }
+
+  return null;
+}
+
+function isoDateToManausCreatedAt(isoDate: string) {
+  // Manaus is UTC-04:00. Using noon prevents day shifting when viewed in the UI timezone.
+  return `${isoDate}T12:00:00-04:00`;
+}
+
 function isMissingProfileCompletionColumnsError(message: string, code?: string) {
   return (
     code === "PGRST204" ||
@@ -543,28 +611,58 @@ function CadastrosContent() {
       acc[header.toLowerCase()] = index;
       return acc;
     }, {});
-    const invalidRows: number[] = [];
-    const payload = parsed.rows.map((row, index) => {
-      const telefoneRaw = row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? "";
-      const telefoneParsed = parseBrazilPhone(String(telefoneRaw));
-      if (!telefoneParsed) invalidRows.push(index + 2);
-      return {
-        nome_completo: row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "",
-        telefone_whatsapp: telefoneParsed?.formatted ?? "",
-        origem: row[headerIndex.origem] ?? "",
-        igreja_origem: row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "",
-        bairro: row[headerIndex.bairro] ?? "",
-        data: row[headerIndex.data] ? String(row[headerIndex.data]) : null,
-        observacoes: row[headerIndex.observacoes] ?? "",
-        request_id: crypto.randomUUID()
-      };
-    });
-    if (invalidRows.length) {
-      setStatusMessage(
-        `Telefone sem DDD ou inválido nas linhas: ${invalidRows.slice(0, 8).join(", ")}.`
-      );
+    const skippedRows: number[] = [];
+    const invalidPhoneRows: number[] = [];
+
+    const payload = parsed.rows
+      .map((row, index) => {
+        const line = index + 2;
+        const nome = String(row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "").trim();
+        if (!nome) {
+          skippedRows.push(line);
+          return null;
+        }
+
+        const telefoneRaw = String(row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? "").trim();
+        const telefoneParsed = telefoneRaw ? parseBrazilPhone(telefoneRaw) : null;
+        const telefoneFinal = telefoneParsed?.formatted ?? (telefoneRaw || null);
+        if (!telefoneParsed && telefoneRaw) invalidPhoneRows.push(line);
+
+        const turno = String(row[headerIndex.turno] ?? "").trim();
+        const extraObs = [];
+        if (turno) extraObs.push(`Turno: ${turno}`);
+
+        const rawDateValue =
+          row[headerIndex.data] ??
+          row[headerIndex.criado_em] ??
+          row[headerIndex.created_at] ??
+          "";
+        const isoDate = normalizeImportDate(String(rawDateValue ?? ""));
+        const createdAt = isoDate ? isoDateToManausCreatedAt(isoDate) : null;
+
+        const observacoesBase = String(row[headerIndex.observacoes] ?? "").trim();
+        const observacoes = [observacoesBase, ...extraObs].filter(Boolean).join("; ");
+
+        return {
+          nome_completo: nome,
+          telefone_whatsapp: telefoneFinal,
+          origem: String(row[headerIndex.origem] ?? "").trim(),
+          igreja_origem: String(row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "").trim() || null,
+          bairro: String(row[headerIndex.bairro] ?? "").trim() || null,
+          data: isoDate ?? (rawDateValue ? String(rawDateValue) : null),
+          observacoes,
+          created_at: createdAt,
+          updated_at: createdAt,
+          request_id: crypto.randomUUID()
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    if (!payload.length) {
+      setStatusMessage("Nenhuma linha válida para importar (nome vazio em todas as linhas).");
       return;
     }
+
     let { error } = await supabaseClient.from("pessoas").insert(payload);
     if (error && isMissingRequestIdColumnError(error.message, error.code)) {
       const fallbackPayload = payload.map(({ request_id: _requestId, ...rest }) => rest);
@@ -573,6 +671,15 @@ function CadastrosContent() {
     if (error) {
       setStatusMessage(error.message);
       return;
+    }
+
+    if (skippedRows.length || invalidPhoneRows.length) {
+      const notes = [];
+      if (skippedRows.length) notes.push(`linhas ignoradas (nome vazio): ${skippedRows.slice(0, 8).join(", ")}`);
+      if (invalidPhoneRows.length) notes.push(`telefones não normalizados: ${invalidPhoneRows.slice(0, 8).join(", ")}`);
+      setStatusMessage(`Importação concluída com avisos: ${notes.join(" | ")}.`);
+    } else {
+      setStatusMessage("Importação concluída com sucesso.");
     }
     await loadPessoas();
   }
