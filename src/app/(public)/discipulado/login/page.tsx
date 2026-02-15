@@ -129,6 +129,7 @@ export default function DiscipuladoLoginPage() {
           aria-label="Mensagem inspiracional do discipulado"
         >
           <div className={styles.heroImage} aria-hidden="true" />
+          <div className={styles.heroHalo} aria-hidden="true" />
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(800px_circle_at_30%_35%,rgba(230,167,86,.22),transparent_55%),radial-gradient(900px_circle_at_70%_65%,rgba(46,94,138,.22),transparent_60%)]"
             aria-hidden="true"
@@ -137,6 +138,8 @@ export default function DiscipuladoLoginPage() {
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,rgba(0,0,0,.55)_100%)]"
             aria-hidden="true"
           />
+          <div className={styles.heroPattern} aria-hidden="true" />
+          <div className={styles.heroDust} aria-hidden="true" />
           <div className={styles.texture} aria-hidden="true" />
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
