@@ -64,6 +64,32 @@
   pointer-events: none;
 }
 
+.heroStars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 4px),
+    radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.45) 0 1.3px, transparent 4px),
+    radial-gradient(circle at 84% 62%, rgba(255, 255, 255, 0.4) 0 1.2px, transparent 4px),
+    radial-gradient(circle at 12% 58%, rgba(255, 255, 255, 0.28) 0 1px, transparent 3px),
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.22) 0 1px, transparent 3px),
+    radial-gradient(circle at 55% 70%, rgba(255, 255, 255, 0.2) 0 1px, transparent 3px),
+    radial-gradient(circle at 68% 40%, rgba(255, 255, 255, 0.18) 0 1px, transparent 3px),
+    radial-gradient(circle at 90% 30%, rgba(255, 255, 255, 0.16) 0 1px, transparent 3px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.18) 0 1px, transparent 2px);
+  background-size:
+    auto, auto, auto,
+    auto, auto, auto, auto, auto,
+    22px 22px;
+  background-position:
+    0 0, 0 0, 0 0,
+    0 0, 0 0, 0 0, 0 0, 0 0,
+    0 0;
+  opacity: 0.55;
+  filter: blur(0.15px);
+}
+
 .heroHalo {
   position: absolute;
   inset: 0;
@@ -73,6 +99,19 @@
     transparent 60%
   );
   pointer-events: none;
+}
+
+.heroHaze {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    900px circle at 28% 30%,
+    rgba(230, 167, 86, 0.12),
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.9;
 }
 
 .heroDust {
