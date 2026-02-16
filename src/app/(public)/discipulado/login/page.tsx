@@ -170,31 +170,33 @@ export default function DiscipuladoLoginPage() {
         </section>
 
         <section className={styles.formPanel}>
-          <Card className={styles.loginCard}>
+          <Card className={`${styles.loginCard} text-slate-50`}>
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <Link
                 href="/login"
-                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-500 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/10"
+                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-200 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
               >
                 <ArrowLeft size={18} />
                 Voltar ao portal
               </Link>
               <div className="space-y-2">
-                <CardTitle>Entrar no módulo</CardTitle>
-                <CardDescription>Acesse sua conta institucional para gerenciar o discipulado.</CardDescription>
+                <CardTitle className="text-slate-50">Entrar no módulo</CardTitle>
+                <CardDescription className="text-slate-200/85">
+                  Acesse sua conta institucional para gerenciar o discipulado.
+                </CardDescription>
               </div>
             </CardHeader>
 
             <CardContent className="px-8 pb-5 sm:px-10">
               <form className="space-y-5" onSubmit={handleSubmit}>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-800" htmlFor="email">
+                  <label className="text-sm font-semibold text-slate-100" htmlFor="email">
                     E-mail
                   </label>
                   <div className="relative">
                     <Mail
                       size={18}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
                     />
                     <Input
                       id="email"
@@ -212,13 +214,13 @@ export default function DiscipuladoLoginPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-sm font-semibold text-slate-800" htmlFor="password">
+                    <label className="text-sm font-semibold text-slate-100" htmlFor="password">
                       Senha
                     </label>
                     <button
                       type="button"
                       onClick={handlePasswordReset}
-                      className="text-sm font-medium text-slate-500 transition-colors duration-200 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/10"
+                      className="text-sm font-medium text-slate-200 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
                     >
                       Esqueceu a senha?
                     </button>
@@ -226,7 +228,7 @@ export default function DiscipuladoLoginPage() {
                   <div className="relative">
                     <Lock
                       size={18}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
                     />
                     <Input
                       id="password"
@@ -244,7 +246,7 @@ export default function DiscipuladoLoginPage() {
                       aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                       aria-pressed={showPassword}
                       onClick={() => setShowPassword((current) => !current)}
-                      className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 rounded-lg"
+                      className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 rounded-lg text-slate-200 hover:bg-white/10 hover:text-white"
                     >
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </Button>
@@ -258,7 +260,7 @@ export default function DiscipuladoLoginPage() {
                     checked={keepConnected}
                     onChange={(event) => setKeepConnected(event.currentTarget.checked)}
                   />
-                  <label htmlFor="keep-connected" className="text-sm font-medium text-slate-700">
+                  <label htmlFor="keep-connected" className="text-sm font-medium text-slate-100">
                     Manter conectado
                   </label>
                 </div>
@@ -292,17 +294,17 @@ export default function DiscipuladoLoginPage() {
             </CardContent>
 
             <CardFooter className="flex-col px-8 pb-8 pt-0 sm:px-10 sm:pb-10">
-              <p className="text-center text-sm text-slate-500">
+              <p className="text-center text-sm text-slate-200/90">
                 Ainda não tem acesso?{" "}
                 <a
                   href="mailto:discipulado@casados.com?subject=Acesso%20Portal%20Discipulado"
-                  className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 transition-colors hover:text-slate-900"
+                  className="font-medium text-white underline decoration-white/45 underline-offset-4 transition-colors hover:text-slate-100"
                 >
                   Entre em contato
                 </a>
               </p>
               <Separator className="my-4" />
-              <p className="text-center text-xs text-slate-500">© 2026 Discipulado Madureira</p>
+              <p className="text-center text-xs text-slate-300">© 2026 Discipulado Madureira</p>
             </CardFooter>
           </Card>
         </section>

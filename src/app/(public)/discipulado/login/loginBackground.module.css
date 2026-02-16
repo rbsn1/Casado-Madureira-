@@ -2,9 +2,9 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  min-height: 100svh;
+  min-height: 100vh;
   background-color: #020617;
-  background-image: url("/bg/starfield.png");
+  background-image: url("/bg-discipulado.webp");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -16,24 +16,13 @@
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(980px circle at 22% 14%, rgba(230, 167, 86, 0.22) 0%, rgba(230, 167, 86, 0.08) 35%, transparent 65%),
-    linear-gradient(180deg, rgba(2, 6, 23, 0.18) 0%, rgba(2, 6, 23, 0.36) 55%, rgba(2, 6, 23, 0.58) 100%);
-}
-
-.page::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(circle at center, transparent 32%, rgba(2, 6, 23, 0.78) 100%);
+  background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45));
 }
 
 .layout {
   position: relative;
   z-index: 1;
-  min-height: 100svh;
+  min-height: 100vh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -281,7 +270,7 @@
 
 .formPanel {
   position: relative;
-  min-height: 100svh;
+  min-height: 100vh;
   padding: 1.25rem;
   display: flex;
   align-items: center;
@@ -292,12 +281,12 @@
   position: relative;
   z-index: 1;
   width: min(100%, 560px);
-  border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(18px) saturate(1.15);
-  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.34);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   transition: box-shadow 180ms ease, border-color 180ms ease;
 }
 
@@ -312,13 +301,13 @@
 }
 
 .loginCard:hover {
-  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 0 28px 72px rgba(2, 6, 23, 0.4);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .input {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.5);
 }
 
 .input:focus {
