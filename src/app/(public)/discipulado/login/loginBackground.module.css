@@ -1,18 +1,48 @@
 .page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 100svh;
-  background: var(--login-off-white, #f8fafc);
+  background-color: #020617;
+  background-image:
+    url("/bg/starfield.png"),
+    url("/discipulado-login-stars.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(980px circle at 22% 14%, rgba(230, 167, 86, 0.22) 0%, rgba(230, 167, 86, 0.08) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(2, 6, 23, 0.18) 0%, rgba(2, 6, 23, 0.36) 55%, rgba(2, 6, 23, 0.58) 100%);
+}
+
+.page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(circle at center, transparent 32%, rgba(2, 6, 23, 0.78) 100%);
 }
 
 .layout {
+  position: relative;
+  z-index: 1;
   min-height: 100svh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  background: var(--login-off-white, #f8fafc);
 }
 
 .heroPanel {
+  display: none;
   position: relative;
-  min-height: 290px;
   overflow: hidden;
 }
 
@@ -253,51 +283,29 @@
 
 .formPanel {
   position: relative;
-  margin-top: -3.6rem;
-  padding: 0 1rem 1.25rem;
+  min-height: 100svh;
+  padding: 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background:
-    radial-gradient(140% 80% at 50% 0%, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.96) 45%, rgba(248, 250, 252, 1) 100%),
-    var(--login-off-white, #f8fafc);
-}
-
-.authBg {
-  position: relative;
-  background: linear-gradient(
-    to bottom right,
-    #ffffff,
-    #f3f6fa
-  );
-}
-
-.authBg::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: 0.12;
-  pointer-events: none;
-  background: radial-gradient(circle at center, transparent 40%, rgba(2, 6, 23, 0.1) 100%);
-}
-
-.authBg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.04;
-  background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.6) 0 1px, transparent 1px 2px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.6) 0 1px, transparent 1px 2px);
-  mix-blend-mode: overlay;
-  filter: blur(0.2px);
 }
 
 .loginCard {
   position: relative;
   z-index: 1;
   width: min(100%, 560px);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  transition: box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.loginCard:hover {
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 @media (min-width: 1024px) {
@@ -306,12 +314,12 @@
   }
 
   .heroPanel {
+    display: block;
     min-height: 100svh;
   }
 
   .formPanel {
-    margin-top: 0;
-    padding: 2.25rem;
+    padding: 2rem 2.4rem;
   }
 
   .loginCard {

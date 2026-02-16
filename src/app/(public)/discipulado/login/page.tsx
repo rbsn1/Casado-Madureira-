@@ -125,25 +125,9 @@ export default function DiscipuladoLoginPage() {
     >
       <div className={styles.layout}>
         <section
-          className={`${styles.heroPanel} relative h-full bg-[linear-gradient(135deg,#0B1220_0%,#0F1B2D_45%,#0A0F1C_100%)]`}
+          className={styles.heroPanel}
           aria-label="Mensagem inspiracional do discipulado"
         >
-          <div
-            className="absolute inset-0 bg-[url('/discipulado-login-stars.png')] bg-cover bg-center"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(2,6,23,.62)_0%,rgba(15,23,42,.28)_45%,rgba(2,6,23,.58)_100%)]"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute inset-0 opacity-90 mix-blend-screen bg-[radial-gradient(900px_circle_at_28%_32%,rgba(230,167,86,.16),transparent_60%)]"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,rgba(0,0,0,.72)_100%)]"
-            aria-hidden="true"
-          />
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-bold text-white shadow-[0_8px_26px_-16px_rgba(15,23,42,0.85)] backdrop-blur">
@@ -185,7 +169,7 @@ export default function DiscipuladoLoginPage() {
           </div>
         </section>
 
-        <section className={`${styles.formPanel} ${styles.authBg} bg-gradient-to-br from-app-0 to-app-50`}>
+        <section className={styles.formPanel}>
           <Card className={styles.loginCard}>
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <Link
