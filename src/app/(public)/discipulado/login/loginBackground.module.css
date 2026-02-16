@@ -4,9 +4,7 @@
   overflow: hidden;
   min-height: 100svh;
   background-color: #020617;
-  background-image:
-    url("/bg/starfield.png"),
-    url("/discipulado-login-stars.png");
+  background-image: url("/bg/starfield.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
