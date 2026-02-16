@@ -70,6 +70,12 @@ export default function DashboardPage() {
     return `${formatDate(range.start)} – ${formatDate(range.end)}`;
   }, [period, customStart, customEnd]);
 
+  const showEmptyPeriodHint = useMemo(() => {
+    const range = getPeriodRange(period, customStart, customEnd);
+    if (!range.start || !range.end) return false;
+    return kpi.totalCasados === 0 && kpi.baseTotalCasados > 0;
+  }, [period, customStart, customEnd, kpi.totalCasados, kpi.baseTotalCasados]);
+
   return (
     <div className="space-y-6">
       <section className="card relative overflow-hidden border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-5">
@@ -151,8 +157,17 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total de casados" value={kpi.totalCasados} hint="Base cadastrada" tone="emerald" />
+      {showEmptyPeriodHint ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Este período não tem cadastros, mas existem <span className="font-semibold">{kpi.baseTotalCasados}</span> na base.
+          Se você importou uma planilha com datas antigas, use <span className="font-semibold">Personalizado</span> ou selecione o{" "}
+          <span className="font-semibold">ano</span> no gráfico mensal.
+        </p>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Cadastros no período" value={kpi.totalCasados} hint="No período selecionado" tone="emerald" />
+        <StatCard label="Base total" value={kpi.baseTotalCasados} hint="Todos os cadastros" tone="emerald" />
         <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="sky" />
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>

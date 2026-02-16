@@ -629,8 +629,17 @@ function CadastrosContent() {
         if (!telefoneParsed && telefoneRaw) invalidPhoneRows.push(line);
 
         const turno = String(row[headerIndex.turno] ?? "").trim();
-        const extraObs = [];
-        if (turno) extraObs.push(`Turno: ${turno}`);
+
+        const origemRaw = String(row[headerIndex.origem] ?? "").trim();
+        const origemFromTurno = (() => {
+          const t = turno.toLowerCase();
+          if (!t) return "";
+          if (t.includes("manh")) return "Manhã";
+          if (t.includes("noite")) return "Noite";
+          if (t.includes("tarde")) return "Tarde";
+          return "";
+        })();
+        const origemFinal = (origemRaw || origemFromTurno || "").trim() || null;
 
         const rawDateValue =
           row[headerIndex.data] ??
@@ -641,12 +650,12 @@ function CadastrosContent() {
         const createdAt = isoDate ? isoDateToManausCreatedAt(isoDate) : null;
 
         const observacoesBase = String(row[headerIndex.observacoes] ?? "").trim();
-        const observacoes = [observacoesBase, ...extraObs].filter(Boolean).join("; ");
+        const observacoes = observacoesBase;
 
         return {
           nome_completo: nome,
           telefone_whatsapp: telefoneFinal,
-          origem: String(row[headerIndex.origem] ?? "").trim(),
+          origem: origemFinal,
           igreja_origem: String(row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "").trim() || null,
           bairro: String(row[headerIndex.bairro] ?? "").trim() || null,
           data: isoDate ?? (rawDateValue ? String(rawDateValue) : null),

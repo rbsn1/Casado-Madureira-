@@ -21,6 +21,7 @@ export function useDashboardData() {
 
     const [kpi, setKpi] = useState({
         totalCasados: 0,
+        baseTotalCasados: 0,
         cultoManha: 0,
         cultoNoite: 0
     });
@@ -138,12 +139,31 @@ export function useDashboardData() {
                 return;
             }
 
+            // Base total (sem filtro de periodo) para ajudar quando o periodo atual nao contem os cadastros importados.
+            // Usamos count head=true para nao trazer dados.
+            let baseTotalCasados = 0;
+            {
+                let baseCountQuery = supabaseClient
+                    .from("pessoas")
+                    .select("id", { count: "exact", head: true });
+
+                if (isAdminMaster && congregationFilter) {
+                    baseCountQuery = baseCountQuery.eq("congregation_id", congregationFilter);
+                }
+
+                const baseCountResult = await baseCountQuery;
+                if (!baseCountResult.error) {
+                    baseTotalCasados = baseCountResult.count ?? 0;
+                }
+            }
+
             const origemEntries = (data?.origem ?? []).map((item: any) => ({ label: item.label, count: item.count }));
             const manha = origemEntries.find((item: InsightEntry) => item.label === "Manhã")?.count ?? 0;
             const noite = origemEntries.find((item: InsightEntry) => item.label === "Noite")?.count ?? 0;
 
             setKpi({
                 totalCasados: data?.total ?? 0,
+                baseTotalCasados,
                 cultoManha: manha,
                 cultoNoite: noite
             });
@@ -155,8 +175,10 @@ export function useDashboardData() {
             setCrescimentoIgrejas((data?.crescimento_igrejas ?? []) as GrowthEntry[]);
             setAnosDisponiveis(data?.anos_disponiveis ?? []);
 
-            if (!data?.anos_disponiveis?.includes(anoSelecionado) && data?.ano_selecionado) {
-                setAnoSelecionado(data.ano_selecionado);
+            // Se o ano selecionado nao existe nos dados, seleciona automaticamente o ano mais recente disponivel.
+            const availableYears: number[] = Array.isArray(data?.anos_disponiveis) ? data.anos_disponiveis : [];
+            if (availableYears.length && !availableYears.includes(anoSelecionado)) {
+                setAnoSelecionado(availableYears[0]);
             }
 
             setMensal((data?.cadastros_mensais ?? []) as MonthlyEntry[]);

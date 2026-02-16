@@ -67,7 +67,7 @@ export function MonthlyRegistrationsChart({
       </div>
 
       {total === 0 ? (
-        <p className="mt-4 text-sm text-slate-500">Sem dados para o período selecionado.</p>
+        <p className="mt-4 text-sm text-slate-500">Sem dados para o ano selecionado.</p>
       ) : (
         <div className="relative mt-5">
           <div className="relative h-32 w-full">
