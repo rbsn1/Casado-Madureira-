@@ -205,7 +205,7 @@ export default function DiscipuladoLoginPage() {
                       placeholder="voce@casados.com"
                       value={emailValue}
                       onChange={(event) => setEmailValue(event.target.value)}
-                      className="h-12 pl-11 focus:border-brand-700 focus:ring-4 focus:ring-brand-700/10"
+                      className={`h-12 pl-11 ${styles.input}`}
                     />
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export default function DiscipuladoLoginPage() {
                       autoComplete={keepConnected ? "current-password" : "off"}
                       required
                       placeholder="••••••••"
-                      className="h-12 pl-11 pr-12 focus:border-brand-700 focus:ring-4 focus:ring-brand-700/10"
+                      className={`h-12 pl-11 pr-12 ${styles.input}`}
                     />
                     <Button
                       type="button"
