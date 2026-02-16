@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import StarfieldCanvas from "@/components/StarfieldCanvas";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
 import styles from "./loginBackground.module.css";
@@ -128,21 +129,19 @@ export default function DiscipuladoLoginPage() {
           className={`${styles.heroPanel} relative h-full bg-[linear-gradient(135deg,#0B1220_0%,#0F1B2D_45%,#0A0F1C_100%)]`}
           aria-label="Mensagem inspiracional do discipulado"
         >
-          <div className={styles.heroImage} aria-hidden="true" />
-          <div className={styles.heroHaze} aria-hidden="true" />
-          <div className={styles.heroHalo} aria-hidden="true" />
           <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(800px_circle_at_30%_35%,rgba(230,167,86,.22),transparent_55%),radial-gradient(900px_circle_at_70%_65%,rgba(46,94,138,.22),transparent_60%)]"
+            className="absolute inset-0 bg-[linear-gradient(135deg,#0B1220_0%,#0F1B2D_45%,#0A0F1C_100%)]"
             aria-hidden="true"
           />
           <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,rgba(0,0,0,.55)_100%)]"
+            className="pointer-events-none absolute inset-0 opacity-90 mix-blend-screen bg-[radial-gradient(900px_circle_at_28%_32%,rgba(230,167,86,.16),transparent_60%)]"
             aria-hidden="true"
           />
-          <div className={styles.heroPattern} aria-hidden="true" />
-          <div className={styles.heroStars} aria-hidden="true" />
-          <div className={styles.heroDust} aria-hidden="true" />
-          <div className={styles.texture} aria-hidden="true" />
+          <StarfieldCanvas className="absolute inset-0" density={620} />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_35%,rgba(0,0,0,.65)_100%)]"
+            aria-hidden="true"
+          />
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-bold text-white shadow-[0_8px_26px_-16px_rgba(15,23,42,0.85)] backdrop-blur">
