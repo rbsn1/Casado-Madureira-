@@ -69,8 +69,8 @@ export function MonthlyRegistrationsChart({
       {total === 0 ? (
         <p className="mt-4 text-sm text-slate-500">Sem dados para o ano selecionado.</p>
       ) : (
-        <div className="relative mt-6">
-          <div className="relative h-72 w-full md:h-80 lg:h-[24rem]">
+        <div className="relative mt-5">
+          <div className="relative h-52 w-full md:h-56 lg:h-60">
             <svg viewBox="0 0 100 44" className="h-full w-full">
               <defs>
                 <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
