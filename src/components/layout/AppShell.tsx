@@ -189,6 +189,10 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       items: section.items.filter((item) => canAccessItem(item))
     }))
     .filter((section) => section.items.length > 0);
+  const mobileQuickItems = visibleSections
+    .flatMap((section) => section.items)
+    .filter((item) => !item.href.includes("/manual") && !item.href.includes("/admin"))
+    .slice(0, 4);
 
   function canAccessItem(item: NavItem) {
     if (item.href.startsWith("/discipulado")) {
@@ -393,16 +397,17 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       <main
         className={clsx(
           "min-h-screen",
+          !isCadastradorOnly && "pb-24 lg:pb-0",
           isDiscipuladoConsole ? "bg-gradient-to-b from-slate-50 via-sky-50/35 to-white" : "bg-white"
         )}
       >
-        <div className="mx-auto max-w-[88rem] px-5 py-8 lg:px-10 xl:px-12">
-          <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto max-w-[88rem] px-4 py-5 sm:px-5 sm:py-8 lg:px-10 xl:px-12">
+          <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
                 {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
               </p>
-              <h1 className={clsx("text-2xl font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
+              <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                 {isCadastradorOnly
                   ? "Cadastro"
                   : isDiscipuladoAccount
@@ -414,13 +419,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                       : "Painel Interno"}
               </h1>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex flex-wrap items-center gap-2">
               {!isCadastradorOnly ? (
                 <button
                   type="button"
                   onClick={() => setShowMobileNav(true)}
                   className={clsx(
-                    "inline-flex items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-semibold transition lg:hidden",
+                    "inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden",
                     isDiscipuladoConsole
                       ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
                       : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
@@ -431,11 +436,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               ) : null}
               <div
                 className={clsx(
-                  "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
+                  "max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-3 py-2 text-xs font-medium sm:max-w-[22rem] sm:px-4 sm:text-sm",
                   isDiscipuladoConsole ? "bg-sky-100 text-sky-900" : "bg-brand-100 text-brand-900"
                 )}
               >
-                {userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}
+                <span className="truncate">{userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}</span>
               </div>
               {!isCadastradorOnly ? (
                 <button
@@ -446,7 +451,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     setPasswordMessage("");
                   }}
                   className={clsx(
-                    "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
+                    "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
                     isDiscipuladoConsole
                       ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
                       : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
@@ -459,7 +464,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 type="button"
                 onClick={handleLogout}
                 className={clsx(
-                  "rounded-full border bg-white px-4 py-2 text-sm font-semibold transition",
+                  "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
                   isDiscipuladoConsole
                     ? "border-slate-200 text-slate-600 hover:border-sky-200 hover:text-sky-900"
                     : "border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
@@ -487,7 +492,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           />
           <div
             className={clsx(
-              "absolute left-0 top-0 h-full w-72 text-white shadow-xl",
+              "absolute left-0 top-0 h-full w-[86vw] max-w-xs text-white shadow-xl",
               isDiscipuladoConsole ? "bg-slate-950" : "bg-brand-900"
             )}
           >
@@ -564,6 +569,76 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               ))}
             </nav>
           </div>
+        </div>
+      ) : null}
+      {!isCadastradorOnly ? (
+        <div
+          className={clsx(
+            "fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden",
+            isDiscipuladoConsole ? "border-sky-100" : "border-brand-100"
+          )}
+        >
+          <nav
+            className="mx-auto grid max-w-md grid-cols-5 gap-1 px-2 pt-2"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.45rem)" }}
+          >
+            {mobileQuickItems.map((item) => {
+              const active = isItemActive(item.href);
+              const icon = getNavGlyph(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={clsx(
+                    "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
+                    active
+                      ? isDiscipuladoConsole
+                        ? "bg-sky-100 text-sky-900"
+                        : "bg-brand-100 text-brand-900"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                  )}
+                >
+                  <span
+                    className={clsx(
+                      "inline-flex h-6 w-6 items-center justify-center rounded-full",
+                      active
+                        ? isDiscipuladoConsole
+                          ? "bg-sky-200 text-sky-900"
+                          : "bg-brand-200 text-brand-900"
+                        : "bg-slate-100 text-slate-500"
+                    )}
+                    aria-hidden="true"
+                  >
+                    <NavGlyph name={icon} />
+                  </span>
+                  <span className="w-full truncate text-center">{item.label}</span>
+                </Link>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setShowMobileNav(true)}
+              className={clsx(
+                "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
+                isDiscipuladoConsole
+                  ? "text-sky-700 hover:bg-sky-50"
+                  : "text-brand-800 hover:bg-brand-50"
+              )}
+            >
+              <span
+                className={clsx(
+                  "inline-flex h-6 w-6 items-center justify-center rounded-full",
+                  isDiscipuladoConsole ? "bg-sky-100 text-sky-800" : "bg-brand-100 text-brand-800"
+                )}
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-3.5 w-3.5">
+                  <path d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+              </span>
+              <span>Menu</span>
+            </button>
+          </nav>
         </div>
       ) : null}
       {showPasswordModal ? (
