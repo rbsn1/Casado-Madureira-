@@ -18,6 +18,17 @@ type NavItem = {
   roles?: string[];
 };
 
+type NavGlyphName =
+  | "dashboard"
+  | "cadastro"
+  | "list"
+  | "agenda"
+  | "report"
+  | "admin"
+  | "manual"
+  | "fila"
+  | "discipulado";
+
 const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Casados com a Madureira",
@@ -65,6 +76,89 @@ const navSections: { title: string; items: NavItem[] }[] = [
   }
 ];
 
+function getNavGlyph(href: string): NavGlyphName {
+  if (href === "/" || href.endsWith("/dashboard") || href === "/discipulado") return "dashboard";
+  if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
+  if (href.includes("/cadastros") || href.includes("/convertidos")) return "list";
+  if (href.includes("/agenda")) return "agenda";
+  if (href.includes("/relatorios")) return "report";
+  if (href.includes("/admin")) return "admin";
+  if (href.includes("/fila") || href.includes("/novos-convertidos")) return "fila";
+  if (href.includes("/manual")) return "manual";
+  return "discipulado";
+}
+
+function NavGlyph({ name, className }: { name: NavGlyphName; className?: string }) {
+  switch (name) {
+    case "dashboard":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M3 12.5 12 4l9 8.5" />
+          <path d="M6 10.6V20h12v-9.4" />
+        </svg>
+      );
+    case "cadastro":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" />
+          <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+          <path d="M19 6v4M17 8h4" />
+        </svg>
+      );
+    case "list":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M8 6h12M8 12h12M8 18h12" />
+          <circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none" />
+          <circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none" />
+          <circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "agenda":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <rect x="3.5" y="5" width="17" height="15.5" rx="2.6" />
+          <path d="M3.5 9.2h17M8 3.8v2.8M16 3.8v2.8" />
+        </svg>
+      );
+    case "report":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M4 20V6.8a1.8 1.8 0 0 1 1.8-1.8h12.4A1.8 1.8 0 0 1 20 6.8V20Z" />
+          <path d="M8 16.5v-4M12 16.5v-7M16 16.5v-2.5" />
+        </svg>
+      );
+    case "admin":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="m12 3 7 3.5v5.2c0 4-2.4 7-7 9.3-4.6-2.3-7-5.3-7-9.3V6.5Z" />
+          <path d="M9.4 12.2 11.2 14l3.5-3.5" />
+        </svg>
+      );
+    case "manual":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z" />
+          <path d="M4 5.5v15M8.5 7.5h7M8.5 11h7" />
+        </svg>
+      );
+    case "fila":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M5 7h10M5 12h14M5 17h9" />
+          <path d="m15 5 4 2-4 2" />
+        </svg>
+      );
+    case "discipulado":
+    default:
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
+          <path d="M12 3.4c1.7 3.2 5 5 5 9.3a5 5 0 0 1-10 0c0-2.5 1.3-4.4 2.6-6.2C10.4 5.5 11.1 4.5 12 3.4Z" />
+        </svg>
+      );
+  }
+}
+
 export function AppShell({ children, activePath }: { children: ReactNode; activePath?: string }) {
   const pathname = usePathname();
   const current = activePath ?? pathname;
@@ -106,6 +200,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
+  }
+
+  function isItemActive(href: string) {
+    if (current === href) return true;
+    if (href === "/") return current === "/";
+    return current.startsWith(`${href}/`);
   }
 
   useEffect(() => {
@@ -201,10 +301,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         <aside
           className={clsx(
             "hidden lg:block border-r text-white",
-            isDiscipuladoConsole ? "border-slate-900 bg-slate-950" : "border-brand-900 bg-brand-900"
+            isDiscipuladoConsole
+              ? "border-slate-900 bg-slate-950"
+              : "border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]"
           )}
         >
-          <div className="sticky top-0 flex h-screen flex-col gap-6 p-6">
+          <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
             <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
               <div
                 className={clsx(
@@ -221,40 +323,53 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </p>
               </div>
             </Link>
-            <nav className="flex-1 space-y-6">
+            <nav className="flex-1 space-y-5">
               {visibleSections.map((section) => (
                 <div key={section.title}>
                   <p
                     className={clsx(
-                      "mb-2 text-xs font-semibold uppercase tracking-wide",
+                      "mb-2 pl-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
                       isDiscipuladoConsole ? "text-slate-300/90" : "text-brand-100/80"
                     )}
                   >
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item) => (
+                    {section.items.map((item) => {
+                      const active = isItemActive(item.href);
+                      const icon = getNavGlyph(item.href);
+                      return (
                         <li key={item.href}>
                           <Link
                             href={item.href}
                             className={clsx(
-                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:text-white",
-                              isDiscipuladoConsole
-                                ? "hover:bg-sky-800/80"
-                                : "hover:bg-brand-700/80",
-                              current === item.href
+                              "group flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent hover:text-white",
+                              isDiscipuladoConsole ? "hover:bg-sky-800/65" : "hover:bg-white/10",
+                              active
                                 ? isDiscipuladoConsole
-                                  ? "bg-sky-700 text-white shadow-sm"
-                                  : "bg-brand-700 text-white shadow-sm"
+                                  ? "bg-sky-700/90 text-white shadow-[0_12px_28px_rgba(14,116,144,0.35)] ring-1 ring-white/20"
+                                  : "bg-white/14 text-white shadow-[0_12px_28px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
                                 : isDiscipuladoConsole
                                   ? "text-slate-200/90"
                                   : "text-brand-100/90"
                             )}
                           >
-                            {item.label}
+                            <span
+                              className={clsx(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors",
+                                active
+                                  ? "bg-white/20 text-white"
+                                  : "bg-white/8 text-white/85 group-hover:bg-white/15 group-hover:text-white"
+                              )}
+                              aria-hidden="true"
+                            >
+                              <NavGlyph name={icon} />
+                            </span>
+                            <span>{item.label}</span>
                           </Link>
                         </li>
-                      ))}
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -264,7 +379,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 "rounded-xl p-4 shadow-sm ring-1",
                 isDiscipuladoConsole
                   ? "bg-slate-900/60 ring-sky-800/60"
-                  : "bg-brand-700/40 ring-brand-700/60"
+                  : "bg-white/8 ring-white/15"
               )}
             >
               <p className="text-sm font-semibold text-white">Acesso interno</p>
@@ -281,7 +396,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           isDiscipuladoConsole ? "bg-gradient-to-b from-slate-50 via-sky-50/35 to-white" : "bg-white"
         )}
       >
-        <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+        <div className="mx-auto max-w-[88rem] px-5 py-8 lg:px-10 xl:px-12">
           <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
@@ -408,27 +523,42 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item) => (
+                    {section.items.map((item) => {
+                      const active = isItemActive(item.href);
+                      const icon = getNavGlyph(item.href);
+                      return (
                         <li key={item.href}>
                           <Link
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
                             className={clsx(
-                              "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition hover:text-white",
+                              "group flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white",
                               isDiscipuladoConsole ? "hover:bg-sky-800/80" : "hover:bg-brand-700/80",
-                              current === item.href
+                              active
                                 ? isDiscipuladoConsole
-                                  ? "bg-sky-700 text-white shadow-sm"
-                                  : "bg-brand-700 text-white shadow-sm"
+                                  ? "bg-sky-700 text-white shadow-[0_10px_24px_rgba(14,116,144,0.35)] ring-1 ring-white/20"
+                                  : "bg-brand-700 text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
                                 : isDiscipuladoConsole
                                   ? "text-slate-200/90"
                                   : "text-brand-100/90"
                             )}
                           >
-                            {item.label}
+                            <span
+                              className={clsx(
+                                "inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors",
+                                active
+                                  ? "bg-white/20 text-white"
+                                  : "bg-white/10 text-white/85 group-hover:bg-white/15 group-hover:text-white"
+                              )}
+                              aria-hidden="true"
+                            >
+                              <NavGlyph name={icon} />
+                            </span>
+                            <span>{item.label}</span>
                           </Link>
                         </li>
-                      ))}
+                      );
+                    })}
                   </ul>
                 </div>
               ))}

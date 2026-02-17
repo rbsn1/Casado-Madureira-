@@ -77,12 +77,19 @@ export default function DashboardPage() {
   }, [period, customStart, customEnd, kpi.totalCasados, kpi.baseTotalCasados]);
 
   return (
-    <div className="space-y-6">
-      <section className="card relative overflow-hidden border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-5">
+    <div className="ccm-dashboard-surface space-y-8 lg:space-y-10">
+      <section className="card relative overflow-hidden border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-6 lg:p-7">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Visão geral</p>
-            <h2 className="mt-1 text-2xl font-semibold text-emerald-900">Resumo do período</h2>
+            <h2 className="mt-1 flex items-center gap-2 text-2xl font-semibold text-emerald-900">
+              <span className="inline-flex h-5 w-5 items-center justify-center text-[#E6A756]/90" aria-hidden="true">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M12 2.5c1.6 3.2 5 4.9 5 9.1 0 3-2.2 5.4-5 5.4s-5-2.4-5-5.4c0-2.4 1.2-4.2 2.4-5.9.7-1 1.3-2 2.6-3.2z" />
+                </svg>
+              </span>
+              Resumo do período
+            </h2>
             <p className="mt-1 text-sm text-slate-600">{periodSummary}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -165,7 +172,7 @@ export default function DashboardPage() {
         </p>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Cadastros no período" value={kpi.totalCasados} hint="No período selecionado" tone="emerald" />
         <StatCard label="Base total" value={kpi.baseTotalCasados} hint="Todos os cadastros" tone="emerald" />
         <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="sky" />
@@ -173,7 +180,7 @@ export default function DashboardPage() {
       </div>
 
       {userRoles.includes("DISCIPULADOR") ? (
-        <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-5">
+        <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Discipulado</p>
@@ -211,8 +218,8 @@ export default function DashboardPage() {
         </section>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+      <div className="grid gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
           <MonthlyRegistrationsChart
             entries={mensal}
             year={anoSelecionado}
@@ -220,7 +227,7 @@ export default function DashboardPage() {
             onYearChange={setAnoSelecionado}
             onMonthClick={handleMonthClick}
           />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2">
             <InsightBarChart
               title="Top Igrejas / Congregações"
               badge="Origem"
@@ -250,8 +257,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="space-y-4">
-          <div className="card p-4">
+        <div className="space-y-5">
+          <div className="card p-5">
             <h3 className="text-sm font-semibold text-emerald-900">Crescimento por bairro</h3>
             <div className="mt-4 space-y-2">
               {crescimentoBairros.length ? (
@@ -272,7 +279,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <div className="card p-4">
+          <div className="card p-5">
             <h3 className="text-sm font-semibold text-emerald-900">Crescimento por igreja de origem</h3>
             <div className="mt-4 space-y-2">
               {crescimentoIgrejas.length ? (
@@ -297,7 +304,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <div className="card p-4">
+          <div className="card p-5">
             <h3 className="text-sm font-semibold text-emerald-900">Ações sugeridas</h3>
             <p className="mt-2 text-sm text-slate-600">{sugestao}</p>
           </div>

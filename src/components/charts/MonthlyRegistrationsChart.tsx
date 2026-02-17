@@ -21,8 +21,8 @@ export function MonthlyRegistrationsChart({
   const max = useMemo(() => Math.max(...entries.map((e) => e.count), 1), [entries]);
   const total = useMemo(() => entries.reduce((acc, item) => acc + item.count, 0), [entries]);
   const points = useMemo(() => {
-    const top = 6;
-    const bottom = 34;
+    const top = 5;
+    const bottom = 38;
     const range = bottom - top;
     return entries.map((entry, index) => {
       const x = entries.length === 1 ? 50 : (index / (entries.length - 1)) * 100;
@@ -36,15 +36,15 @@ export function MonthlyRegistrationsChart({
   }, [points]);
   const areaPath = useMemo(() => {
     if (!points.length) return "";
-    const start = `M ${points[0].x} 34`;
+    const start = `M ${points[0].x} 40`;
     const line = points.map((point) => `L ${point.x} ${point.y}`).join(" ");
-    const end = `L ${points[points.length - 1].x} 34 Z`;
+    const end = `L ${points[points.length - 1].x} 40 Z`;
     return `${start} ${line} ${end}`;
   }, [points]);
   const hoveredPoint = hovered ? points.find((point) => point.month === hovered) : null;
 
   return (
-    <div className="card p-4">
+    <div className="card p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-emerald-900">Cadastros recebidos (por mês)</h3>
@@ -69,37 +69,51 @@ export function MonthlyRegistrationsChart({
       {total === 0 ? (
         <p className="mt-4 text-sm text-slate-500">Sem dados para o ano selecionado.</p>
       ) : (
-        <div className="relative mt-5">
-          <div className="relative h-32 w-full">
-            <svg viewBox="0 0 100 40" className="h-full w-full">
+        <div className="relative mt-6">
+          <div className="relative h-72 w-full md:h-80 lg:h-[24rem]">
+            <svg viewBox="0 0 100 44" className="h-full w-full">
               <defs>
                 <linearGradient id="areaGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.03" />
                 </linearGradient>
               </defs>
               <path d={areaPath} fill="url(#areaGradient)" />
-              <path d={linePath} fill="none" stroke="#10b981" strokeWidth="1.6" />
+              {hoveredPoint ? (
+                <line
+                  x1={hoveredPoint.x}
+                  y1={4}
+                  x2={hoveredPoint.x}
+                  y2={40}
+                  stroke="rgba(16,185,129,0.24)"
+                  strokeWidth="0.5"
+                  strokeDasharray="1.4 1.6"
+                />
+              ) : null}
+              <path d={linePath} fill="none" stroke="rgba(5,150,105,0.2)" strokeWidth="3.1" />
+              <path d={linePath} fill="none" stroke="#10b981" strokeWidth="2.2" />
               {points.map((point) => (
                 <circle
                   key={point.month}
                   cx={point.x}
                   cy={point.y}
-                  r={hovered === point.month ? 2.6 : 1.8}
-                  fill="#10b981"
+                  r={hovered === point.month ? 1.9 : 1.15}
+                  fill={hovered === point.month ? "#059669" : "rgba(16,185,129,0.72)"}
+                  onMouseEnter={() => setHovered(point.month)}
+                  onMouseLeave={() => setHovered(null)}
                 />
               ))}
             </svg>
             {hoveredPoint ? (
               <div
-                className="absolute -top-6 rounded-lg border border-tea-100 bg-white px-2 py-1 text-[11px] text-tea-600 shadow"
-                style={{ left: `${hoveredPoint.x}%`, transform: "translateX(-50%)" }}
+                className="absolute -top-8 rounded-xl border border-slate-200/85 bg-white/90 px-3 py-1.5 text-[11px] font-medium text-tea-700 shadow-[0_12px_30px_rgba(15,23,42,0.14)] backdrop-blur-sm transition-all duration-200"
+                style={{ left: `${hoveredPoint.x}%`, transform: "translateX(-50%) translateY(0)" }}
               >
                 {monthLabels[hoveredPoint.month - 1]}: {hoveredPoint.count}
               </div>
             ) : null}
           </div>
-          <div className="mt-2 grid grid-cols-12 gap-1 text-[11px] text-slate-500">
+          <div className="mt-3 grid grid-cols-12 gap-1 text-[11px] text-slate-500">
             {entries.map((entry) => (
               <button
                 key={entry.month}
@@ -107,7 +121,7 @@ export function MonthlyRegistrationsChart({
                 onClick={() => onMonthClick(year, entry.month)}
                 onMouseEnter={() => setHovered(entry.month)}
                 onMouseLeave={() => setHovered(null)}
-                className="rounded-md py-1 text-center hover:bg-tea-100/60"
+                className="rounded-md py-1 text-center transition-colors duration-150 hover:bg-tea-100/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200"
               >
                 {monthLabels[entry.month - 1]}
               </button>
