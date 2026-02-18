@@ -35,6 +35,16 @@ const emptyCards: DashboardCards = {
   proximos_a_concluir: 0
 };
 
+function normalizeDashboardErrorMessage(message: string) {
+  if (message === "not allowed") {
+    return "Sem permissão no banco para o dashboard do discipulado. Aplique a migração 0038_admin_discipulado_acesso_total.sql ou atribua a role DISCIPULADOR.";
+  }
+  if (message === "congregation inactive") {
+    return "A congregação vinculada ao usuário está inativa. Ative a congregação no módulo Admin do discipulado.";
+  }
+  return message;
+}
+
 export default function DiscipuladoDashboardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [cards, setCards] = useState<DashboardCards>(emptyCards);
@@ -57,7 +67,7 @@ export default function DiscipuladoDashboardPage() {
       });
 
       if (error) {
-        setStatusMessage(error.message);
+        setStatusMessage(normalizeDashboardErrorMessage(error.message));
         return;
       }
 
