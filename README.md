@@ -221,3 +221,12 @@ Tokens principais em `tailwind.config.ts`:
 Uso:
 - Sidebar e CTAs usam `brand` e `accent`.
 - Fundo do conteúdo permanece branco (`bg-bg`).
+
+### WhatsApp Cloud API
+- Migration: `supabase/migrations/0039_whatsapp_cloud_pipeline.sql`
+- Edge Functions:
+  - `supabase/functions/enqueue-welcome`
+  - `supabase/functions/smooth-worker`
+- Console: `/admin/whatsapp`
+- Guia operacional (secrets + cron + curl):
+  - `docs/whatsapp-cloud-api.md`
