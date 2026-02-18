@@ -273,3 +273,97 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ id: createdUserId });
 }
+
+export async function DELETE(request: Request) {
+  const auth = await requireDiscipuladoAdmin(request);
+  if ("error" in auth) return auth.error;
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const body = await request.json().catch(() => ({}));
+  const userId = String(body.userId ?? "").trim();
+
+  if (!userId) {
+    return NextResponse.json({ error: "userId is required" }, { status: 400 });
+  }
+
+  if (auth.user.id === userId) {
+    return NextResponse.json(
+      { error: "Não é permitido excluir o próprio usuário logado." },
+      { status: 400 }
+    );
+  }
+
+  const hasCongregationId = await hasColumn("usuarios_perfis", "congregation_id");
+  const roleSelect = hasCongregationId ? "role, active, congregation_id" : "role, active";
+  const { data: roleRows, error: roleError } = await (supabaseAdmin as any)
+    .from("usuarios_perfis")
+    .select(roleSelect)
+    .eq("user_id", userId);
+
+  if (roleError) {
+    return NextResponse.json({ error: roleError.message }, { status: 500 });
+  }
+
+  const roles = (
+    (roleRows ?? []) as { role: string; active: boolean; congregation_id?: string | null }[]
+  );
+
+  const hasDiscipuladoRole = roles.some((item) => DISCIPULADO_ONLY_ROLES.has(item.role));
+  if (!hasDiscipuladoRole) {
+    return NextResponse.json(
+      { error: "Usuário sem papéis de discipulado para remoção." },
+      { status: 400 }
+    );
+  }
+
+  if (!auth.isGlobalAdmin) {
+    const isInsideManagedCongregation = roles.some(
+      (item) =>
+        DISCIPULADO_ONLY_ROLES.has(item.role) &&
+        (item.congregation_id ?? null) === auth.congregationId
+    );
+
+    if (!isInsideManagedCongregation) {
+      return NextResponse.json(
+        { error: "Você só pode excluir usuários vinculados à sua congregação." },
+        { status: 403 }
+      );
+    }
+  }
+
+  const hasActiveNonDiscipuladoRoles = roles.some(
+    (item) => item.active && !DISCIPULADO_ONLY_ROLES.has(item.role)
+  );
+
+  if (hasActiveNonDiscipuladoRoles) {
+    let deactivateQuery = (supabaseAdmin as any)
+      .from("usuarios_perfis")
+      .update({ active: false })
+      .eq("user_id", userId)
+      .in("role", Array.from(DISCIPULADO_ONLY_ROLES));
+
+    if (!auth.isGlobalAdmin && hasCongregationId && auth.congregationId) {
+      deactivateQuery = deactivateQuery.eq("congregation_id", auth.congregationId);
+    }
+
+    const { error: deactivateError } = await deactivateQuery;
+    if (deactivateError) {
+      return NextResponse.json({ error: deactivateError.message }, { status: 500 });
+    }
+
+    await syncLegacyProfileRoleForUser(userId);
+
+    return NextResponse.json({
+      ok: true,
+      mode: "roles_removed",
+      message: "Usuário removido do módulo de discipulado (conta mantida por possuir outros papéis ativos)."
+    });
+  }
+
+  const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, mode: "user_deleted" });
+}

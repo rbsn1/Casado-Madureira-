@@ -605,6 +605,28 @@ export default function DiscipuladoAdminPage() {
     await loadPanelData(congregationFilter);
   }
 
+  async function handleDeleteModule(moduleId: string, moduleTitle: string) {
+    if (!supabaseClient) return;
+    const confirmDelete = window.confirm(`Excluir o módulo "${moduleTitle}"? Esta ação não pode ser desfeita.`);
+    if (!confirmDelete) return;
+
+    setStatusMessage("");
+    setSuccessMessage("");
+
+    const { error } = await supabaseClient.from("discipleship_modules").delete().eq("id", moduleId);
+    if (error) {
+      if (error.code === "23503") {
+        setStatusMessage("Não foi possível excluir: existem registros vinculados a este módulo.");
+        return;
+      }
+      setStatusMessage(error.message);
+      return;
+    }
+
+    setSuccessMessage("Módulo excluído com sucesso.");
+    await loadPanelData(congregationFilter);
+  }
+
   async function handleCreateDiscipuladoUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setUserStatusMessage("");
@@ -679,6 +701,36 @@ export default function DiscipuladoAdminPage() {
           : `Acesso ${getDiscipuladoRoleLabel(role)} desativado.`
       );
       await loadDiscipleshipUsers(congregationFilter || targetCongregation);
+    } catch (error) {
+      setUserStatusMessage((error as Error).message);
+    }
+  }
+
+  async function handleDeleteDiscipuladoUser(userId: string, userEmail: string | null) {
+    const confirmDelete = window.confirm(
+      `Excluir o usuário "${userEmail ?? userId}" do discipulado? Esta ação pode remover a conta de acesso.`
+    );
+    if (!confirmDelete) return;
+
+    setUserStatusMessage("");
+    setUserSuccessMessage("");
+
+    try {
+      const response = await apiFetch("/api/admin/users", {
+        method: "DELETE",
+        body: JSON.stringify({ userId })
+      });
+
+      const mode = String(response.mode ?? "");
+      if (mode === "roles_removed") {
+        setUserSuccessMessage(
+          "Usuário removido do discipulado. A conta foi mantida porque possui outros papéis ativos."
+        );
+      } else {
+        setUserSuccessMessage("Usuário excluído com sucesso.");
+      }
+
+      await loadDiscipleshipUsers(congregationFilter || managerCongregationId || "");
     } catch (error) {
       setUserStatusMessage((error as Error).message);
     }
@@ -1054,6 +1106,13 @@ export default function DiscipuladoAdminPage() {
                   >
                     {isActive ? "Desativar acesso" : "Ativar acesso"}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteDiscipuladoUser(user.id, user.email)}
+                    className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    Excluir usuário
+                  </button>
                 </div>
               </article>
             );
@@ -1184,6 +1243,13 @@ export default function DiscipuladoAdminPage() {
                     }`}
                   >
                     {module.is_active ? "Desativar" : "Ativar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteModule(module.id, module.title)}
+                    className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    Excluir
                   </button>
                 </div>
                 <label className="space-y-1 text-sm md:col-span-2 xl:col-span-5">
