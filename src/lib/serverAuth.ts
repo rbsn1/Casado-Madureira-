@@ -69,14 +69,25 @@ export async function requireDiscipuladoAdmin(request: Request) {
   if ("error" in authUser) return authUser;
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: activeRoles, error: rolesError } = await (supabaseAdmin as any)
+  let { data: activeRoles, error: rolesError } = await (supabaseAdmin as any)
     .from("usuarios_perfis")
     .select("role, congregation_id")
     .eq("user_id", authUser.user.id)
     .eq("active", true);
 
+  if (rolesError?.message?.toLowerCase().includes("congregation_id")) {
+    // Legacy schema fallback: some environments still don't have congregation_id.
+    const fallback = await (supabaseAdmin as any)
+      .from("usuarios_perfis")
+      .select("role")
+      .eq("user_id", authUser.user.id)
+      .eq("active", true);
+    activeRoles = fallback.data;
+    rolesError = fallback.error;
+  }
+
   if (rolesError) {
-    return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
+    return { error: NextResponse.json({ error: rolesError.message }, { status: 500 }) };
   }
 
   const roles = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).map(
@@ -87,7 +98,12 @@ export async function requireDiscipuladoAdmin(request: Request) {
   );
 
   if (!roles.includes("ADMIN_DISCIPULADO")) {
-    return { error: NextResponse.json({ error: "forbidden" }, { status: 403 }) };
+    return {
+      error: NextResponse.json(
+        { error: "Acesso restrito ao perfil ADMIN_DISCIPULADO." },
+        { status: 403 }
+      )
+    };
   }
 
   const congregationId = adminDiscipuladoRole?.congregation_id
