@@ -115,6 +115,10 @@ export default function DiscipuladoAdminPage() {
     () => congregations.filter((item) => item.is_active),
     [congregations]
   );
+  const selectableCongregations = useMemo(
+    () => (activeCongregations.length ? activeCongregations : congregations),
+    [activeCongregations, congregations]
+  );
 
   const filteredDiscipleshipUsers = useMemo(
     () =>
@@ -313,8 +317,10 @@ export default function DiscipuladoAdminPage() {
       if (!active) return;
 
       const hasAdminDiscipuladoRole = scope.roles.includes("ADMIN_DISCIPULADO");
+      const isScopeGlobalAdmin =
+        scope.isAdminMaster || (hasAdminDiscipuladoRole && !scope.congregationId);
       setHasAccess(hasAdminDiscipuladoRole);
-      setIsGlobalAdmin(false);
+      setIsGlobalAdmin(isScopeGlobalAdmin);
       setManagerCongregationId(scope.congregationId ?? null);
 
       if (!hasAdminDiscipuladoRole) {
@@ -334,10 +340,7 @@ export default function DiscipuladoAdminPage() {
 
       if (!active) return;
 
-      const scopeCongregation =
-        scope.congregationId && congregationItems.some((item) => item.id === scope.congregationId)
-          ? scope.congregationId
-          : "";
+      const scopeCongregation = scope.congregationId ?? "";
       const firstActiveCongregation =
         congregationItems.find((item) => item.is_active)?.id ?? congregationItems[0]?.id ?? "";
       const defaultCongregation = scopeCongregation || firstActiveCongregation;
@@ -447,7 +450,6 @@ export default function DiscipuladoAdminPage() {
   }
 
   async function handleSaveConfraternizationDate() {
-    if (!supabaseClient) return;
     setCalendarStatusMessage("");
     setCalendarSuccessMessage("");
 
@@ -467,26 +469,20 @@ export default function DiscipuladoAdminPage() {
       return;
     }
 
-    const { error: upsertError } = await supabaseClient.from("discipleship_calendar").upsert(
-      {
-        congregation_id: targetCongregation,
-        confraternization_at: parsedDate.toISOString()
-      },
-      { onConflict: "congregation_id" }
-    );
-
-    if (upsertError) {
-      setCalendarStatusMessage(upsertError.message);
-      return;
-    }
-
-    const { error: refreshError } = await supabaseClient.rpc("refresh_discipleship_case_criticality", {
-      target_congregation_id: targetCongregation,
-      target_case_id: null
-    });
-
-    if (refreshError) {
-      setCalendarStatusMessage(refreshError.message);
+    try {
+      const response = await apiFetch("/api/admin/discipulado/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          congregationId: targetCongregation,
+          confraternizationAt: parsedDate.toISOString(),
+          recalculate: true
+        })
+      });
+      if (response.warning) {
+        setCalendarStatusMessage(String(response.warning));
+      }
+    } catch (error) {
+      setCalendarStatusMessage((error as Error).message);
       return;
     }
 
@@ -495,23 +491,35 @@ export default function DiscipuladoAdminPage() {
   }
 
   async function handleRecalculateCriticalityNow() {
-    if (!supabaseClient) return;
     setCalendarStatusMessage("");
     setCalendarSuccessMessage("");
 
-    const targetCongregation = congregationFilter || managerCongregationId || null;
-    const { error } = await supabaseClient.rpc("refresh_discipleship_case_criticality", {
-      target_congregation_id: targetCongregation,
-      target_case_id: null
-    });
+    const targetCongregation = congregationFilter || managerCongregationId || "";
+    if (!targetCongregation) {
+      setCalendarStatusMessage("Selecione uma congregação para recalcular a criticidade.");
+      return;
+    }
 
-    if (error) {
-      setCalendarStatusMessage(error.message);
+    try {
+      const response = await apiFetch("/api/admin/discipulado/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          congregationId: targetCongregation,
+          recalculate: true,
+          recalculateOnly: true
+        })
+      });
+      if (response.warning) {
+        setCalendarStatusMessage(String(response.warning));
+        return;
+      }
+    } catch (error) {
+      setCalendarStatusMessage((error as Error).message);
       return;
     }
 
     setCalendarSuccessMessage("Criticidade recalculada com sucesso.");
-    await loadPanelData(targetCongregation ?? "");
+    await loadPanelData(targetCongregation);
   }
 
   async function handleCreateModule(event: FormEvent<HTMLFormElement>) {
@@ -521,7 +529,7 @@ export default function DiscipuladoAdminPage() {
     setStatusMessage("");
     setSuccessMessage("");
 
-    const targetCongregation = newModule.congregation_id || congregationFilter;
+    const targetCongregation = newModule.congregation_id || congregationFilter || managerCongregationId;
     if (!targetCongregation) {
       setStatusMessage("Selecione uma congregação para criar o módulo.");
       return;
@@ -996,7 +1004,7 @@ export default function DiscipuladoAdminPage() {
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
               >
                 <option value="">Selecione</option>
-                {activeCongregations.map((item) => (
+                {selectableCongregations.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
                   </option>
@@ -1123,26 +1131,35 @@ export default function DiscipuladoAdminPage() {
       <section className="discipulado-panel p-5">
         <h3 className="text-sm font-semibold text-sky-900">Criar módulo</h3>
         <form onSubmit={handleCreateModule} className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Congregação</span>
-            <select
-              value={newModule.congregation_id}
-              onChange={(event) =>
-                setNewModule((prev) => ({
-                  ...prev,
-                  congregation_id: event.target.value
-                }))
-              }
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-            >
-              <option value="">Selecione</option>
-              {activeCongregations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          {isGlobalAdmin ? (
+            <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Congregação</span>
+              <select
+                value={newModule.congregation_id}
+                onChange={(event) =>
+                  setNewModule((prev) => ({
+                    ...prev,
+                    congregation_id: event.target.value
+                  }))
+                }
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+              >
+                <option value="">Selecione</option>
+                {selectableCongregations.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="space-y-1 text-sm">
+              <span className="text-slate-700">Congregação</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                {congregationNameById[managerCongregationId ?? newModule.congregation_id] ?? "Sua congregação"}
+              </div>
+            </div>
+          )}
           <label className="space-y-1 text-sm md:col-span-1 xl:col-span-2">
             <span className="text-slate-700">Título</span>
             <input
