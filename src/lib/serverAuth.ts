@@ -4,16 +4,22 @@ import { User } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let supabaseAuth:
+  | ReturnType<typeof createClient>
+  | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase anon env vars are missing.");
+function getSupabaseAuthClient() {
+  if (supabaseAuth) return supabaseAuth;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false }
+  });
+  return supabaseAuth;
 }
-
-const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { persistSession: false }
-});
 
 async function requireAuthenticatedUser(request: Request): Promise<
   | { error: NextResponse }
@@ -21,12 +27,22 @@ async function requireAuthenticatedUser(request: Request): Promise<
       user: User;
     }
 > {
+  const supabaseAuthClient = getSupabaseAuthClient();
+  if (!supabaseAuthClient) {
+    return {
+      error: NextResponse.json(
+        { error: "server_misconfigured: missing supabase anon env vars" },
+        { status: 500 }
+      )
+    };
+  }
+
   const authHeader = request.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer ")) {
     return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
   }
   const token = authHeader.slice("Bearer ".length);
-  const { data, error } = await supabaseAuth.auth.getUser(token);
+  const { data, error } = await supabaseAuthClient.auth.getUser(token);
   if (error || !data.user) {
     return { error: NextResponse.json({ error: "unauthorized" }, { status: 401 }) };
   }
