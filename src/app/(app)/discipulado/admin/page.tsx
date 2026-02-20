@@ -43,6 +43,16 @@ type UserItem = {
   whatsapp?: string | null;
 };
 
+type ConfraternizationEntry = {
+  id: string;
+  congregation_id: string;
+  congregation_name: string | null;
+  congregation_slug: string | null;
+  confraternization_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 const DISCIPULADO_USER_ROLES = [
   "ADMIN_DISCIPULADO",
   "DISCIPULADOR",
@@ -56,6 +66,19 @@ function getDiscipuladoRoleLabel(role: string) {
   if (role === "SECRETARIA_DISCIPULADO") return "Secretária Discipulado (Cadastro)";
   if (role === "SM_DISCIPULADO") return "SM Discipulado (Cadastro)";
   return "Discipulador";
+}
+
+function formatDateTimeBR(value: string | null | undefined) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 export default function DiscipuladoAdminPage() {
@@ -99,6 +122,8 @@ export default function DiscipuladoAdminPage() {
   const [confraternizationAtDraft, setConfraternizationAtDraft] = useState("");
   const [calendarStatusMessage, setCalendarStatusMessage] = useState("");
   const [calendarSuccessMessage, setCalendarSuccessMessage] = useState("");
+  const [confraternizationEntries, setConfraternizationEntries] = useState<ConfraternizationEntry[]>([]);
+  const [calendarEntriesLoading, setCalendarEntriesLoading] = useState(false);
 
   const congregationNameById = useMemo(() => {
     return congregations.reduce<Record<string, string>>((acc, item) => {
@@ -224,6 +249,26 @@ export default function DiscipuladoAdminPage() {
       setUserStatusMessage((error as Error).message);
     } finally {
       setUsersLoading(false);
+    }
+  }, [apiFetch]);
+
+  const loadConfraternizationEntries = useCallback(async (targetCongregation?: string) => {
+    setCalendarEntriesLoading(true);
+    try {
+      const query = new URLSearchParams();
+      if (targetCongregation) {
+        query.set("congregationId", targetCongregation);
+      }
+      const url = query.toString()
+        ? `/api/admin/discipulado/calendar?${query.toString()}`
+        : "/api/admin/discipulado/calendar";
+      const data = await apiFetch(url);
+      const entries = (data.entries ?? []) as ConfraternizationEntry[];
+      setConfraternizationEntries(entries);
+    } catch (error) {
+      setCalendarStatusMessage((error as Error).message);
+    } finally {
+      setCalendarEntriesLoading(false);
     }
   }, [apiFetch]);
 
@@ -368,6 +413,7 @@ export default function DiscipuladoAdminPage() {
       await loadPanelData(defaultCongregation);
       lastLoadedCongregationRef.current = defaultCongregation;
       void loadDiscipleshipUsers(defaultCongregation);
+      void loadConfraternizationEntries(defaultCongregation);
       setLoading(false);
     }
 
@@ -375,7 +421,7 @@ export default function DiscipuladoAdminPage() {
     return () => {
       active = false;
     };
-  }, [loadCongregations, loadDiscipleshipUsers, loadPanelData]);
+  }, [loadCongregations, loadConfraternizationEntries, loadDiscipleshipUsers, loadPanelData]);
 
   useEffect(() => {
     if (!hasAccess) return;
@@ -392,7 +438,8 @@ export default function DiscipuladoAdminPage() {
     lastLoadedCongregationRef.current = congregationFilter;
     loadPanelData(congregationFilter);
     loadDiscipleshipUsers(congregationFilter);
-  }, [congregationFilter, hasAccess, loading, loadDiscipleshipUsers, loadPanelData]);
+    loadConfraternizationEntries(congregationFilter);
+  }, [congregationFilter, hasAccess, loading, loadConfraternizationEntries, loadDiscipleshipUsers, loadPanelData]);
 
   function updateDraft(id: string, patch: Partial<ModuleDraft>) {
     setModuleDrafts((prev) => ({
@@ -433,6 +480,7 @@ export default function DiscipuladoAdminPage() {
         setCongregationFilter(nextCongregationId);
         setNewModule((prev) => ({ ...prev, congregation_id: nextCongregationId }));
         setNewUser((prev) => ({ ...prev, congregation_id: nextCongregationId }));
+        void loadConfraternizationEntries(nextCongregationId);
       }
       setNewCongregation({ name: "", slug: "" });
       setCongregationSuccessMessage("Congregação criada e pronta para receber usuários.");
@@ -499,6 +547,7 @@ export default function DiscipuladoAdminPage() {
 
     setCalendarSuccessMessage("Data da confraternização salva. Criticidade recalculada para a congregação.");
     await loadPanelData(targetCongregation);
+    await loadConfraternizationEntries(congregationFilter || targetCongregation);
   }
 
   async function handleRecalculateCriticalityNow() {
@@ -531,6 +580,12 @@ export default function DiscipuladoAdminPage() {
 
     setCalendarSuccessMessage("Criticidade recalculada com sucesso.");
     await loadPanelData(targetCongregation);
+  }
+
+  async function handleRefreshConfraternizations() {
+    setCalendarStatusMessage("");
+    const targetCongregation = congregationFilter || managerCongregationId || "";
+    await loadConfraternizationEntries(targetCongregation);
   }
 
   async function handleCreateModule(event: FormEvent<HTMLFormElement>) {
@@ -1017,6 +1072,60 @@ export default function DiscipuladoAdminPage() {
               Recalcular criticidade agora
             </button>
           </div>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-sky-900">Confraternizações cadastradas</p>
+              <p className="text-xs text-slate-500">
+                {confraternizationEntries.length} registro(s) encontrado(s).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshConfraternizations}
+              className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+            >
+              Atualizar lista
+            </button>
+          </div>
+
+          {calendarEntriesLoading ? (
+            <p className="mt-3 text-sm text-slate-600">Carregando confraternizações...</p>
+          ) : null}
+
+          {!calendarEntriesLoading && !confraternizationEntries.length ? (
+            <p className="mt-3 text-sm text-slate-600">Nenhuma confraternização cadastrada.</p>
+          ) : null}
+
+          {!calendarEntriesLoading && confraternizationEntries.length ? (
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-left text-xs text-slate-700">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500">
+                    <th className="px-2 py-2 font-semibold">Congregação</th>
+                    <th className="px-2 py-2 font-semibold">Data da confra</th>
+                    <th className="px-2 py-2 font-semibold">Criado em</th>
+                    <th className="px-2 py-2 font-semibold">Atualizado em</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {confraternizationEntries.map((entry) => (
+                    <tr key={entry.id} className="border-b border-slate-100">
+                      <td className="px-2 py-2">
+                        <p className="font-semibold text-slate-800">{entry.congregation_name ?? "Congregação"}</p>
+                        <p className="text-[11px] text-slate-500">{entry.congregation_slug ?? "-"}</p>
+                      </td>
+                      <td className="px-2 py-2">{formatDateTimeBR(entry.confraternization_at)}</td>
+                      <td className="px-2 py-2">{formatDateTimeBR(entry.created_at)}</td>
+                      <td className="px-2 py-2">{formatDateTimeBR(entry.updated_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       </section>
 
