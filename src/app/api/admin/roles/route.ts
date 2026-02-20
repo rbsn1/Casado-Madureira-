@@ -71,6 +71,8 @@ export async function POST(request: Request) {
   const active = body.active !== false;
   const incomingIsDiscipuladoOnly = DISCIPULADO_ONLY_ROLES.has(role);
   const requestedCongregationId = body.congregationId ? String(body.congregationId) : null;
+  const allowGlobalDiscipuladoAdmin =
+    auth.isGlobalAdmin && role === "ADMIN_DISCIPULADO" && !requestedCongregationId;
 
   if (!auth.isGlobalAdmin && !DISCIPULADO_ONLY_ROLES.has(role)) {
     return NextResponse.json(
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
   if (!userId || !role) {
     return NextResponse.json({ error: "userId and role are required" }, { status: 400 });
   }
-  if (incomingIsDiscipuladoOnly && active && !congregationId) {
+  if (incomingIsDiscipuladoOnly && active && !congregationId && !allowGlobalDiscipuladoAdmin) {
     return NextResponse.json(
       {
         error:
@@ -137,7 +139,9 @@ export async function POST(request: Request) {
   }
 
   const targetCongregationId = hasCongregationId
-    ? congregationId ?? (await resolveUserCongregationId(userId)) ?? (await resolveDefaultCongregationId())
+    ? allowGlobalDiscipuladoAdmin
+      ? null
+      : congregationId ?? (await resolveUserCongregationId(userId)) ?? (await resolveDefaultCongregationId())
     : null;
 
   if (!auth.isGlobalAdmin && targetCongregationId !== auth.congregationId) {
@@ -147,7 +151,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (hasCongregationId && !targetCongregationId) {
+  if (hasCongregationId && !targetCongregationId && !allowGlobalDiscipuladoAdmin) {
     return NextResponse.json({ error: "Nenhuma congregação disponível para vincular o papel." }, { status: 400 });
   }
 

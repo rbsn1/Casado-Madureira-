@@ -202,11 +202,13 @@ export async function POST(request: Request) {
   }
 
   const congregationId = auth.isGlobalAdmin ? requestedCongregationId : auth.congregationId;
+  const allowGlobalDiscipuladoAdmin =
+    auth.isGlobalAdmin && role === "ADMIN_DISCIPULADO" && !requestedCongregationId;
 
   if (!email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
   }
-  if (role && DISCIPULADO_ONLY_ROLES.has(role) && !congregationId) {
+  if (role && DISCIPULADO_ONLY_ROLES.has(role) && !congregationId && !allowGlobalDiscipuladoAdmin) {
     return NextResponse.json(
       {
         error:
@@ -242,10 +244,12 @@ export async function POST(request: Request) {
 
   if (role) {
     const targetCongregationId = hasCongregationId
-      ? congregationId ?? (await resolveDefaultCongregationId())
+      ? allowGlobalDiscipuladoAdmin
+        ? null
+        : congregationId ?? (await resolveDefaultCongregationId())
       : null;
 
-    if (hasCongregationId && !targetCongregationId) {
+    if (hasCongregationId && !targetCongregationId && !allowGlobalDiscipuladoAdmin) {
       return rollbackUserCreation("Nenhuma congregação disponível para vincular o usuário.");
     }
 

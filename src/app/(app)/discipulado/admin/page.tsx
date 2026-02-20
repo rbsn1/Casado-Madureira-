@@ -78,6 +78,7 @@ export default function DiscipuladoAdminPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [userStatusMessage, setUserStatusMessage] = useState("");
   const [userSuccessMessage, setUserSuccessMessage] = useState("");
+  const [newUserGlobalScope, setNewUserGlobalScope] = useState(false);
   const [newUser, setNewUser] = useState({
     role: "DISCIPULADOR" as DiscipuladoUserRole,
     email: "",
@@ -142,6 +143,16 @@ export default function DiscipuladoAdminPage() {
       ).length,
     [filteredDiscipleshipUsers]
   );
+  const tenantStats = useMemo(() => {
+    const total = congregations.length;
+    const active = congregations.filter((item) => item.is_active).length;
+    const inactive = Math.max(0, total - active);
+    const activeRatio = total ? Math.round((active / total) * 100) : 0;
+    const newest = [...congregations].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    return { total, active, inactive, activeRatio, newest };
+  }, [congregations]);
 
   const apiFetch = useCallback(async (path: string, options: RequestInit = {}) => {
     if (!supabaseClient) throw new Error("Supabase não configurado.");
@@ -343,7 +354,7 @@ export default function DiscipuladoAdminPage() {
       const scopeCongregation = scope.congregationId ?? "";
       const firstActiveCongregation =
         congregationItems.find((item) => item.is_active)?.id ?? congregationItems[0]?.id ?? "";
-      const defaultCongregation = scopeCongregation || firstActiveCongregation;
+      const defaultCongregation = isScopeGlobalAdmin ? "" : scopeCongregation || firstActiveCongregation;
 
       setCongregationFilter(defaultCongregation);
       setNewModule((prev) => ({
@@ -644,13 +655,16 @@ export default function DiscipuladoAdminPage() {
     const email = newUser.email.trim();
     const password = newUser.password.trim();
     const whatsapp = newUser.whatsapp.trim();
-    const congregationId = newUser.congregation_id || congregationFilter;
+    const isGlobalDiscipuladoAdmin = isGlobalAdmin && newUserGlobalScope && role === "ADMIN_DISCIPULADO";
+    const congregationId = isGlobalDiscipuladoAdmin
+      ? null
+      : newUser.congregation_id || congregationFilter || managerCongregationId;
 
     if (!email || !password) {
       setUserStatusMessage("Informe e-mail e senha para criar o usuário.");
       return;
     }
-    if (!congregationId) {
+    if (!congregationId && !isGlobalDiscipuladoAdmin) {
       setUserStatusMessage("Selecione a congregação para o usuário de discipulado.");
       return;
     }
@@ -671,10 +685,16 @@ export default function DiscipuladoAdminPage() {
         email: "",
         password: "",
         whatsapp: "",
-        congregation_id: congregationId
+        congregation_id: congregationId ?? prev.congregation_id
       }));
+      setNewUserGlobalScope(false);
       setUserSuccessMessage(`${getDiscipuladoRoleLabel(role)} criado com sucesso.`);
-      await loadDiscipleshipUsers(congregationFilter || congregationId);
+      if (isGlobalDiscipuladoAdmin && isGlobalAdmin) {
+        setCongregationFilter("");
+        await loadDiscipleshipUsers("");
+      } else {
+        await loadDiscipleshipUsers(congregationFilter || congregationId || "");
+      }
     } catch (error) {
       setUserStatusMessage((error as Error).message);
     }
@@ -688,8 +708,11 @@ export default function DiscipuladoAdminPage() {
   ) {
     setUserStatusMessage("");
     setUserSuccessMessage("");
-    const targetCongregation = congregationId ?? congregationFilter;
-    if (!targetCongregation) {
+    const isGlobalDiscipuladoAdmin = role === "ADMIN_DISCIPULADO" && congregationId === null && isGlobalAdmin;
+    const targetCongregation = isGlobalDiscipuladoAdmin
+      ? null
+      : congregationId ?? congregationFilter ?? managerCongregationId;
+    if (!targetCongregation && !isGlobalDiscipuladoAdmin) {
       setUserStatusMessage("Não foi possível identificar a congregação deste usuário.");
       return;
     }
@@ -708,7 +731,7 @@ export default function DiscipuladoAdminPage() {
           ? `Acesso ${getDiscipuladoRoleLabel(role)} ativado.`
           : `Acesso ${getDiscipuladoRoleLabel(role)} desativado.`
       );
-      await loadDiscipleshipUsers(congregationFilter || targetCongregation);
+      await loadDiscipleshipUsers(congregationFilter || targetCongregation || "");
     } catch (error) {
       setUserStatusMessage((error as Error).message);
     }
@@ -856,29 +879,74 @@ export default function DiscipuladoAdminPage() {
           </div>
         </form>
 
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Tenants totais</p>
+            <p className="mt-2 text-2xl font-bold text-sky-950">{tenantStats.total}</p>
+          </article>
+          <article className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Tenants ativos</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-900">{tenantStats.active}</p>
+          </article>
+          <article className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Tenants inativos</p>
+            <p className="mt-2 text-2xl font-bold text-amber-900">{tenantStats.inactive}</p>
+          </article>
+          <article className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Último tenant</p>
+            <p className="mt-2 text-sm font-semibold text-indigo-900">{tenantStats.newest?.name ?? "-"}</p>
+          </article>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
+            <span>Distribuição de tenants</span>
+            <span>{tenantStats.activeRatio}% ativos</span>
+          </div>
+          <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all"
+              style={{ width: `${tenantStats.activeRatio}%` }}
+            />
+          </div>
+        </div>
+
         <div className="mt-4 space-y-2">
           {!congregations.length ? <p className="text-sm text-slate-600">Nenhuma congregação cadastrada.</p> : null}
-          {congregations.map((item) => (
-            <article key={item.id} className="rounded-xl border border-slate-200 bg-white px-3 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{item.name}</p>
-                  <p className="text-xs text-slate-500">
-                    slug: {item.slug} • criada em {formatDateBR(item.created_at)}
-                  </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {congregations.map((item) => (
+              <article key={item.id} className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">slug: {item.slug}</p>
+                    <p className="text-xs text-slate-500">criada em {formatDateBR(item.created_at)}</p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      item.is_active
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {item.is_active ? "ATIVA" : "INATIVA"}
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleToggleCongregation(item.id, !item.is_active)}
-                  className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
-                    item.is_active ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
-                  }`}
-                >
-                  {item.is_active ? "Desativar" : "Ativar"}
-                </button>
-              </div>
-            </article>
-          ))}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-slate-500">ID: {item.id.slice(0, 8)}...</p>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleCongregation(item.id, !item.is_active)}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold text-white ${
+                      item.is_active ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                    }`}
+                  >
+                    {item.is_active ? "Desativar" : "Ativar"}
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
       ) : null}
@@ -977,10 +1045,16 @@ export default function DiscipuladoAdminPage() {
             <select
               value={newUser.role}
               onChange={(event) =>
-                setNewUser((prev) => ({
-                  ...prev,
-                  role: event.target.value as DiscipuladoUserRole
-                }))
+                {
+                  const nextRole = event.target.value as DiscipuladoUserRole;
+                  setNewUser((prev) => ({
+                    ...prev,
+                    role: nextRole
+                  }));
+                  if (nextRole !== "ADMIN_DISCIPULADO") {
+                    setNewUserGlobalScope(false);
+                  }
+                }
               }
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
             >
@@ -991,26 +1065,40 @@ export default function DiscipuladoAdminPage() {
             </select>
           </label>
           {isGlobalAdmin ? (
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Congregação</span>
-              <select
-                value={newUser.congregation_id}
-                onChange={(event) =>
-                  setNewUser((prev) => ({
-                    ...prev,
-                    congregation_id: event.target.value
-                  }))
-                }
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-              >
-                <option value="">Selecione</option>
-                {selectableCongregations.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-2 text-sm">
+              <label className="space-y-1 text-sm">
+                <span className="text-slate-700">Congregação</span>
+                <select
+                  value={newUser.congregation_id}
+                  onChange={(event) =>
+                    setNewUser((prev) => ({
+                      ...prev,
+                      congregation_id: event.target.value
+                    }))
+                  }
+                  disabled={newUserGlobalScope}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500"
+                >
+                  <option value="">Selecione</option>
+                  {selectableCongregations.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {newUser.role === "ADMIN_DISCIPULADO" ? (
+                <label className="flex items-center gap-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={newUserGlobalScope}
+                    onChange={(event) => setNewUserGlobalScope(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
+                  />
+                  Criar como administrador global do discipulado (sem congregação)
+                </label>
+              ) : null}
+            </div>
           ) : (
             <div className="space-y-1 text-sm">
               <span className="text-slate-700">Congregação</span>
@@ -1094,7 +1182,9 @@ export default function DiscipuladoAdminPage() {
                       {getDiscipuladoRoleLabel(discipuladoRole.role)}
                       {" • "}
                       Criado em {formatDateBR(user.created_at)}
-                      {roleCongregationId ? ` • ${congregationNameById[roleCongregationId] ?? "Congregação"}` : ""}
+                      {roleCongregationId
+                        ? ` • ${congregationNameById[roleCongregationId] ?? "Congregação"}`
+                        : " • Global do discipulado"}
                       {user.whatsapp ? ` • WhatsApp: ${user.whatsapp}` : ""}
                     </p>
                   </div>
