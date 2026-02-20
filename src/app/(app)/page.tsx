@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/cards/StatCard";
 import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { formatDate, getPeriodRange, formatDelta } from "@/lib/dashboard-utils";
 
+const monthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
 export default function DashboardPage() {
-  const router = useRouter();
   const currentYear = new Date().getFullYear();
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const {
     kpi,
@@ -40,10 +41,19 @@ export default function DashboardPage() {
     userRoles
   } = useDashboardData();
 
-  function handleMonthClick(year: number, month: number) {
-    const monthValue = String(month).padStart(2, "0");
-    router.push(`/cadastros?mes=${year}-${monthValue}`);
-  }
+  useEffect(() => {
+    setSelectedMonth(null);
+  }, [anoSelecionado]);
+
+  const monthlyChartData = useMemo(
+    () =>
+      mensal.map((item) => ({
+        month: item.month,
+        label: monthLabels[item.month - 1] ?? String(item.month),
+        value: item.count
+      })),
+    [mensal]
+  );
 
   const sugestao = useMemo(() => {
     const positivos = [...crescimentoBairros, ...crescimentoIgrejas].filter((item) => (item.delta_pct ?? 0) > 0);
@@ -223,11 +233,12 @@ export default function DashboardPage() {
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <MonthlyRegistrationsChart
-            entries={mensal}
+            data={monthlyChartData}
             year={anoSelecionado}
             years={anosDisponiveis.length ? anosDisponiveis : [currentYear]}
             onYearChange={setAnoSelecionado}
-            onMonthClick={handleMonthClick}
+            selectedMonth={selectedMonth}
+            onMonthSelect={setSelectedMonth}
           />
           <div className="grid gap-5 md:grid-cols-2">
             <InsightBarChart
