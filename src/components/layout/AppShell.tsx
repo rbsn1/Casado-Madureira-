@@ -415,25 +415,25 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               {isDiscipuladoConsole ? (
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white shadow-[0_8px_20px_-12px_rgba(15,23,42,0.35)]">
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white shadow-[0_12px_24px_-14px_rgba(15,23,42,0.4)] ring-1 ring-sky-100">
                   <Image
                     src="/discipulado-mark.png"
                     alt="Logo Discipulado Madureira"
                     fill
-                    sizes="40px"
+                    sizes="48px"
                     className="object-cover object-center scale-[1.36]"
                   />
                 </div>
               ) : null}
               <div>
                 {isDiscipuladoConsole ? (
-                  <div className="relative mb-1 h-9 w-[220px] max-w-[58vw]">
+                  <div className="relative mb-1 h-10 w-[250px] max-w-[62vw]">
                     <Image
                       src="/discipulado-wordmark.png"
                       alt="Logo horizontal Discipulado Madureira"
                       fill
-                      sizes="220px"
-                      className="object-contain object-left"
+                      sizes="250px"
+                      className="object-contain object-left drop-shadow-[0_1px_1px_rgba(255,255,255,0.35)]"
                     />
                   </div>
                 ) : (
