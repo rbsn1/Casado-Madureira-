@@ -137,12 +137,14 @@ export default function DiscipuladoLoginPage() {
                   alt="Logo Discipulado Madureira"
                   fill
                   sizes="68px"
-                  className="object-contain p-0.5"
+                  className="object-cover scale-[1.45]"
                   priority
                 />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/82">Portal</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/96 drop-shadow-[0_1px_1px_rgba(2,6,23,0.55)]">
+                  Portal
+                </p>
                 <p className="text-2xl font-semibold text-white">Discipulado</p>
               </div>
             </div>
@@ -187,7 +189,7 @@ export default function DiscipuladoLoginPage() {
                   width={72}
                   height={72}
                   sizes="72px"
-                  className="h-[72px] w-[72px] object-contain drop-shadow-[0_10px_24px_rgba(2,6,23,0.45)]"
+                  className="h-[72px] w-[72px] object-cover scale-[1.35] rounded-full drop-shadow-[0_10px_24px_rgba(2,6,23,0.45)]"
                 />
               </div>
               <Link
