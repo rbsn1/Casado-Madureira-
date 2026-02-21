@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { type CSSProperties, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Lock, Mail } from "lucide-react";
@@ -130,8 +131,15 @@ export default function DiscipuladoLoginPage() {
         >
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-white/10 text-lg font-bold text-white shadow-[0_8px_26px_-16px_rgba(15,23,42,0.85)] backdrop-blur">
-                DC
+              <div className="relative h-16 w-16 overflow-hidden rounded-full border border-white/25 bg-white/5 shadow-[0_10px_26px_-14px_rgba(15,23,42,0.85)]">
+                <Image
+                  src="/discipulado.png"
+                  alt="Logo Discipulado Madureira"
+                  fill
+                  sizes="64px"
+                  className="object-contain p-1.5"
+                  priority
+                />
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.24em] text-white/75">Portal</p>
@@ -172,6 +180,16 @@ export default function DiscipuladoLoginPage() {
         <section className={styles.formPanel}>
           <Card className={`${styles.loginCard} text-slate-50`}>
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
+              <div className="flex justify-center lg:hidden">
+                <Image
+                  src="/discipulado.png"
+                  alt="Logo Discipulado Madureira"
+                  width={72}
+                  height={72}
+                  sizes="72px"
+                  className="h-[72px] w-[72px] object-contain drop-shadow-[0_10px_24px_rgba(2,6,23,0.45)]"
+                />
+              </div>
               <Link
                 href="/login"
                 className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-100 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
