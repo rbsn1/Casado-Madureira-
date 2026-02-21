@@ -131,18 +131,18 @@ export default function DiscipuladoLoginPage() {
         >
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
             <div className="flex items-center gap-3">
-              <div className="relative h-16 w-16 overflow-hidden rounded-full border border-white/25 bg-white/5 shadow-[0_10px_26px_-14px_rgba(15,23,42,0.85)]">
+              <div className="relative h-[68px] w-[68px] overflow-hidden rounded-full border border-white/18 bg-white/[0.035] shadow-[0_10px_26px_-14px_rgba(15,23,42,0.85)]">
                 <Image
                   src="/discipulado.png"
                   alt="Logo Discipulado Madureira"
                   fill
-                  sizes="64px"
-                  className="object-contain p-1.5"
+                  sizes="68px"
+                  className="object-contain p-0.5"
                   priority
                 />
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.24em] text-white/75">Portal</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-white/82">Portal</p>
                 <p className="text-2xl font-semibold text-white">Discipulado</p>
               </div>
             </div>
