@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { CSSProperties, useId, useMemo, useState } from "react";
 
 type ChartEntry = {
   month: number;
@@ -10,8 +10,17 @@ type ChartEntry = {
 
 const defaultMonthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-const plotTop = 4;
-const plotBottom = 34;
+// Chart tuning constants
+export const HEIGHT_DESKTOP = 260;
+export const HEIGHT_MOBILE = 220;
+export const GRID_LINES = 5;
+export const AREA_OPACITY = 0.1;
+export const STROKE_WIDTH = 1.2;
+
+const VIEWBOX_WIDTH = 100;
+const VIEWBOX_HEIGHT = 40;
+const plotTop = 4.8;
+const plotBottom = 33.2;
 const plotHeight = plotBottom - plotTop;
 
 function sanitizeNumber(value: number | null | undefined) {
@@ -19,21 +28,22 @@ function sanitizeNumber(value: number | null | undefined) {
   return Math.max(0, value);
 }
 
-function formatVariation(current: number, previous: number) {
-  if (previous === 0) {
-    if (current === 0) {
-      return { text: "0% vs mês anterior", tone: "text-slate-500" };
-    }
-    return { text: "Sem base no mês anterior", tone: "text-slate-500" };
+function formatVariation(current: number, previous: number | null) {
+  if (previous === null || previous <= 0) {
+    return { text: "—", tone: "text-slate-500" };
   }
 
   const pct = ((current - previous) / previous) * 100;
   const rounded = Math.abs(pct) >= 10 ? pct.toFixed(0) : pct.toFixed(1);
-  const signed = `${pct > 0 ? "+" : ""}${rounded}% vs mês anterior`;
+  const signed = `${pct > 0 ? "+" : ""}${rounded}%`;
 
   if (pct > 0) return { text: signed, tone: "text-emerald-700" };
   if (pct < 0) return { text: signed, tone: "text-rose-700" };
   return { text: signed, tone: "text-slate-500" };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 export function MonthlyRegistrationsChart({
@@ -101,10 +111,11 @@ export function MonthlyRegistrationsChart({
   }, [normalizedData, normalizedPreviousData]);
 
   const currentPoints = useMemo(() => {
-    return normalizedData.map((entry, index) => {
+    return normalizedData.map((entry, index): ChartEntry & { x: number; y: number; prevValue: number | null } => {
       const x = (index / (normalizedData.length - 1)) * 100;
       const y = plotBottom - (entry.value / maxValue) * plotHeight;
-      return { ...entry, x, y };
+      const prevValue = index > 0 ? normalizedData[index - 1].value : null;
+      return { ...entry, x, y, prevValue };
     });
   }, [normalizedData, maxValue]);
 
@@ -149,13 +160,38 @@ export function MonthlyRegistrationsChart({
 
   const activeVariation = useMemo(() => {
     if (!activePoint) return null;
-    const previous = normalizedData[activePoint.month - 2]?.value ?? 0;
-    return formatVariation(activePoint.value, previous);
-  }, [activePoint, normalizedData]);
+    return formatVariation(activePoint.value, activePoint.prevValue);
+  }, [activePoint]);
 
   const hasPreviousLine = useMemo(
     () => Boolean(normalizedPreviousData?.some((item) => item.value > 0)),
     [normalizedPreviousData]
+  );
+
+  const averageY = useMemo(
+    () => plotBottom - (average / maxValue) * plotHeight,
+    [average, maxValue]
+  );
+
+  const peakPoint = useMemo(
+    () => currentPoints.find((point) => point.month === peak.month) ?? currentPoints[0] ?? null,
+    [currentPoints, peak.month]
+  );
+
+  const lastNonZeroPoint = useMemo(() => {
+    const found = [...currentPoints].reverse().find((point) => point.value > 0) ?? null;
+    if (!found || !peakPoint) return found;
+    const conflict = Math.abs(found.x - peakPoint.x) < 10 && Math.abs(found.y - peakPoint.y) < 6;
+    return conflict ? null : found;
+  }, [currentPoints, peakPoint]);
+
+  const chartHeightVars = useMemo(
+    () =>
+      ({
+        "--chart-height-mobile": `${HEIGHT_MOBILE}px`,
+        "--chart-height-desktop": `${HEIGHT_DESKTOP}px`
+      } as CSSProperties),
+    []
   );
 
   return (
@@ -215,34 +251,57 @@ export function MonthlyRegistrationsChart({
       ) : null}
 
       <div className="relative mt-4">
-        <div className="relative h-64 w-full sm:h-72" onMouseLeave={() => setHoveredMonth(null)}>
+        <div
+          className="relative h-[var(--chart-height-mobile)] w-full md:h-[var(--chart-height-desktop)]"
+          style={chartHeightVars}
+          onMouseLeave={() => setHoveredMonth(null)}
+        >
           <svg
-            viewBox="0 0 100 40"
+            viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
             className="h-full w-full"
             role="img"
             aria-label={`Cadastros mensais de ${year}. Total do ano: ${total}. Pico em ${peak.label} com ${peak.value}.`}
           >
             <defs>
               <linearGradient id={`areaGradient-${gradientId}`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity="0.16" />
+                <stop offset="0%" stopColor="#10b981" stopOpacity={AREA_OPACITY} />
                 <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
               </linearGradient>
             </defs>
 
-            {Array.from({ length: 4 }, (_, idx) => {
-              const y = plotTop + (idx / 3) * plotHeight;
+            {Array.from({ length: GRID_LINES }, (_, idx) => {
+              const y = plotTop + (idx / (GRID_LINES - 1)) * plotHeight;
               return (
                 <line
                   key={idx}
                   x1={0}
-                  x2={100}
+                  x2={VIEWBOX_WIDTH}
                   y1={y}
                   y2={y}
-                  stroke="rgba(148,163,184,0.18)"
-                  strokeWidth="0.35"
+                  stroke="rgba(148,163,184,0.16)"
+                  strokeWidth="0.32"
                 />
               );
             })}
+
+            <line
+              x1={0}
+              x2={VIEWBOX_WIDTH}
+              y1={averageY}
+              y2={averageY}
+              stroke="rgba(30,41,59,0.25)"
+              strokeWidth="0.3"
+              strokeDasharray="1.3 1.2"
+            />
+            <text
+              x={99}
+              y={clamp(averageY - 0.8, plotTop + 1, plotBottom - 0.8)}
+              textAnchor="end"
+              fontSize="1.9"
+              fill="rgba(71,85,105,0.9)"
+            >
+              média {average.toFixed(1)}
+            </text>
 
             <path d={areaPath} fill={`url(#areaGradient-${gradientId})`} />
 
@@ -251,8 +310,10 @@ export function MonthlyRegistrationsChart({
                 d={previousLinePath}
                 fill="none"
                 stroke="rgba(100,116,139,0.5)"
-                strokeWidth="1"
+                strokeWidth="0.95"
                 strokeDasharray="1.6 1.6"
+                strokeLinejoin="round"
+                strokeLinecap="round"
               />
             ) : null}
 
@@ -262,14 +323,46 @@ export function MonthlyRegistrationsChart({
                 y1={plotTop}
                 x2={hoveredPoint.x}
                 y2={plotBottom}
-                stroke="rgba(16,185,129,0.35)"
-                strokeWidth="0.45"
-                strokeDasharray="1.1 1.2"
+                stroke="rgba(16,185,129,0.28)"
+                strokeWidth="0.34"
+                strokeDasharray="1 1.2"
               />
             ) : null}
 
-            <path d={currentLinePath} fill="none" stroke="rgba(5,150,105,0.15)" strokeWidth="2.1" />
-            <path d={currentLinePath} fill="none" stroke="#10b981" strokeWidth="1.35" />
+            <path d={currentLinePath} fill="none" stroke="rgba(5,150,105,0.1)" strokeWidth={STROKE_WIDTH + 0.7} />
+            <path
+              d={currentLinePath}
+              fill="none"
+              stroke="#10b981"
+              strokeWidth={STROKE_WIDTH}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+
+            {peakPoint ? (
+              <text
+                x={clamp(peakPoint.x, 7, 93)}
+                y={clamp(peakPoint.y - 1.6, plotTop + 1.5, plotBottom - 1.2)}
+                textAnchor="middle"
+                fontSize="2.1"
+                fill="rgba(6,78,59,0.95)"
+                fontWeight="600"
+              >
+                {`${peakPoint.label} · ${peakPoint.value}`}
+              </text>
+            ) : null}
+
+            {lastNonZeroPoint ? (
+              <text
+                x={clamp(lastNonZeroPoint.x, 7, 93)}
+                y={clamp(lastNonZeroPoint.y - 1.2, plotTop + 1.5, plotBottom - 1.2)}
+                textAnchor="middle"
+                fontSize="1.9"
+                fill="rgba(71,85,105,0.95)"
+              >
+                {`${lastNonZeroPoint.label} · ${lastNonZeroPoint.value}`}
+              </text>
+            ) : null}
 
             {currentPoints.map((point) => {
               const isHovered = hoveredMonth === point.month;
@@ -279,7 +372,7 @@ export function MonthlyRegistrationsChart({
                   key={point.month}
                   cx={point.x}
                   cy={point.y}
-                  r={isHovered ? 1.5 : isSelected ? 1.15 : 0.9}
+                  r={isHovered ? 1.42 : isSelected ? 1.18 : 0.72}
                   fill={isHovered ? "#047857" : "#10b981"}
                   fillOpacity={isHovered || isSelected ? 0.95 : 0}
                 />
@@ -290,7 +383,7 @@ export function MonthlyRegistrationsChart({
               const previousPoint = currentPoints[index - 1];
               const nextPoint = currentPoints[index + 1];
               const startX = previousPoint ? (previousPoint.x + point.x) / 2 : 0;
-              const endX = nextPoint ? (nextPoint.x + point.x) / 2 : 100;
+              const endX = nextPoint ? (nextPoint.x + point.x) / 2 : VIEWBOX_WIDTH;
               return (
                 <rect
                   key={`hover-zone-${point.month}`}
@@ -309,18 +402,22 @@ export function MonthlyRegistrationsChart({
 
           {activePoint ? (
             <div
-              className="pointer-events-none absolute -top-2 rounded-xl border border-slate-200/90 bg-white/95 px-3 py-2 text-[11px] shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-sm"
+              className="pointer-events-none absolute -top-2 rounded-xl border border-slate-200/95 bg-white/95 px-3 py-2 text-[11px] shadow-[0_14px_30px_rgba(15,23,42,0.12)] backdrop-blur-sm"
               style={{ left: `${activePoint.x}%`, transform: "translateX(-50%)" }}
             >
               <p className="font-semibold text-slate-700">
-                {activePoint.label}: {activePoint.value}
+                {activePoint.label} · {activePoint.value}
               </p>
-              {activeVariation ? <p className={activeVariation.tone}>{activeVariation.text}</p> : null}
+              {activeVariation ? (
+                <p className={activeVariation.tone}>
+                  Variação: <span className="font-semibold">{activeVariation.text}</span>
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
 
-        <div className="mt-3 grid grid-cols-12 gap-1 text-[11px]">
+        <div className="mt-3 grid grid-cols-12 gap-1 text-[11px] sm:mt-2">
           {normalizedData.map((entry) => {
             const isSelected = selectedMonth === entry.month;
             return (

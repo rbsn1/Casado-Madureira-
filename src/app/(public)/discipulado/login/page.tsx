@@ -174,14 +174,14 @@ export default function DiscipuladoLoginPage() {
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <Link
                 href="/login"
-                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-200 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
+                className="inline-flex w-fit items-center gap-2 text-sm font-medium text-slate-100 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
               >
                 <ArrowLeft size={18} />
                 Voltar ao portal
               </Link>
               <div className="space-y-2">
-                <CardTitle className="text-slate-50">Entrar no módulo</CardTitle>
-                <CardDescription className="text-slate-200/85">
+                <CardTitle className="text-white drop-shadow-[0_1px_1px_rgba(2,6,23,0.45)]">Entrar no módulo</CardTitle>
+                <CardDescription className="text-slate-100/95">
                   Acesse sua conta institucional para gerenciar o discipulado.
                 </CardDescription>
               </div>
@@ -220,7 +220,7 @@ export default function DiscipuladoLoginPage() {
                     <button
                       type="button"
                       onClick={handlePasswordReset}
-                      className="text-sm font-medium text-slate-200 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
+                      className="text-sm font-medium text-slate-100 transition-colors duration-200 hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/20"
                     >
                       Esqueceu a senha?
                     </button>
@@ -294,17 +294,17 @@ export default function DiscipuladoLoginPage() {
             </CardContent>
 
             <CardFooter className="flex-col px-8 pb-8 pt-0 sm:px-10 sm:pb-10">
-              <p className="text-center text-sm text-slate-200/90">
+              <p className="text-center text-sm text-slate-100">
                 Ainda não tem acesso?{" "}
                 <a
                   href="mailto:discipulado@casados.com?subject=Acesso%20Portal%20Discipulado"
-                  className="font-medium text-white underline decoration-white/45 underline-offset-4 transition-colors hover:text-slate-100"
+                  className="font-semibold text-white underline decoration-white/55 underline-offset-4 transition-colors hover:text-slate-100"
                 >
                   Entre em contato
                 </a>
               </p>
               <Separator className="my-4" />
-              <p className="text-center text-xs text-slate-300">© 2026 Discipulado Madureira</p>
+              <p className="text-center text-xs text-slate-200/90">© 2026 Discipulado Madureira</p>
             </CardFooter>
           </Card>
         </section>
