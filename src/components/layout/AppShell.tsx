@@ -315,13 +315,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
             <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
               {isDiscipuladoConsole ? (
-                <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/20 bg-white/[0.04] shadow-[0_8px_20px_-12px_rgba(15,23,42,0.85)]">
+                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white/[0.05] shadow-[0_8px_20px_-12px_rgba(15,23,42,0.85)]">
                   <Image
                     src="/discipulado-crop.png"
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="40px"
-                    className="object-cover object-center scale-[1.2]"
+                    className="object-cover object-center scale-[1.48]"
                     priority
                   />
                 </div>
@@ -415,13 +415,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               {isDiscipuladoConsole ? (
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-sky-200/70 bg-white shadow-[0_8px_20px_-12px_rgba(15,23,42,0.35)]">
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white shadow-[0_8px_20px_-12px_rgba(15,23,42,0.35)]">
                   <Image
                     src="/discipulado-crop.png"
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="40px"
-                    className="object-cover object-center scale-[1.18]"
+                    className="object-cover object-center scale-[1.45]"
                   />
                 </div>
               ) : null}
