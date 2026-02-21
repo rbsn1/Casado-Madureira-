@@ -133,11 +133,11 @@ export default function DiscipuladoLoginPage() {
             <div className="flex items-center gap-3">
               <div className="relative h-[68px] w-[68px] overflow-hidden rounded-full border border-white/18 bg-white/[0.035] shadow-[0_10px_26px_-14px_rgba(15,23,42,0.85)]">
                 <Image
-                  src="/discipulado.png"
+                  src="/discipulado-crop.png"
                   alt="Logo Discipulado Madureira"
                   fill
                   sizes="68px"
-                  className="object-cover scale-[1.45]"
+                  className="object-cover object-center scale-[1.18]"
                   priority
                 />
               </div>
@@ -184,12 +184,12 @@ export default function DiscipuladoLoginPage() {
             <CardHeader className="space-y-4 px-8 pb-4 pt-8 sm:px-10 sm:pb-5 sm:pt-10">
               <div className="flex justify-center lg:hidden">
                 <Image
-                  src="/discipulado.png"
+                  src="/discipulado-crop.png"
                   alt="Logo Discipulado Madureira"
                   width={72}
                   height={72}
                   sizes="72px"
-                  className="h-[72px] w-[72px] object-cover scale-[1.35] rounded-full drop-shadow-[0_10px_24px_rgba(2,6,23,0.45)]"
+                  className="h-[72px] w-[72px] rounded-full object-cover object-center scale-[1.14] drop-shadow-[0_10px_24px_rgba(2,6,23,0.45)]"
                 />
               </div>
               <Link

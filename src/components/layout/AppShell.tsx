@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
@@ -313,14 +314,22 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         >
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
             <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
-              <div
-                className={clsx(
-                  "flex h-10 w-10 items-center justify-center rounded-xl font-bold text-white shadow-inner",
-                  isDiscipuladoConsole ? "bg-sky-600" : "bg-accent-600"
-                )}
-              >
-                {isDiscipuladoConsole ? "DC" : "CM"}
-              </div>
+              {isDiscipuladoConsole ? (
+                <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/20 bg-white/[0.04] shadow-[0_8px_20px_-12px_rgba(15,23,42,0.85)]">
+                  <Image
+                    src="/discipulado-crop.png"
+                    alt="Logo Discipulado Madureira"
+                    fill
+                    sizes="40px"
+                    className="object-cover object-center scale-[1.2]"
+                    priority
+                  />
+                </div>
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
+                  CM
+                </div>
+              )}
               <div>
                 <p className={clsx("text-sm", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>SaaS</p>
                 <p className="text-lg font-semibold text-white">
@@ -404,21 +413,34 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       >
         <div className="mx-auto max-w-[88rem] px-4 py-5 sm:px-5 sm:py-8 lg:px-10 xl:px-12">
           <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
-                {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
-              </p>
-              <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
-                {isCadastradorOnly
-                  ? "Cadastro"
-                  : isDiscipuladoAccount
-                    ? "Painel Discipulado"
-                    : hasCadastroDiscipuladoRole
-                    ? "Cadastro de Convertidos"
-                    : isDiscipuladoConsole
+            <div className="flex items-center gap-3">
+              {isDiscipuladoConsole ? (
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-sky-200/70 bg-white shadow-[0_8px_20px_-12px_rgba(15,23,42,0.35)]">
+                  <Image
+                    src="/discipulado-crop.png"
+                    alt="Logo Discipulado Madureira"
+                    fill
+                    sizes="40px"
+                    className="object-cover object-center scale-[1.18]"
+                  />
+                </div>
+              ) : null}
+              <div>
+                <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
+                  {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
+                </p>
+                <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
+                  {isCadastradorOnly
+                    ? "Cadastro"
+                    : isDiscipuladoAccount
                       ? "Painel Discipulado"
-                      : "Painel Interno"}
-              </h1>
+                      : hasCadastroDiscipuladoRole
+                      ? "Cadastro de Convertidos"
+                      : isDiscipuladoConsole
+                        ? "Painel Discipulado"
+                        : "Painel Interno"}
+                </h1>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {!isCadastradorOnly ? (
