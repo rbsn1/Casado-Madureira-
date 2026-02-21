@@ -317,11 +317,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               {isDiscipuladoConsole ? (
                 <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white/[0.05] shadow-[0_8px_20px_-12px_rgba(15,23,42,0.85)]">
                   <Image
-                    src="/discipulado-crop.png"
+                    src="/discipulado-mark.png"
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="40px"
-                    className="object-cover object-center scale-[1.48]"
+                    className="object-cover object-center scale-[1.36]"
                     priority
                   />
                 </div>
@@ -417,11 +417,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               {isDiscipuladoConsole ? (
                 <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white shadow-[0_8px_20px_-12px_rgba(15,23,42,0.35)]">
                   <Image
-                    src="/discipulado-crop.png"
+                    src="/discipulado-mark.png"
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="40px"
-                    className="object-cover object-center scale-[1.45]"
+                    className="object-cover object-center scale-[1.36]"
                   />
                 </div>
               ) : null}
