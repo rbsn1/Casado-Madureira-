@@ -36,7 +36,11 @@ export default function DiscipuladoConvertidosPage() {
   const [withoutCaseTotalCount, setWithoutCaseTotalCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
+  const [canOpenCaseDetails, setCanOpenCaseDetails] = useState(false);
   const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
+  const [canDeleteCadastrosAndCases, setCanDeleteCadastrosAndCases] = useState(false);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
+  const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("todos");
 
   useEffect(() => {
@@ -50,14 +54,21 @@ export default function DiscipuladoConvertidosPage() {
 
       const scope = await getAuthScope();
       if (!active) return;
-      const allowed = scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO");
+      const allowed =
+        scope.roles.includes("ADMIN_DISCIPULADO") ||
+        scope.roles.includes("DISCIPULADOR") ||
+        scope.roles.includes("SM_DISCIPULADO") ||
+        scope.roles.includes("SECRETARIA_DISCIPULADO");
+      const canOpenDetails = scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO");
       setHasAccess(allowed);
+      setCanOpenCaseDetails(canOpenDetails);
       setCanCreateNovoConvertido(
         scope.roles.includes("ADMIN_DISCIPULADO") ||
           scope.roles.includes("DISCIPULADOR") ||
           scope.roles.includes("SM_DISCIPULADO") ||
           scope.roles.includes("SECRETARIA_DISCIPULADO")
       );
+      setCanDeleteCadastrosAndCases(allowed);
       if (!allowed) return;
 
       const { data: caseSummaries, errorMessage, hasCriticalityColumns } =
@@ -199,6 +210,76 @@ export default function DiscipuladoConvertidosPage() {
     return cases.filter((item) => item.status === statusFilter);
   }, [cases, statusFilter]);
 
+  async function handleDeleteCase(item: CaseSummaryItem) {
+    if (!supabaseClient || !canDeleteCadastrosAndCases) return;
+    const confirmed = window.confirm(
+      `Excluir o case de "${item.member_name || "membro"}"? Essa ação não poderá ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setStatusMessage("");
+    setDeletingCaseId(item.case_id);
+    const { error } = await supabaseClient.from("discipleship_cases").delete().eq("id", item.case_id);
+    if (error) {
+      const message = String(error.message ?? "");
+      if (message === "not allowed") {
+        setStatusMessage(
+          "Sem permissão para excluir case neste ambiente. Aplique a migration de reconciliação de permissões do discipulado."
+        );
+      } else {
+        setStatusMessage(message || "Não foi possível excluir o case.");
+      }
+      setDeletingCaseId(null);
+      return;
+    }
+
+    setCases((prev) => prev.filter((caseItem) => caseItem.case_id !== item.case_id));
+    setCcmMembers((prev) => {
+      const next = prev.map((member) =>
+        member.member_id === item.member_id ? { ...member, has_active_case: false } : member
+      );
+      setWithoutCaseTotalCount(next.filter((member) => !member.has_active_case).length);
+      return next;
+    });
+    setDeletingCaseId(null);
+  }
+
+  async function handleDeleteCadastro(member: CcmMemberWithoutCase) {
+    if (!supabaseClient || !canDeleteCadastrosAndCases) return;
+    if (member.has_active_case) {
+      setStatusMessage("Este cadastro possui case ativo. Exclua o case antes de excluir o cadastro.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Excluir o cadastro de "${member.member_name}"? Essa ação não poderá ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setStatusMessage("");
+    setDeletingMemberId(member.member_id);
+    const { error } = await supabaseClient.from("pessoas").delete().eq("id", member.member_id);
+    if (error) {
+      const message = String(error.message ?? "");
+      if (message === "not allowed") {
+        setStatusMessage(
+          "Sem permissão para excluir cadastro neste ambiente. Aplique a migration de reconciliação de permissões do discipulado."
+        );
+      } else {
+        setStatusMessage(message || "Não foi possível excluir o cadastro.");
+      }
+      setDeletingMemberId(null);
+      return;
+    }
+
+    setCcmMembers((prev) => {
+      const next = prev.filter((item) => item.member_id !== member.member_id);
+      setVisibleCcmMembersCount(next.length);
+      setWithoutCaseTotalCount(next.filter((item) => !item.has_active_case).length);
+      return next;
+    });
+    setDeletingMemberId(null);
+  }
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
@@ -250,11 +331,7 @@ export default function DiscipuladoConvertidosPage() {
         {filteredCases.map((item) => {
           const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
           return (
-            <Link
-              key={item.case_id}
-              href={`/discipulado/convertidos/${item.case_id}`}
-              className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300"
-            >
+            <article key={item.case_id} className="discipulado-panel space-y-3 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
@@ -278,7 +355,29 @@ export default function DiscipuladoConvertidosPage() {
                 </p>
               </div>
               <p className="text-xs text-slate-600">{item.notes || "Sem observações gerais."}</p>
-            </Link>
+              <div className="flex flex-wrap items-center gap-2">
+                {canOpenCaseDetails ? (
+                  <Link
+                    href={`/discipulado/convertidos/${item.case_id}`}
+                    className="rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+                  >
+                    Abrir case
+                  </Link>
+                ) : (
+                  <span className="text-xs text-slate-500">Detalhe restrito ao discipulador/admin.</span>
+                )}
+                {canDeleteCadastrosAndCases ? (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCase(item)}
+                    disabled={deletingCaseId === item.case_id}
+                    className="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {deletingCaseId === item.case_id ? "Excluindo..." : "Excluir case"}
+                  </button>
+                ) : null}
+              </div>
+            </article>
           );
         })}
       </div>
@@ -310,16 +409,28 @@ export default function DiscipuladoConvertidosPage() {
               </div>
               <div className="flex items-center justify-between">
                 <StatusBadge value={item.has_active_case ? "EM_DISCIPULADO" : "PENDENTE"} />
-                {canCreateNovoConvertido && !item.has_active_case ? (
-                  <Link
-                    href={`/discipulado/convertidos/novo?memberId=${encodeURIComponent(item.member_id)}`}
-                    className="rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
-                  >
-                    Abrir case
-                  </Link>
-                ) : (
-                  <p className="text-xs text-slate-500">{item.has_active_case ? "Case ativo" : "Sem case ativo"}</p>
-                )}
+                <div className="flex items-center gap-2">
+                  {canCreateNovoConvertido && !item.has_active_case ? (
+                    <Link
+                      href={`/discipulado/convertidos/novo?memberId=${encodeURIComponent(item.member_id)}`}
+                      className="rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
+                    >
+                      Abrir case
+                    </Link>
+                  ) : (
+                    <p className="text-xs text-slate-500">{item.has_active_case ? "Case ativo" : "Sem case ativo"}</p>
+                  )}
+                  {canDeleteCadastrosAndCases ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCadastro(item)}
+                      disabled={deletingMemberId === item.member_id || item.has_active_case}
+                      className="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {deletingMemberId === item.member_id ? "Excluindo..." : "Excluir cadastro"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </article>
           ))}

@@ -16,12 +16,22 @@ type MemberResult = {
 
 type EntryMode = "existing" | "new";
 
+function currentLocalDateInputValue() {
+  const now = new Date();
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
 function isMissingCreateMemberFunctionError(message: string, code?: string) {
   return code === "PGRST202" || message.includes("create_ccm_member_from_discipleship");
 }
 
 function isMissingMembersListFunctionError(message: string, code?: string) {
   return code === "PGRST202" || message.includes("list_ccm_members_for_discipleship");
+}
+
+function isMissingWelcomedOnColumnError(message: string, code?: string) {
+  return code === "PGRST204" && message.includes("welcomed_on");
 }
 
 async function listMembersWithFallback() {
@@ -203,6 +213,7 @@ export default function NovoConvertidoDiscipuladoPage() {
   const [newMemberChurch, setNewMemberChurch] = useState("");
   const [newMemberNeighborhood, setNewMemberNeighborhood] = useState("");
   const [newMemberObservations, setNewMemberObservations] = useState("");
+  const [welcomedOn, setWelcomedOn] = useState(currentLocalDateInputValue());
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [message, setMessage] = useState("");
@@ -276,6 +287,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     setNewMemberChurch("");
     setNewMemberNeighborhood("");
     setNewMemberObservations("");
+    setWelcomedOn(currentLocalDateInputValue());
     setNotes("");
     if (!options?.preserveFeedback) {
       setMessage("");
@@ -283,7 +295,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     }
   }
 
-  async function createCase(memberId: string) {
+  async function createCase(memberId: string, welcomedOnValue: string) {
     if (!supabaseClient) return { ok: false as const, errorMessage: "Supabase não configurado." };
     const { data: authData } = await supabaseClient.auth.getUser();
 
@@ -291,9 +303,17 @@ export default function NovoConvertidoDiscipuladoPage() {
       member_id: memberId,
       assigned_to: authData.user?.id ?? null,
       notes: notes.trim() || null,
+      welcomed_on: welcomedOnValue,
       request_id: crypto.randomUUID()
     };
-    const { error } = await supabaseClient.from("discipleship_cases").insert(payload);
+    let { error } = await supabaseClient.from("discipleship_cases").insert(payload);
+
+    // Ambientes antigos podem ainda não ter a coluna welcomed_on.
+    if (error && isMissingWelcomedOnColumnError(error.message, error.code)) {
+      const { welcomed_on: _welcomedOn, ...fallbackPayload } = payload;
+      const retry = await supabaseClient.from("discipleship_cases").insert(fallbackPayload);
+      error = retry.error;
+    }
 
     if (!error) {
       return { ok: true as const, errorMessage: "" };
@@ -307,7 +327,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       return {
         ok: false as const,
         errorMessage:
-          "Permissão insuficiente neste ambiente para concluir a operação. Aplique a migração 0032_discipulado_sm_criticality_on_insert.sql."
+          "Permissão insuficiente neste ambiente para concluir a operação. Aplique a migração 0038_admin_discipulado_acesso_total.sql (ou a reconciliação mais recente de permissões do discipulado)."
       };
     }
 
@@ -323,7 +343,12 @@ export default function NovoConvertidoDiscipuladoPage() {
 
     if (entryMode === "existing") {
       if (!selectedMember) return;
-      const caseResult = await createCase(selectedMember.id);
+      if (!welcomedOn) {
+        setStatus("error");
+        setMessage("Informe a data de acolhimento.");
+        return;
+      }
+      const caseResult = await createCase(selectedMember.id, welcomedOn);
       if (!caseResult.ok) {
         setStatus("error");
         setMessage(caseResult.errorMessage);
@@ -361,6 +386,12 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
+    if (!welcomedOn) {
+      setStatus("error");
+      setMessage("Informe a data de acolhimento.");
+      return;
+    }
+
     const { data: createdData, error: createMemberError } = await supabaseClient.rpc(
       "create_ccm_member_from_discipleship",
       {
@@ -381,6 +412,13 @@ export default function NovoConvertidoDiscipuladoPage() {
         );
         return;
       }
+      if (createMemberError.message === "not allowed") {
+        setStatus("error");
+        setMessage(
+          "Sem permissão para cadastrar membro por este usuário. Aplique a migração 0038_admin_discipulado_acesso_total.sql (ou a reconciliação mais recente de permissões do discipulado)."
+        );
+        return;
+      }
       setStatus("error");
       setMessage(createMemberError.message);
       return;
@@ -395,7 +433,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
-    const caseResult = await createCase(createdMemberId);
+    const caseResult = await createCase(createdMemberId, welcomedOn);
     if (!caseResult.ok) {
       setStatus("error");
       setMessage(caseResult.errorMessage);
@@ -459,6 +497,17 @@ export default function NovoConvertidoDiscipuladoPage() {
             Cadastrar no Discipulado
           </button>
         </div>
+
+        <label className="block max-w-xs space-y-1 text-sm">
+          <span className="text-slate-700">Data de acolhimento</span>
+          <input
+            type="date"
+            value={welcomedOn}
+            onChange={(event) => setWelcomedOn(event.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+          />
+        </label>
 
         {entryMode === "existing" ? (
           <>
