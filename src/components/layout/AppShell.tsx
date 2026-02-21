@@ -426,9 +426,19 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </div>
               ) : null}
               <div>
-                <p className={clsx("text-sm", isDiscipuladoConsole ? "text-sky-700" : "text-text-muted")}>
-                  {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
-                </p>
+                {isDiscipuladoConsole ? (
+                  <div className="relative mb-1 h-9 w-[220px] max-w-[58vw]">
+                    <Image
+                      src="/discipulado-wordmark.png"
+                      alt="Logo horizontal Discipulado Madureira"
+                      fill
+                      sizes="220px"
+                      className="object-contain object-left"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-muted">Casados com a Madureira</p>
+                )}
                 <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                   {isCadastradorOnly
                     ? "Cadastro"

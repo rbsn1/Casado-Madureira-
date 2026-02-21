@@ -130,22 +130,24 @@ export default function DiscipuladoLoginPage() {
           aria-label="Mensagem inspiracional do discipulado"
         >
           <div className="relative z-10 flex h-full flex-col justify-between px-6 pb-8 pt-7 sm:px-8 lg:px-10 lg:pb-10 lg:pt-9">
-            <div className="flex items-center gap-3">
-              <div className="relative h-[70px] w-[70px] overflow-hidden rounded-full bg-white/[0.04] shadow-[0_10px_26px_-14px_rgba(15,23,42,0.85)]">
+            <div className="flex items-center gap-3.5">
+              <div className="relative h-[84px] w-[84px] shrink-0 overflow-hidden rounded-full bg-white/[0.06] ring-1 ring-white/35 shadow-[0_12px_28px_-14px_rgba(15,23,42,0.85)]">
                 <Image
                   src="/discipulado-mark.png"
                   alt="Logo Discipulado Madureira"
                   fill
-                  sizes="70px"
-                  className="object-cover object-center scale-[1.38]"
+                  sizes="84px"
+                  className="object-cover object-center scale-[1.45]"
                   priority
                 />
               </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/96 drop-shadow-[0_1px_1px_rgba(2,6,23,0.55)]">
+              <div className="min-w-0">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-white/95 drop-shadow-[0_1px_1px_rgba(2,6,23,0.55)]">
                   Portal
                 </p>
-                <p className="text-2xl font-semibold text-white">Discipulado</p>
+                <p className="text-[2.05rem] font-semibold leading-tight text-white drop-shadow-[0_1px_1px_rgba(2,6,23,0.45)]">
+                  Discipulado
+                </p>
               </div>
             </div>
 
