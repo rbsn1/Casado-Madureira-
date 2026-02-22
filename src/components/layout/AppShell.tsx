@@ -426,19 +426,9 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </div>
               ) : null}
               <div>
-                {isDiscipuladoConsole ? (
-                  <div className="relative mb-1 h-10 w-[250px] max-w-[62vw]">
-                    <Image
-                      src="/discipulado-wordmark.png"
-                      alt="Logo horizontal Discipulado Madureira"
-                      fill
-                      sizes="250px"
-                      className="object-contain object-left drop-shadow-[0_1px_1px_rgba(255,255,255,0.35)]"
-                    />
-                  </div>
-                ) : (
+                {!isDiscipuladoConsole ? (
                   <p className="text-sm text-text-muted">Casados com a Madureira</p>
-                )}
+                ) : null}
                 <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
                   {isCadastradorOnly
                     ? "Cadastro"
