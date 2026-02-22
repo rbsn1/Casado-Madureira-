@@ -316,16 +316,50 @@ export default function NovoConvertidoDiscipuladoPage() {
       welcomed_on: welcomedOnValue,
       request_id: crypto.randomUUID()
     };
-    let { error } = await supabaseClient.from("discipleship_cases").insert(payload);
+    let createdCase: { id: string; status: string } | null = null;
+    let {
+      data: insertedData,
+      error
+    } = await supabaseClient
+      .from("discipleship_cases")
+      .insert(payload)
+      .select("id, status")
+      .maybeSingle();
+    if (insertedData) {
+      createdCase = { id: String(insertedData.id), status: String(insertedData.status ?? "") };
+    }
 
     // Ambientes antigos podem ainda não ter a coluna welcomed_on.
     if (error && isMissingWelcomedOnColumnError(error.message, error.code)) {
       const { welcomed_on: _welcomedOn, ...fallbackPayload } = payload;
-      const retry = await supabaseClient.from("discipleship_cases").insert(fallbackPayload);
+      const retry = await supabaseClient
+        .from("discipleship_cases")
+        .insert(fallbackPayload)
+        .select("id, status")
+        .maybeSingle();
+      if (retry.data) {
+        createdCase = { id: String(retry.data.id), status: String(retry.data.status ?? "") };
+      }
       error = retry.error;
     }
 
     if (!error) {
+      if (createdCase?.id && createdCase.status === "em_discipulado") {
+        const fix = await supabaseClient
+          .from("discipleship_cases")
+          .update({ status: "pendente_matricula" })
+          .eq("id", createdCase.id)
+          .select("status")
+          .single();
+
+        if (fix.error || fix.data?.status !== "pendente_matricula") {
+          return {
+            ok: false as const,
+            errorMessage:
+              "Este ambiente promove o case automaticamente para EM_DISCIPULADO. Aplique novamente a migração 0043_discipulado_status_pendente_matricula.sql para manter o status inicial como pendente."
+          };
+        }
+      }
       return { ok: true as const, errorMessage: "" };
     }
 
