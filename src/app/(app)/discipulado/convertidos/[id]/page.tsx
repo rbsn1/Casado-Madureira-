@@ -681,6 +681,12 @@ export default function DiscipulandoDetalhePage() {
     });
 
     if (error) {
+      if (error.message === "not allowed") {
+        setStatusMessage(
+          "Sem permissão para editar cadastro neste ambiente. Aplique a migração de permissões do Discipulado para edição de cadastro (0045) ou atribua uma role de acesso."
+        );
+        return;
+      }
       if (isMissingMemberEditFunctionError(error.message, error.code)) {
         setStatusMessage(
           "Edição de cadastro indisponível neste ambiente. Aplique a migração 0029_discipulado_editar_cadastro_ccm.sql."
