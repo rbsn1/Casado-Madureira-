@@ -11,6 +11,7 @@ import {
 import { criticalityLabel, criticalityRank } from "@/lib/discipleshipCriticality";
 
 const PAGE_SIZE = 20;
+type ViewMode = "lista" | "kanban";
 
 function statusLabel(status: DiscipleshipCaseSummaryItem["status"]) {
   if (status === "pendente_matricula") return "PENDENTE";
@@ -26,6 +27,7 @@ export default function DiscipuladoFilaPage() {
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [statusFilter, setStatusFilter] = useState("ativos");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [viewMode, setViewMode] = useState<ViewMode>("lista");
 
   useEffect(() => {
     let active = true;
@@ -91,6 +93,66 @@ export default function DiscipuladoFilaPage() {
 
   const visibleCases = useMemo(() => orderedCases.slice(0, visibleCount), [orderedCases, visibleCount]);
   const hasMoreCases = visibleCount < orderedCases.length;
+  const kanbanStatuses = useMemo<DiscipleshipCaseSummaryItem["status"][]>(
+    () =>
+      statusFilter === "ativos"
+        ? ["pendente_matricula", "em_discipulado", "pausado"]
+        : ["pendente_matricula", "em_discipulado", "pausado", "concluido"],
+    [statusFilter]
+  );
+  const kanbanColumns = useMemo(
+    () =>
+      kanbanStatuses.map((status) => ({
+        status,
+        title: statusLabel(status),
+        items: visibleCases.filter((item) => item.status === status)
+      })),
+    [kanbanStatuses, visibleCases]
+  );
+
+  function renderCaseCard(item: DiscipleshipCaseSummaryItem) {
+    const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
+    const cardContent = (
+      <div className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
+            <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
+          </div>
+          <StatusBadge value={statusLabel(item.status)} />
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <StatusBadge value={item.criticality} />
+          <p className="text-xs font-semibold text-slate-700">{criticalityLabel(item.criticality)}</p>
+        </div>
+        <p className="text-xs text-slate-700">
+          Negativos: <strong>{item.negative_contact_count}</strong> • Faltam{" "}
+          <strong>{item.days_to_confra ?? "-"}</strong> dias para a confra
+        </p>
+        <p className="text-xs text-slate-600">
+          Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
+        </p>
+        <div>
+          <div className="h-2 rounded-full bg-slate-100">
+            <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />
+          </div>
+          <p className="mt-1 text-xs text-slate-600">
+            Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
+          </p>
+        </div>
+      </div>
+    );
+
+    if (!canOpenCase) {
+      return <div key={item.case_id}>{cardContent}</div>;
+    }
+
+    return (
+      <Link key={item.case_id} href={`/discipulado/convertidos/${item.case_id}`}>
+        {cardContent}
+      </Link>
+    );
+  }
 
   if (!hasAccess) {
     return (
@@ -111,6 +173,26 @@ export default function DiscipuladoFilaPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="rounded-lg border border-sky-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("lista")}
+              className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                viewMode === "lista" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+              }`}
+            >
+              Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("kanban")}
+              className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                viewMode === "kanban" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+              }`}
+            >
+              Kanban
+            </button>
+          </div>
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
@@ -136,54 +218,34 @@ export default function DiscipuladoFilaPage() {
         Exibindo {Math.min(visibleCases.length, orderedCases.length)} de {orderedCases.length} casos.
       </p>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {!orderedCases.length ? (
-          <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso na fila.</div>
-        ) : null}
-        {visibleCases.map((item) => {
-          const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
-          const cardContent = (
-            <div className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
-                  <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
-                </div>
-                <StatusBadge value={statusLabel(item.status)} />
+      {viewMode === "lista" ? (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {!orderedCases.length ? (
+            <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso na fila.</div>
+          ) : null}
+          {visibleCases.map((item) => renderCaseCard(item))}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {kanbanColumns.map((column) => (
+            <section key={column.status} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <StatusBadge value={statusLabel(column.status)} />
+                <span className="text-xs font-semibold text-slate-600">{column.items.length}</span>
               </div>
-              <div className="flex items-center justify-between gap-2">
-                <StatusBadge value={item.criticality} />
-                <p className="text-xs font-semibold text-slate-700">{criticalityLabel(item.criticality)}</p>
+              <div className="space-y-3">
+                {column.items.length ? (
+                  column.items.map((item) => renderCaseCard(item))
+                ) : (
+                  <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+                    Sem casos nesta coluna.
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-slate-700">
-                Negativos: <strong>{item.negative_contact_count}</strong> • Faltam{" "}
-                <strong>{item.days_to_confra ?? "-"}</strong> dias para a confra
-              </p>
-              <p className="text-xs text-slate-600">
-                Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
-              </p>
-              <div>
-                <div className="h-2 rounded-full bg-slate-100">
-                  <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />
-                </div>
-                <p className="mt-1 text-xs text-slate-600">
-                  Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
-                </p>
-              </div>
-            </div>
-          );
-
-          if (!canOpenCase) {
-            return <div key={item.case_id}>{cardContent}</div>;
-          }
-
-          return (
-            <Link key={item.case_id} href={`/discipulado/convertidos/${item.case_id}`}>
-              {cardContent}
-            </Link>
-          );
-        })}
-      </div>
+            </section>
+          ))}
+        </div>
+      )}
 
       {hasMoreCases ? (
         <div className="flex justify-center">
