@@ -899,7 +899,10 @@ export default function DiscipulandoDetalhePage() {
 
       <section className="discipulado-panel p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-sky-900">Dados do membro (CCM)</h3>
+          <div>
+            <h3 className="text-sm font-semibold text-sky-900">Dados do membro</h3>
+            <p className="text-xs text-slate-600">Cadastro unificado entre CCM e Discipulado.</p>
+          </div>
           {isEditingMember ? (
             <div className="flex items-center gap-2">
               <button
@@ -1136,46 +1139,52 @@ export default function DiscipulandoDetalhePage() {
             O mesmo membro pode ser matriculado em vários módulos. Na primeira matrícula o case muda
             automaticamente para Em discipulado.
           </p>
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
-            <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-slate-700">Módulo disponível</span>
-              <select
-                value={enrollmentModuleId}
-                onChange={(event) => setEnrollmentModuleId(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                disabled={!availableModulesForEnrollment.length}
-              >
-                {availableModulesForEnrollment.length ? null : <option value="">Nenhum módulo disponível</option>}
-                {availableModulesForEnrollment.map((moduleItem) => (
-                  <option key={moduleItem.id} value={moduleItem.id}>
-                    {moduleItem.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Status inicial</span>
-              <select
-                value={enrollmentStatusDraft}
-                onChange={(event) => setEnrollmentStatusDraft(event.target.value as ProgressItem["status"])}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-              >
-                <option value="nao_iniciado">Não iniciado</option>
-                <option value="em_andamento">Em andamento</option>
-                <option value="concluido">Concluído</option>
-              </select>
-            </label>
-          </div>
-          <div className="mt-3">
-            <button
-              type="button"
-              onClick={handleEnrollInModule}
-              disabled={!enrollmentModuleId || !availableModulesForEnrollment.length}
-              className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              Matricular em módulo
-            </button>
-          </div>
+          {availableModulesForEnrollment.length ? (
+            <>
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                <label className="space-y-1 text-sm md:col-span-2">
+                  <span className="text-slate-700">Módulo disponível</span>
+                  <select
+                    value={enrollmentModuleId}
+                    onChange={(event) => setEnrollmentModuleId(event.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                  >
+                    {availableModulesForEnrollment.map((moduleItem) => (
+                      <option key={moduleItem.id} value={moduleItem.id}>
+                        {moduleItem.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-700">Status inicial</span>
+                  <select
+                    value={enrollmentStatusDraft}
+                    onChange={(event) => setEnrollmentStatusDraft(event.target.value as ProgressItem["status"])}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                  >
+                    <option value="nao_iniciado">Não iniciado</option>
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="concluido">Concluído</option>
+                  </select>
+                </label>
+              </div>
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={handleEnrollInModule}
+                  disabled={!enrollmentModuleId}
+                  className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  Matricular em módulo
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Todos os módulos ativos desta congregação já estão matriculados neste case.
+            </p>
+          )}
         </div>
 
         <div className="mt-4 space-y-3">
