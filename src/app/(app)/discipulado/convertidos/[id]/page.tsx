@@ -107,6 +107,8 @@ type ToastState = {
   message: string;
 } | null;
 
+const ORIGIN_OPTIONS = ["Culto da Manhã", "Culto da Noite", "Outros eventos"] as const;
+
 const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "PENDENTE",
   "EM_ANDAMENTO",
@@ -114,6 +116,19 @@ const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "INTEGRADO",
   "BATIZADO"
 ];
+
+function normalizeOriginDraft(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+  if (!normalized) return "";
+  if (normalized.includes("MANH")) return "Culto da Manhã";
+  if (normalized.includes("NOITE")) return "Culto da Noite";
+  if (normalized.includes("EVENT")) return "Outros eventos";
+  return "";
+}
 
 function caseBadgeValue(status: CaseItem["status"]) {
   if (status === "pendente_matricula") return "PENDENTE";
@@ -341,7 +356,7 @@ export default function DiscipulandoDetalhePage() {
     setMember(memberData);
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
-    setMemberOriginDraft(memberData.origem ?? "");
+    setMemberOriginDraft(normalizeOriginDraft(memberData.origem));
     setMemberChurchDraft(memberData.igreja_origem ?? "");
     setMemberNeighborhoodDraft(memberData.bairro ?? "");
     setMemberNotesDraft(memberData.observacoes ?? "");
@@ -641,6 +656,12 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
+    const normalizedOrigin = memberOriginDraft.trim();
+    if (!normalizedOrigin) {
+      setStatusMessage("Selecione a origem do cadastro.");
+      return;
+    }
+
     const trimmedNeighborhood = memberNeighborhoodDraft.trim();
     if (trimmedNeighborhood && trimmedNeighborhood.length < 2) {
       setStatusMessage("O bairro precisa ter ao menos 2 caracteres.");
@@ -653,7 +674,7 @@ export default function DiscipulandoDetalhePage() {
       target_member_id: member.id,
       full_name: normalizedName,
       phone_whatsapp: parsedPhone.formatted,
-      origin: memberOriginDraft.trim() || null,
+      origin: normalizedOrigin,
       origin_church: memberChurchDraft.trim() || null,
       neighborhood: trimmedNeighborhood || null,
       notes: memberNotesDraft.trim() || null
@@ -918,7 +939,7 @@ export default function DiscipulandoDetalhePage() {
                   setIsEditingMember(false);
                   setMemberNameDraft(member?.nome_completo ?? "");
                   setMemberPhoneDraft(formatBrazilPhoneInput(member?.telefone_whatsapp ?? ""));
-                  setMemberOriginDraft(member?.origem ?? "");
+                  setMemberOriginDraft(normalizeOriginDraft(member?.origem));
                   setMemberChurchDraft(member?.igreja_origem ?? "");
                   setMemberNeighborhoodDraft(member?.bairro ?? "");
                   setMemberNotesDraft(member?.observacoes ?? "");
@@ -960,11 +981,19 @@ export default function DiscipulandoDetalhePage() {
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Origem</span>
-              <input
+              <select
                 value={memberOriginDraft}
                 onChange={(event) => setMemberOriginDraft(event.target.value)}
+                required
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-              />
+              >
+                <option value="">Selecione a origem</option>
+                {ORIGIN_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Igreja de origem</span>

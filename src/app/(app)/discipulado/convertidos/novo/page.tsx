@@ -15,6 +15,7 @@ type MemberResult = {
 };
 
 type EntryMode = "existing" | "new";
+const ORIGIN_OPTIONS = ["Culto da Manhã", "Culto da Noite", "Outros eventos"] as const;
 
 function currentLocalDateInputValue() {
   const now = new Date();
@@ -436,6 +437,13 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
+    const normalizedOrigin = newMemberOrigin.trim();
+    if (!normalizedOrigin) {
+      setStatus("error");
+      setMessage("Selecione a origem do cadastro.");
+      return;
+    }
+
     if (newMemberNeighborhood.trim() && newMemberNeighborhood.trim().length < 2) {
       setStatus("error");
       setMessage("O bairro precisa ter ao menos 2 caracteres.");
@@ -453,7 +461,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       {
         full_name: normalizedName,
         phone_whatsapp: parsedPhone.formatted,
-        origin: newMemberOrigin.trim() || null,
+        origin: normalizedOrigin,
         origin_church: newMemberChurch.trim() || null,
         neighborhood: newMemberNeighborhood.trim() || null,
         notes: newMemberObservations.trim() || null
@@ -630,12 +638,19 @@ export default function NovoConvertidoDiscipuladoPage() {
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Origem</span>
-              <input
+              <select
                 value={newMemberOrigin}
                 onChange={(event) => setNewMemberOrigin(event.target.value)}
+                required
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                placeholder="Culto, célula, evento..."
-              />
+              >
+                <option value="">Selecione a origem</option>
+                {ORIGIN_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="space-y-1 text-sm">
               <span className="text-slate-700">Igreja de origem</span>
