@@ -24,6 +24,7 @@ function isMissingMembersListFunctionError(message: string, code?: string) {
 }
 
 function statusLabel(status: CaseSummaryItem["status"]) {
+  if (status === "pendente_matricula") return "PENDENTE";
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
   return "PAUSADO";
@@ -178,7 +179,12 @@ export default function DiscipuladoConvertidosPage() {
       if (!active) return;
       const activeCaseMemberIds = new Set(
         safeCases
-          .filter((item) => item.status === "em_discipulado" || item.status === "pausado")
+          .filter(
+            (item) =>
+              item.status === "pendente_matricula" ||
+              item.status === "em_discipulado" ||
+              item.status === "pausado"
+          )
           .map((item) => item.member_id)
       );
       const mappedMembers = ccmRows
@@ -305,6 +311,7 @@ export default function DiscipuladoConvertidosPage() {
             className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
           >
             <option value="todos">Todos</option>
+            <option value="pendente_matricula">Pendente matrícula</option>
             <option value="em_discipulado">Em discipulado</option>
             <option value="pausado">Pausado</option>
             <option value="concluido">Concluído</option>

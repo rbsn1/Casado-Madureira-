@@ -13,7 +13,7 @@ type CaseItem = {
   id: string;
   member_id: string;
   congregation_id: string;
-  status: "em_discipulado" | "concluido" | "pausado";
+  status: "pendente_matricula" | "em_discipulado" | "concluido" | "pausado";
   notes: string | null;
   assigned_to: string | null;
   created_at: string;
@@ -116,6 +116,7 @@ const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
 ];
 
 function caseBadgeValue(status: CaseItem["status"]) {
+  if (status === "pendente_matricula") return "PENDENTE";
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
   return "PAUSADO";
@@ -243,7 +244,7 @@ export default function DiscipulandoDetalhePage() {
       id: String(baseCase.id ?? ""),
       member_id: String(baseCase.member_id ?? ""),
       congregation_id: String(baseCase.congregation_id ?? ""),
-      status: (baseCase.status ?? "em_discipulado") as CaseItem["status"],
+      status: (baseCase.status ?? "pendente_matricula") as CaseItem["status"],
       notes: baseCase.notes ?? null,
       assigned_to: baseCase.assigned_to ?? null,
       created_at: String(baseCase.created_at ?? new Date().toISOString()),
@@ -867,7 +868,7 @@ export default function DiscipulandoDetalhePage() {
           <p className="text-sm text-slate-600">Atualizado em {caseData?.updated_at ? formatDateBR(caseData.updated_at) : "-"}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge value={caseBadgeValue(caseData?.status ?? "em_discipulado")} />
+          <StatusBadge value={caseBadgeValue(caseData?.status ?? "pendente_matricula")} />
           <button
             type="button"
             onClick={() => router.push("/discipulado/convertidos")}
@@ -1092,6 +1093,11 @@ export default function DiscipulandoDetalhePage() {
             <p className="text-xs text-slate-600">
               {doneModules}/{totalModules} concluídos ({progressPercent}%)
             </p>
+            {caseData?.status === "pendente_matricula" ? (
+              <p className="mt-1 text-xs font-medium text-amber-700">
+                Case pendente: matricule em um módulo para iniciar o discipulado.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             {caseData?.status === "em_discipulado" ? (
@@ -1127,7 +1133,8 @@ export default function DiscipulandoDetalhePage() {
         <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
           <h4 className="text-sm font-semibold text-slate-900">Matrícula em módulos</h4>
           <p className="mt-1 text-xs text-slate-600">
-            O mesmo membro pode ser matriculado em vários módulos. Selecione um módulo ativo para adicionar.
+            O mesmo membro pode ser matriculado em vários módulos. Na primeira matrícula o case muda
+            automaticamente para Em discipulado.
           </p>
           <div className="mt-3 grid gap-2 md:grid-cols-3">
             <label className="space-y-1 text-sm md:col-span-2">

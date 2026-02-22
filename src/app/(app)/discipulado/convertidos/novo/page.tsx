@@ -69,7 +69,11 @@ async function listMembersWithFallback() {
         if (!item.member_id) return;
         const memberId = String(item.member_id);
         anyCaseMembers.add(memberId);
-        if (item.status === "em_discipulado" || item.status === "pausado") {
+        if (
+          item.status === "pendente_matricula" ||
+          item.status === "em_discipulado" ||
+          item.status === "pausado"
+        ) {
           activeCaseMembers.add(memberId);
         }
       });
@@ -184,7 +188,11 @@ async function listMembersWithFallback() {
       if (!item.member_id) return;
       const memberId = String(item.member_id);
       anyCaseMemberIds.add(memberId);
-      if (item.status === "em_discipulado" || item.status === "pausado") {
+      if (
+        item.status === "pendente_matricula" ||
+        item.status === "em_discipulado" ||
+        item.status === "pausado"
+      ) {
         activeCaseMemberIds.add(memberId);
       }
     });
@@ -301,6 +309,7 @@ export default function NovoConvertidoDiscipuladoPage() {
 
     const payload = {
       member_id: memberId,
+      status: "pendente_matricula" as const,
       assigned_to: authData.user?.id ?? null,
       notes: notes.trim() || null,
       welcomed_on: welcomedOnValue,
@@ -321,6 +330,18 @@ export default function NovoConvertidoDiscipuladoPage() {
 
     if (error.code === "23505") {
       return { ok: false as const, errorMessage: "Já existe um case ativo para este membro." };
+    }
+
+    if (
+      error.message.includes("discipleship_cases_status_check") ||
+      error.message.includes("status in") ||
+      error.message.includes("pendente_matricula")
+    ) {
+      return {
+        ok: false as const,
+        errorMessage:
+          "Este ambiente ainda não aceita o status pendente_matricula. Aplique a migração 0043_discipulado_status_pendente_matricula.sql."
+      };
     }
 
     if (error.message === "not allowed") {

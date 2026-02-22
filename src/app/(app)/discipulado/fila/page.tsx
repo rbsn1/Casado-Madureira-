@@ -11,6 +11,7 @@ import {
 import { criticalityLabel, criticalityRank } from "@/lib/discipleshipCriticality";
 
 function statusLabel(status: DiscipleshipCaseSummaryItem["status"]) {
+  if (status === "pendente_matricula") return "PENDENTE";
   if (status === "em_discipulado") return "EM_DISCIPULADO";
   if (status === "concluido") return "CONCLUIDO";
   return "PAUSADO";
@@ -62,7 +63,12 @@ export default function DiscipuladoFilaPage() {
     const base =
       statusFilter === "todos"
         ? cases
-        : cases.filter((item) => item.status === "em_discipulado" || item.status === "pausado");
+        : cases.filter(
+            (item) =>
+              item.status === "pendente_matricula" ||
+              item.status === "em_discipulado" ||
+              item.status === "pausado"
+          );
 
     return [...base].sort((a, b) => {
       const rankDiff = criticalityRank(b.criticality) - criticalityRank(a.criticality);
@@ -100,7 +106,7 @@ export default function DiscipuladoFilaPage() {
             onChange={(event) => setStatusFilter(event.target.value)}
             className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
           >
-            <option value="ativos">Ativos/Pausados</option>
+            <option value="ativos">Pendentes/Ativos/Pausados</option>
             <option value="todos">Todos</option>
           </select>
           <Link

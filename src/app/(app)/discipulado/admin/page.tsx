@@ -288,7 +288,7 @@ export default function DiscipuladoAdminPage() {
     let openCasesQuery = supabaseClient
       .from("discipleship_cases")
       .select("*", { count: "exact", head: true })
-      .in("status", ["em_discipulado", "pausado"]);
+      .in("status", ["pendente_matricula", "em_discipulado", "pausado"]);
 
     let totalCasesQuery = supabaseClient
       .from("discipleship_cases")

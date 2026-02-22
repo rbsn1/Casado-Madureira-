@@ -1,6 +1,6 @@
 import { supabaseClient } from "@/lib/supabaseClient";
 
-export type DiscipleshipCaseStatus = "em_discipulado" | "concluido" | "pausado";
+export type DiscipleshipCaseStatus = "pendente_matricula" | "em_discipulado" | "concluido" | "pausado";
 
 export type DiscipleshipCaseSummaryItem = {
   case_id: string;
@@ -71,7 +71,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
         member_phone: item.member_phone ?? null,
         assigned_to: item.assigned_to ?? null,
         discipulador_email: item.discipulador_email ?? null,
-        status: (item.status ?? "em_discipulado") as DiscipleshipCaseStatus,
+        status: (item.status ?? "pendente_matricula") as DiscipleshipCaseStatus,
         notes: item.notes ?? null,
         updated_at: String(item.updated_at ?? new Date().toISOString()),
         done_modules: Number(item.done_modules ?? 0),
