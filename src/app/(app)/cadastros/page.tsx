@@ -180,7 +180,11 @@ function CadastrosContent() {
     const mesFiltro = searchParams.get("mes");
 
     const buildPessoasQuery = (columns: string) => {
-      let query = client.from("pessoas").select(columns).order("created_at", { ascending: false });
+      let query = client
+        .from("pessoas")
+        .select(columns)
+        .eq("cadastro_origem", "ccm")
+        .order("created_at", { ascending: false });
 
       if (igrejaFiltro) {
         if (igrejaFiltro === "__null") {

@@ -55,6 +55,7 @@ export default function RelatoriosPage() {
       let query = supabaseClient
         .from("pessoas")
         .select("nome_completo, telefone_whatsapp, origem, created_at")
+        .eq("cadastro_origem", "ccm")
         .order("created_at", { ascending: false });
       query = applyRange(query, "created_at");
       const { data, error } = await query;
@@ -103,6 +104,7 @@ export default function RelatoriosPage() {
         supabaseClient
           .from("pessoas")
           .select("created_at")
+          .eq("cadastro_origem", "ccm")
           .gte("created_at", startYear.toISOString())
           .lte("created_at", endYear.toISOString()),
         supabaseClient.from("batismos").select("data").gte("data", `${year}-01-01`).lte("data", `${year}-12-31`)
@@ -137,6 +139,7 @@ export default function RelatoriosPage() {
         supabaseClient
           .from("pessoas")
           .select("id, nome_completo, telefone_whatsapp, origem, created_at")
+          .eq("cadastro_origem", "ccm")
           .order("created_at", { ascending: false }),
         supabaseClient.from("integracao_novos_convertidos").select("pessoa_id, status, responsavel_id"),
         supabaseClient.from("batismos").select("pessoa_id, data")

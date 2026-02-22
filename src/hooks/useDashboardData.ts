@@ -145,7 +145,8 @@ export function useDashboardData() {
             {
                 let baseCountQuery = supabaseClient
                     .from("pessoas")
-                    .select("id", { count: "exact", head: true });
+                    .select("id", { count: "exact", head: true })
+                    .eq("cadastro_origem", "ccm");
 
                 if (isAdminMaster && congregationFilter) {
                     baseCountQuery = baseCountQuery.eq("congregation_id", congregationFilter);

@@ -150,6 +150,7 @@ async function listMembersWithFallback() {
     const { data: peopleData, error: peopleError } = await sb
       .from("pessoas")
       .select("id, nome_completo, telefone_whatsapp, created_at")
+      .eq("cadastro_origem", "ccm")
       .order("created_at", { ascending: false })
       .range(from, to);
 

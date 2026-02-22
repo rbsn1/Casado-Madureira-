@@ -33,7 +33,10 @@ function NovosConvertidosContent() {
     setStatusMessage("");
 
     const [pessoasResult, integracaoResult] = await Promise.all([
-      supabaseClient.from("pessoas").select("id, nome_completo, telefone_whatsapp"),
+      supabaseClient
+        .from("pessoas")
+        .select("id, nome_completo, telefone_whatsapp")
+        .eq("cadastro_origem", "ccm"),
       supabaseClient
         .from("integracao_novos_convertidos")
         .select("id, pessoa_id, status, responsavel_id, ultima_interacao, created_at")
