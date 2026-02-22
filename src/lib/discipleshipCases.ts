@@ -19,6 +19,12 @@ export type DiscipleshipCaseSummaryItem = {
   days_to_confra: number | null;
 };
 
+type LoadDiscipleshipCaseSummariesOptions = {
+  statusFilter?: string | null;
+  targetCongregationId?: string | null;
+  rowsLimit?: number;
+};
+
 type FallbackCaseRow = {
   id: string;
   member_id: string;
@@ -45,7 +51,10 @@ function isMissingCriticalityColumnsError(message: string, code?: string) {
   );
 }
 
-export async function loadDiscipleshipCaseSummariesWithFallback() {
+export async function loadDiscipleshipCaseSummariesWithFallback(
+  options: LoadDiscipleshipCaseSummariesOptions = {}
+) {
+  const { statusFilter = null, targetCongregationId = null, rowsLimit = 500 } = options;
   if (!supabaseClient) {
     return {
       data: [] as DiscipleshipCaseSummaryItem[],
@@ -55,9 +64,9 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
   }
 
   const { data: rpcData, error: rpcError } = await supabaseClient.rpc("list_discipleship_cases_summary", {
-    status_filter: null,
-    target_congregation_id: null,
-    rows_limit: 500
+    status_filter: statusFilter,
+    target_congregation_id: targetCongregationId,
+    rows_limit: rowsLimit
   });
 
   if (!rpcError) {
@@ -91,22 +100,38 @@ export async function loadDiscipleshipCaseSummariesWithFallback() {
   const baseSelect =
     "id, member_id, assigned_to, status, notes, updated_at, criticality, negative_contact_count, days_to_confra";
   let hasCriticalityColumns = true;
-  let casesResult: {
-    data: unknown[] | null;
-    error: { message: string; code?: string } | null;
-  } = await supabaseClient
+  let baseQuery = supabaseClient
     .from("discipleship_cases")
     .select(baseSelect)
     .order("updated_at", { ascending: false })
-    .limit(500);
+    .limit(rowsLimit);
+
+  if (targetCongregationId) {
+    baseQuery = baseQuery.eq("congregation_id", targetCongregationId);
+  }
+  if (statusFilter) {
+    baseQuery = baseQuery.eq("status", statusFilter);
+  }
+
+  let casesResult: {
+    data: unknown[] | null;
+    error: { message: string; code?: string } | null;
+  } = await baseQuery;
 
   if (casesResult.error && isMissingCriticalityColumnsError(casesResult.error.message, casesResult.error.code)) {
     hasCriticalityColumns = false;
-    casesResult = await supabaseClient
+    let fallbackQuery = supabaseClient
       .from("discipleship_cases")
       .select("id, member_id, assigned_to, status, notes, updated_at")
       .order("updated_at", { ascending: false })
-      .limit(500);
+      .limit(rowsLimit);
+    if (targetCongregationId) {
+      fallbackQuery = fallbackQuery.eq("congregation_id", targetCongregationId);
+    }
+    if (statusFilter) {
+      fallbackQuery = fallbackQuery.eq("status", statusFilter);
+    }
+    casesResult = await fallbackQuery;
   }
 
   if (casesResult.error) {
