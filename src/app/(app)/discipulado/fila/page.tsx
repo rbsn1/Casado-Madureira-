@@ -187,7 +187,7 @@ function StatusColumn({ column, canOpenCase }: { column: StatusColumnModel; canO
 function OriginSection({ section, canOpenCase }: { section: OriginSectionModel; canOpenCase: boolean }) {
   return (
     <section className="discipulado-panel p-3 sm:p-4">
-      <div className="mb-3 flex flex-wrap items-center gap-2 border-b border-slate-200/80 pb-3">
+      <div className="sticky top-2 z-20 -mx-3 mb-3 flex flex-wrap items-center gap-2 border-b border-slate-200/80 bg-white/95 px-3 pb-3 pt-2 backdrop-blur-sm sm:-mx-4 sm:px-4">
         <h3 className="text-sm font-semibold text-sky-900">{section.title}</h3>
         <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800">Total: {section.total}</span>
         <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-800">Críticos: {section.criticalCount}</span>
