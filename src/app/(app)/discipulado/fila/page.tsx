@@ -228,7 +228,7 @@ export default function DiscipuladoFilaPage() {
   const [statusFilter, setStatusFilter] = useState("ativos");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
-  const [kanbanGroupMode, setKanbanGroupMode] = useState<KanbanGroupMode>("status");
+  const [kanbanGroupMode, setKanbanGroupMode] = useState<KanbanGroupMode>("origin");
 
   useEffect(() => {
     let active = true;
@@ -360,13 +360,16 @@ export default function DiscipuladoFilaPage() {
             >
               Lista
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("kanban")}
-              className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                viewMode === "kanban" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
-              }`}
-            >
+              <button
+                type="button"
+                onClick={() => {
+                  setViewMode("kanban");
+                  setKanbanGroupMode("origin");
+                }}
+                className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                  viewMode === "kanban" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
               Kanban
             </button>
           </div>
