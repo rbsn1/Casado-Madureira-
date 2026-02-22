@@ -321,7 +321,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="40px"
-                    className="object-cover object-center scale-[1.36]"
+                    className="object-cover object-center"
                     priority
                   />
                 </div>
@@ -421,7 +421,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     alt="Logo Discipulado Madureira"
                     fill
                     sizes="48px"
-                    className="object-cover object-center scale-[1.36]"
+                    className="object-cover object-center"
                   />
                 </div>
               ) : null}
