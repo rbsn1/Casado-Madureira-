@@ -10,6 +10,8 @@ import {
 } from "@/lib/discipleshipCases";
 import { criticalityLabel, criticalityRank } from "@/lib/discipleshipCriticality";
 
+const PAGE_SIZE = 20;
+
 function statusLabel(status: DiscipleshipCaseSummaryItem["status"]) {
   if (status === "pendente_matricula") return "PENDENTE";
   if (status === "em_discipulado") return "EM_DISCIPULADO";
@@ -23,6 +25,7 @@ export default function DiscipuladoFilaPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [statusFilter, setStatusFilter] = useState("ativos");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
     let active = true;
@@ -82,6 +85,13 @@ export default function DiscipuladoFilaPage() {
     });
   }, [cases, statusFilter]);
 
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [statusFilter, cases.length]);
+
+  const visibleCases = useMemo(() => orderedCases.slice(0, visibleCount), [orderedCases, visibleCount]);
+  const hasMoreCases = visibleCount < orderedCases.length;
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
@@ -122,11 +132,15 @@ export default function DiscipuladoFilaPage() {
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{statusMessage}</p>
       ) : null}
 
+      <p className="text-xs text-slate-600">
+        Exibindo {Math.min(visibleCases.length, orderedCases.length)} de {orderedCases.length} casos.
+      </p>
+
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {!orderedCases.length ? (
           <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso na fila.</div>
         ) : null}
-        {orderedCases.map((item) => {
+        {visibleCases.map((item) => {
           const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
           const cardContent = (
             <div className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
@@ -170,6 +184,18 @@ export default function DiscipuladoFilaPage() {
           );
         })}
       </div>
+
+      {hasMoreCases ? (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+            className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-50"
+          >
+            Carregar mais 20
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
