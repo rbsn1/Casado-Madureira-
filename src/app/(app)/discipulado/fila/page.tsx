@@ -528,10 +528,12 @@ export default function DiscipuladoFilaPage() {
   }, [activeConfraternizacaoErrorMessage]);
 
   const orderedCases = useMemo<QueueCase[]>(() => {
+    // Regra de negócio: case confirmado na confraternização não aparece em "Em Acolhimento".
+    const unconfirmedCases = cases.filter((item) => item.confraternizacao_confirmada !== true);
     const base =
       statusFilter === "todos"
-        ? cases
-        : cases.filter(
+        ? unconfirmedCases
+        : unconfirmedCases.filter(
             (item) =>
               item.status === "pendente_matricula" ||
               item.status === "em_discipulado" ||
@@ -651,6 +653,7 @@ export default function DiscipuladoFilaPage() {
       return;
     }
 
+    // Atualização local imediata: confirmou some do painel; desconfirmou volta (respeitando filtros).
     setCases((prev) =>
       prev.map((caseItem) =>
         caseItem.case_id === item.case_id
