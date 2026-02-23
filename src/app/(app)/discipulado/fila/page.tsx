@@ -353,13 +353,15 @@ export default function DiscipuladoFilaPage() {
         setStatusMessage(errorMessage);
         return;
       }
-      const { data: authData } = await supabaseClient.auth.getUser();
-      if (!active) return;
-      if (authData.user?.id) {
-        setCurrentUser({
-          id: authData.user.id,
-          email: authData.user.email ?? null
-        });
+      if (supabaseClient) {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        if (!active) return;
+        if (authData.user?.id) {
+          setCurrentUser({
+            id: authData.user.id,
+            email: authData.user.email ?? null
+          });
+        }
       }
       if (!hasCriticalityColumns) {
         setStatusMessage(
