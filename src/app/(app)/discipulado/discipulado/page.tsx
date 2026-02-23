@@ -3,14 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAuthScope } from "@/lib/authScope";
-import {
-  groupByModulo,
-  groupByTurno,
-  ModuloOption,
-  normalizeTurnoOrigem,
-  sortCases,
-  TurnoOrigem
-} from "@/lib/discipuladoPanels";
+import { groupByTurno, normalizeTurnoOrigem, sortCases, TurnoOrigem } from "@/lib/discipuladoPanels";
 import {
   DiscipleshipCaseSummaryItem,
   loadDiscipleshipCaseSummariesWithFallback
@@ -25,14 +18,10 @@ const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
   { key: "NAO_INFORMADO", label: "Não informado" }
 ];
 
-const TURNO_ENROLL_OPTIONS: Array<{
-  key: "MANHA" | "NOITE" | "EVENTO";
+type AssigneeOption = {
+  id: string;
   label: string;
-}> = [
-  { key: "MANHA", label: "Turma da manhã" },
-  { key: "NOITE", label: "Turma da noite" },
-  { key: "EVENTO", label: "Turma de evento" }
-];
+};
 
 function turnoLabel(key: TurnoOrigem) {
   return TURNOS.find((item) => item.key === key)?.label ?? "Não informado";
@@ -40,35 +29,16 @@ function turnoLabel(key: TurnoOrigem) {
 
 function CaseCard({
   item,
-  modules,
-  movingCaseId,
-  enrollingCaseId,
-  onMove,
-  onEnroll
+  assigneeOptions,
+  assigningCaseId,
+  onAssignResponsible
 }: {
   item: DiscipleshipCaseSummaryItem;
-  modules: ModuloOption[];
-  movingCaseId: string | null;
-  enrollingCaseId: string | null;
-  onMove: (caseId: string, moduloId: string | null) => Promise<void>;
-  onEnroll: (caseId: string, turno: "MANHA" | "NOITE" | "EVENTO", moduloId: string) => Promise<void>;
+  assigneeOptions: AssigneeOption[];
+  assigningCaseId: string | null;
+  onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
 }) {
-  const defaultModuleId = modules[0]?.id ?? "";
-  const [selectedTurno, setSelectedTurno] = useState<"MANHA" | "NOITE" | "EVENTO">(
-    item.turno_origem ?? "NOITE"
-  );
-  const [selectedModuloId, setSelectedModuloId] = useState(item.modulo_atual_id ?? defaultModuleId);
-  const isMoving = movingCaseId === item.case_id;
-  const isEnrolling = enrollingCaseId === item.case_id;
-  const isMatriculado = item.fase === "DISCIPULADO";
-
-  useEffect(() => {
-    setSelectedTurno(item.turno_origem ?? "NOITE");
-  }, [item.turno_origem]);
-
-  useEffect(() => {
-    setSelectedModuloId(item.modulo_atual_id ?? defaultModuleId);
-  }, [item.modulo_atual_id, defaultModuleId]);
+  const isAssigning = assigningCaseId === item.case_id;
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -81,86 +51,26 @@ function CaseCard({
       <p className="mt-2 text-xs text-slate-700">
         Dias para confra: <strong>{item.days_to_confra ?? "-"}</strong> • Negativos: <strong>{item.negative_contact_count}</strong>
       </p>
-      <div className="mt-2 flex items-center gap-2">
-        <span
-          className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
-            isMatriculado ? "bg-sky-100 text-sky-800" : "bg-amber-100 text-amber-800"
-          }`}
-        >
-          {isMatriculado ? "Matriculado" : "Aguardando matrícula"}
-        </span>
-        {item.confraternizacao_confirmada ? (
-          <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800">Confirmado confra</span>
-        ) : null}
-      </div>
 
-      {isMatriculado ? (
-        <label className="mt-3 block space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Mover para módulo</span>
-          <select
-            value={item.modulo_atual_id ?? ""}
-            onChange={(event) => {
-              const nextValue = event.target.value.trim();
-              void onMove(item.case_id, nextValue || null);
-            }}
-            disabled={isMoving}
-            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-          >
-            <option value="">Sem módulo</option>
-            {modules.map((module) => (
-              <option key={module.id} value={module.id}>
-                {module.nome}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <div className="mt-3 space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-          <p className="text-xs font-semibold text-amber-900">Matrícula em turma</p>
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-600">Turno escolhido</span>
-            <select
-              value={selectedTurno}
-              onChange={(event) => setSelectedTurno(event.target.value as "MANHA" | "NOITE" | "EVENTO")}
-              disabled={isEnrolling}
-              className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-            >
-              {TURNO_ENROLL_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-semibold text-slate-600">Turma / módulo</span>
-            <select
-              value={selectedModuloId}
-              onChange={(event) => setSelectedModuloId(event.target.value)}
-              disabled={isEnrolling}
-              className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-            >
-              <option value="">Selecionar turma</option>
-              {modules.map((module) => (
-                <option key={module.id} value={module.id}>
-                  {module.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            disabled={isEnrolling || !selectedModuloId}
-            onClick={() => {
-              if (!selectedModuloId) return;
-              void onEnroll(item.case_id, selectedTurno, selectedModuloId);
-            }}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isEnrolling ? "Matriculando..." : "Matricular no Discipulado"}
-          </button>
-        </div>
-      )}
+      <label className="mt-3 block space-y-1">
+        <span className="text-xs font-semibold text-slate-600">Acolhedor responsável</span>
+        <select
+          value={item.assigned_to ?? ""}
+          onChange={(event) => {
+            const selected = event.target.value.trim();
+            void onAssignResponsible(item.case_id, selected || null);
+          }}
+          disabled={isAssigning}
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+        >
+          <option value="">A definir</option>
+          {assigneeOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
     </article>
   );
 }
@@ -170,10 +80,13 @@ export default function DiscipuladoBoardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
-  const [modules, setModules] = useState<ModuloOption[]>([]);
-  const [movingCaseId, setMovingCaseId] = useState<string | null>(null);
-  const [enrollingCaseId, setEnrollingCaseId] = useState<string | null>(null);
   const [mobileTurno, setMobileTurno] = useState<TurnoOrigem>("MANHA");
+  const [assigningCaseId, setAssigningCaseId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string | null }>({
+    id: "",
+    email: null
+  });
+  const [assigneeDirectory, setAssigneeDirectory] = useState<AssigneeOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -194,36 +107,49 @@ export default function DiscipuladoBoardPage() {
         return;
       }
 
-      const [casesResult, modulesResult] = await Promise.all([
-        loadDiscipleshipCaseSummariesWithFallback(),
-        supabaseClient
-          ?.from("discipleship_modules")
-          .select("id, title, sort_order, is_active")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true })
-      ]);
-
+      const { data, errorMessage } = await loadDiscipleshipCaseSummariesWithFallback();
       if (!active) return;
 
-      if (casesResult.errorMessage) {
-        setStatusMessage(casesResult.errorMessage);
+      if (errorMessage) {
+        setStatusMessage(errorMessage);
       }
 
-      const discipuladoCases = (casesResult.data ?? []).filter(
-        (item) =>
-          item.fase === "DISCIPULADO" ||
-          (item.fase === "ACOLHIMENTO" && item.confraternizacao_confirmada === true)
-      );
-      setCases(discipuladoCases);
+      setCases((data ?? []).filter((item) => item.fase === "DISCIPULADO"));
 
-      if (modulesResult && !modulesResult.error) {
-        const mappedModules = (modulesResult.data ?? []).map((item) => ({
-          id: String(item.id),
-          nome: String(item.title ?? "Módulo"),
-          ordem: Number(item.sort_order ?? 0),
-          ativo: Boolean(item.is_active)
-        }));
-        setModules(mappedModules);
+      if (supabaseClient) {
+        const { data: authData } = await supabaseClient.auth.getUser();
+        if (!active) return;
+        if (authData.user?.id) {
+          setCurrentUser({
+            id: authData.user.id,
+            email: authData.user.email ?? null
+          });
+        }
+
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          const response = await fetch("/api/discipulado/assignees", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const payload = (await response.json()) as {
+              assignees?: Array<{ id: string; label: string }>;
+            };
+            const assignees = Array.isArray(payload.assignees)
+              ? payload.assignees
+                  .filter((item) => item?.id)
+                  .map((item) => ({
+                    id: String(item.id),
+                    label: String(item.label ?? "")
+                  }))
+              : [];
+            if (!active) return;
+            setAssigneeDirectory(assignees);
+          }
+        }
       }
 
       setLoading(false);
@@ -236,74 +162,69 @@ export default function DiscipuladoBoardPage() {
     };
   }, []);
 
+  const assigneeOptions = useMemo<AssigneeOption[]>(() => {
+    const map = new Map<string, string>();
+
+    for (const option of assigneeDirectory) {
+      map.set(option.id, option.label || `ID ${option.id.slice(0, 8)}`);
+    }
+
+    if (currentUser.id) {
+      const currentLabel = currentUser.email ?? "Você";
+      map.set(currentUser.id, currentLabel);
+    }
+
+    for (const item of cases) {
+      if (!item.assigned_to) continue;
+      if (map.has(item.assigned_to)) continue;
+      map.set(item.assigned_to, item.discipulador_email ?? `ID ${item.assigned_to.slice(0, 8)}`);
+    }
+
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => {
+        if (currentUser.id && a.id === currentUser.id) return -1;
+        if (currentUser.id && b.id === currentUser.id) return 1;
+        return a.label.localeCompare(b.label, "pt-BR");
+      });
+  }, [assigneeDirectory, cases, currentUser.email, currentUser.id]);
+
   const orderedCases = useMemo(() => sortCases(cases), [cases]);
   const byTurno = useMemo(() => groupByTurno(orderedCases), [orderedCases]);
 
-  async function handleMoveCase(caseId: string, moduloId: string | null) {
-    if (!supabaseClient || movingCaseId) return;
+  async function handleAssignResponsible(caseId: string, assignedTo: string | null) {
+    if (!supabaseClient || assigningCaseId) return;
 
-    setMovingCaseId(caseId);
+    setAssigningCaseId(caseId);
     setStatusMessage("");
 
     const { error } = await supabaseClient
       .from("discipleship_cases")
-      .update({ modulo_atual_id: moduloId })
+      .update({ assigned_to: assignedTo })
       .eq("id", caseId);
 
     if (error) {
       setStatusMessage(error.message);
-      setMovingCaseId(null);
+      setAssigningCaseId(null);
       return;
     }
 
     setCases((prev) =>
-      prev.map((item) =>
-        item.case_id === caseId
-          ? {
-              ...item,
-              modulo_atual_id: moduloId
-            }
-          : item
-      )
-    );
+      prev.map((item) => {
+        if (item.case_id !== caseId) return item;
+        const assigneeLabel = assignedTo
+          ? assigneeOptions.find((option) => option.id === assignedTo)?.label ?? item.discipulador_email
+          : null;
 
-    setMovingCaseId(null);
-  }
-
-  async function handleEnrollCase(caseId: string, turno: "MANHA" | "NOITE" | "EVENTO", moduloId: string) {
-    if (!supabaseClient || enrollingCaseId) return;
-    setEnrollingCaseId(caseId);
-    setStatusMessage("");
-
-    const { error } = await supabaseClient
-      .from("discipleship_cases")
-      .update({
-        fase: "DISCIPULADO",
-        turno_origem: turno,
-        modulo_atual_id: moduloId
+        return {
+          ...item,
+          assigned_to: assignedTo,
+          discipulador_email: assigneeLabel
+        };
       })
-      .eq("id", caseId);
-
-    if (error) {
-      setStatusMessage(error.message);
-      setEnrollingCaseId(null);
-      return;
-    }
-
-    setCases((prev) =>
-      prev.map((item) =>
-        item.case_id === caseId
-          ? {
-              ...item,
-              fase: "DISCIPULADO",
-              turno_origem: turno,
-              modulo_atual_id: moduloId
-            }
-          : item
-      )
     );
 
-    setEnrollingCaseId(null);
+    setAssigningCaseId(null);
   }
 
   if (!hasAccess) {
@@ -314,10 +235,8 @@ export default function DiscipuladoBoardPage() {
     <div className="space-y-5">
       <div>
         <p className="text-sm text-sky-700">Discipulado</p>
-        <h2 className="text-xl font-semibold text-sky-950">Discipulado</h2>
-        <p className="mt-1 text-xs text-slate-600">
-          Cases matriculados e confirmados da Confraternização para matrícula em turma (turno + módulo).
-        </p>
+        <h2 className="text-xl font-semibold text-sky-950">Em Discipulado</h2>
+        <p className="mt-1 text-xs text-slate-600">Painel focado na atribuição de responsável por case.</p>
       </div>
 
       {statusMessage ? (
@@ -348,87 +267,49 @@ export default function DiscipuladoBoardPage() {
           </div>
 
           <div className="space-y-4 md:hidden">
-            {(() => {
-              const turnoCases = byTurno[mobileTurno] ?? [];
-              const moduloGroups = groupByModulo(turnoCases, modules).map((group) => ({
-                ...group,
-                items: sortCases(group.items)
-              }));
-
-              return (
-                <section className="discipulado-panel p-4">
-                  <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
-                  <div className="mt-3 space-y-3">
-                    {moduloGroups.map((group) => (
-                      <details key={String(group.id ?? "sem-modulo")} className="rounded-lg border border-slate-200 bg-white">
-                        <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900">
-                          {group.nome} ({group.items.length})
-                        </summary>
-                        <div className="space-y-2 border-t border-slate-100 p-3">
-                          {!group.items.length ? (
-                            <p className="text-xs text-slate-500">Sem cases neste módulo.</p>
-                          ) : (
-                            group.items.map((item) => (
-                              <CaseCard
-                                key={item.case_id}
-                                item={item}
-                                modules={modules}
-                                movingCaseId={movingCaseId}
-                                enrollingCaseId={enrollingCaseId}
-                                onMove={handleMoveCase}
-                                onEnroll={handleEnrollCase}
-                              />
-                            ))
-                          )}
-                        </div>
-                      </details>
-                    ))}
-                  </div>
-                </section>
-              );
-            })()}
+            <section className="discipulado-panel p-4">
+              <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
+              <div className="mt-3 space-y-2">
+                {!(byTurno[mobileTurno] ?? []).length ? (
+                  <p className="text-xs text-slate-500">Sem cases neste turno.</p>
+                ) : (
+                  (byTurno[mobileTurno] ?? []).map((item) => (
+                    <CaseCard
+                      key={item.case_id}
+                      item={item}
+                      assigneeOptions={assigneeOptions}
+                      assigningCaseId={assigningCaseId}
+                      onAssignResponsible={handleAssignResponsible}
+                    />
+                  ))
+                )}
+              </div>
+            </section>
           </div>
 
           <div className="hidden space-y-4 md:block">
             {TURNOS.map((turno) => {
               const turnoCases = byTurno[turno.key] ?? [];
-              const moduloGroups = groupByModulo(turnoCases, modules).map((group) => ({
-                ...group,
-                items: sortCases(group.items)
-              }));
 
               return (
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    {moduloGroups.map((group) => (
-                      <article key={String(group.id ?? "sem-modulo")} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <div className="mb-2 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-slate-900">
-                            {group.nome} ({group.items.length})
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          {!group.items.length ? (
-                            <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
-                              Sem cases neste módulo.
-                            </p>
-                          ) : (
-                            group.items.map((item) => (
-                              <CaseCard
-                                key={item.case_id}
-                                item={item}
-                                modules={modules}
-                                movingCaseId={movingCaseId}
-                                enrollingCaseId={enrollingCaseId}
-                                onMove={handleMoveCase}
-                                onEnroll={handleEnrollCase}
-                              />
-                            ))
-                          )}
-                        </div>
-                      </article>
-                    ))}
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {!turnoCases.length ? (
+                      <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+                        Sem cases neste turno.
+                      </p>
+                    ) : (
+                      turnoCases.map((item) => (
+                        <CaseCard
+                          key={item.case_id}
+                          item={item}
+                          assigneeOptions={assigneeOptions}
+                          assigningCaseId={assigningCaseId}
+                          onAssignResponsible={handleAssignResponsible}
+                        />
+                      ))
+                    )}
                   </div>
                 </section>
               );
