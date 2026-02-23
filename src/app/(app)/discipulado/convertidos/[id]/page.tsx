@@ -225,6 +225,11 @@ export default function DiscipulandoDetalhePage() {
   const [baptismNotes, setBaptismNotes] = useState("");
   const [baptisms, setBaptisms] = useState<BaptismItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const isContactStageCompleted = useMemo(
+    () => contactAttempts.some((attempt) => attempt.outcome === "contacted"),
+    [contactAttempts]
+  );
+  const canRegisterContactAttempt = hasContactAttemptsSupport && !isContactStageCompleted;
 
   const loadCase = useCallback(async () => {
     if (!supabaseClient || !caseId) return;
@@ -754,6 +759,10 @@ export default function DiscipulandoDetalhePage() {
       setStatusMessage(
         "Registro de tentativas indisponível neste ambiente. Aplique a migração 0025_discipulado_criticidade_contatos_confra.sql."
       );
+      return;
+    }
+    if (isContactStageCompleted) {
+      setStatusMessage("Etapa de contato já concluída com 'Contato realizado'.");
       return;
     }
 
@@ -1325,7 +1334,7 @@ export default function DiscipulandoDetalhePage() {
                 value={contactOutcomeDraft}
                 onChange={(event) => setContactOutcomeDraft(event.target.value as ContactAttemptOutcome)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                disabled={!hasContactAttemptsSupport}
+                disabled={!canRegisterContactAttempt}
               >
                 <option value="contacted">Contato realizado</option>
                 <option value="scheduled_visit">Visita agendada</option>
@@ -1341,7 +1350,7 @@ export default function DiscipulandoDetalhePage() {
                 value={contactChannelDraft}
                 onChange={(event) => setContactChannelDraft(event.target.value as ContactAttemptChannel)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                disabled={!hasContactAttemptsSupport}
+                disabled={!canRegisterContactAttempt}
               >
                 <option value="whatsapp">WhatsApp</option>
                 <option value="ligacao">Ligação</option>
@@ -1356,13 +1365,13 @@ export default function DiscipulandoDetalhePage() {
                 value={contactNotesDraft}
                 onChange={(event) => setContactNotesDraft(event.target.value)}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                disabled={!hasContactAttemptsSupport}
+                disabled={!canRegisterContactAttempt}
               />
             </label>
             <button
               type="button"
               onClick={handleRegisterContactAttempt}
-              disabled={!hasContactAttemptsSupport}
+              disabled={!canRegisterContactAttempt}
               className="mt-3 rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Registrar tentativa
@@ -1372,6 +1381,11 @@ export default function DiscipulandoDetalhePage() {
                 Recurso indisponível neste banco. Aplique a migração
                 {" "}
                 <code>0025_discipulado_criticidade_contatos_confra.sql</code>.
+              </p>
+            ) : null}
+            {hasContactAttemptsSupport && isContactStageCompleted ? (
+              <p className="mt-2 text-xs font-medium text-emerald-700">
+                Etapa concluída: contato realizado. Novas tentativas estão bloqueadas.
               </p>
             ) : null}
             {contactAttempts.length ? (
