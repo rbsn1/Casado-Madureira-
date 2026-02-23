@@ -197,6 +197,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [authResolved, setAuthResolved] = useState(false);
   const [discipuladoNavOrder, setDiscipuladoNavOrder] = useState<string[]>([]);
+  const [draggingDiscipuladoHref, setDraggingDiscipuladoHref] = useState<string | null>(null);
+  const [dragOverDiscipuladoHref, setDragOverDiscipuladoHref] = useState<string | null>(null);
   const hasCadastroDiscipuladoRole =
     roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
@@ -231,15 +233,29 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     }
   }
 
-  function handleMoveDiscipuladoItem(items: NavItem[], href: string, direction: -1 | 1) {
+  function moveDiscipuladoItem(items: NavItem[], sourceHref: string, targetHref: string) {
     const currentOrder = items.map((item) => item.href);
-    const index = currentOrder.indexOf(href);
-    if (index < 0) return;
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+    const sourceIndex = currentOrder.indexOf(sourceHref);
+    const targetIndex = currentOrder.indexOf(targetHref);
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
     const nextOrder = [...currentOrder];
-    [nextOrder[index], nextOrder[targetIndex]] = [nextOrder[targetIndex], nextOrder[index]];
+    const [movedHref] = nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, movedHref);
     persistDiscipuladoOrder(nextOrder);
+  }
+
+  function resetDiscipuladoDragState() {
+    setDraggingDiscipuladoHref(null);
+    setDragOverDiscipuladoHref(null);
+  }
+
+  function handleDropDiscipuladoItem(items: NavItem[], targetHref: string) {
+    if (!draggingDiscipuladoHref || draggingDiscipuladoHref === targetHref) {
+      resetDiscipuladoDragState();
+      return;
+    }
+    moveDiscipuladoItem(items, draggingDiscipuladoHref, targetHref);
+    resetDiscipuladoDragState();
   }
 
   const visibleSections = navSections
@@ -422,14 +438,29 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item, index) => {
+                    {section.items.map((item) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
                       const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
-                      const canMoveUp = index > 0;
-                      const canMoveDown = index < section.items.length - 1;
+                      const isDropTarget =
+                        isDiscipuladoSection &&
+                        dragOverDiscipuladoHref === item.href &&
+                        draggingDiscipuladoHref !== item.href;
                       return (
-                        <li key={item.href} className="flex items-center gap-1">
+                        <li
+                          key={item.href}
+                          className={clsx("flex items-center gap-1 rounded-full transition", isDropTarget && "bg-sky-800/25")}
+                          onDragOver={(event) => {
+                            if (!isDiscipuladoSection || !draggingDiscipuladoHref || draggingDiscipuladoHref === item.href) return;
+                            event.preventDefault();
+                            setDragOverDiscipuladoHref(item.href);
+                          }}
+                          onDrop={(event) => {
+                            if (!isDiscipuladoSection) return;
+                            event.preventDefault();
+                            handleDropDiscipuladoItem(section.items, item.href);
+                          }}
+                        >
                           <Link
                             href={item.href}
                             className={clsx(
@@ -461,34 +492,29 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             <div className="flex shrink-0 items-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, -1)}
-                                disabled={!canMoveUp}
-                                aria-label={`Mover ${item.label} para cima`}
+                                draggable
+                                onDragStart={(event) => {
+                                  setDraggingDiscipuladoHref(item.href);
+                                  setDragOverDiscipuladoHref(item.href);
+                                  event.dataTransfer.effectAllowed = "move";
+                                  event.dataTransfer.setData("text/plain", item.href);
+                                }}
+                                onDragEnd={resetDiscipuladoDragState}
+                                aria-label={`Arrastar ${item.label}`}
                                 className={clsx(
-                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  "inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border transition active:cursor-grabbing",
                                   isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
-                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35"
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
+                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20"
                                 )}
                               >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-                                  <path d="m6 14 6-6 6 6" />
-                                </svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, 1)}
-                                disabled={!canMoveDown}
-                                aria-label={`Mover ${item.label} para baixo`}
-                                className={clsx(
-                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
-                                  isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
-                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35"
-                                )}
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-                                  <path d="m6 10 6 6 6-6" />
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                                  <circle cx="8" cy="7" r="1.2" />
+                                  <circle cx="8" cy="12" r="1.2" />
+                                  <circle cx="8" cy="17" r="1.2" />
+                                  <circle cx="16" cy="7" r="1.2" />
+                                  <circle cx="16" cy="12" r="1.2" />
+                                  <circle cx="16" cy="17" r="1.2" />
                                 </svg>
                               </button>
                             </div>
@@ -663,14 +689,29 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item, index) => {
+                    {section.items.map((item) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
                       const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
-                      const canMoveUp = index > 0;
-                      const canMoveDown = index < section.items.length - 1;
+                      const isDropTarget =
+                        isDiscipuladoSection &&
+                        dragOverDiscipuladoHref === item.href &&
+                        draggingDiscipuladoHref !== item.href;
                       return (
-                        <li key={item.href} className="flex items-center gap-1">
+                        <li
+                          key={item.href}
+                          className={clsx("flex items-center gap-1 rounded-full transition", isDropTarget && "bg-sky-800/30")}
+                          onDragOver={(event) => {
+                            if (!isDiscipuladoSection || !draggingDiscipuladoHref || draggingDiscipuladoHref === item.href) return;
+                            event.preventDefault();
+                            setDragOverDiscipuladoHref(item.href);
+                          }}
+                          onDrop={(event) => {
+                            if (!isDiscipuladoSection) return;
+                            event.preventDefault();
+                            handleDropDiscipuladoItem(section.items, item.href);
+                          }}
+                        >
                           <Link
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
@@ -703,34 +744,29 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             <div className="flex shrink-0 items-center gap-1">
                               <button
                                 type="button"
-                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, -1)}
-                                disabled={!canMoveUp}
-                                aria-label={`Mover ${item.label} para cima`}
+                                draggable
+                                onDragStart={(event) => {
+                                  setDraggingDiscipuladoHref(item.href);
+                                  setDragOverDiscipuladoHref(item.href);
+                                  event.dataTransfer.effectAllowed = "move";
+                                  event.dataTransfer.setData("text/plain", item.href);
+                                }}
+                                onDragEnd={resetDiscipuladoDragState}
+                                aria-label={`Arrastar ${item.label}`}
                                 className={clsx(
-                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  "inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border transition active:cursor-grabbing",
                                   isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
-                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-35"
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
+                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700"
                                 )}
                               >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-                                  <path d="m6 14 6-6 6 6" />
-                                </svg>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, 1)}
-                                disabled={!canMoveDown}
-                                aria-label={`Mover ${item.label} para baixo`}
-                                className={clsx(
-                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
-                                  isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
-                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-35"
-                                )}
-                              >
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-                                  <path d="m6 10 6 6 6-6" />
+                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
+                                  <circle cx="8" cy="7" r="1.2" />
+                                  <circle cx="8" cy="12" r="1.2" />
+                                  <circle cx="8" cy="17" r="1.2" />
+                                  <circle cx="16" cy="7" r="1.2" />
+                                  <circle cx="16" cy="12" r="1.2" />
+                                  <circle cx="16" cy="17" r="1.2" />
                                 </svg>
                               </button>
                             </div>
