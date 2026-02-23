@@ -20,6 +20,8 @@ export type DiscipleshipCaseSummaryItem = {
   confraternizacao_id: string | null;
   confraternizacao_confirmada: boolean;
   confraternizacao_confirmada_em: string | null;
+  confraternizacao_compareceu: boolean;
+  confraternizacao_compareceu_em: string | null;
   fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO";
   modulo_atual_id: string | null;
   turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
@@ -48,6 +50,8 @@ type ExtraCaseRow = {
   confraternizacao_id: string | null;
   confraternizacao_confirmada: boolean | null;
   confraternizacao_confirmada_em: string | null;
+  confraternizacao_compareceu: boolean | null;
+  confraternizacao_compareceu_em: string | null;
   fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO" | null;
   modulo_atual_id: string | null;
   turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
@@ -74,6 +78,8 @@ function isMissingExtraColumnsError(message: string, code?: string) {
     message.includes("confraternizacao_id") ||
     message.includes("confraternizacao_confirmada") ||
     message.includes("confraternizacao_confirmada_em") ||
+    message.includes("confraternizacao_compareceu") ||
+    message.includes("confraternizacao_compareceu_em") ||
     message.includes("fase") ||
     message.includes("modulo_atual_id") ||
     message.includes("turno_origem")
@@ -87,7 +93,7 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
   const { data, error } = await supabaseClient
     .from("discipleship_cases")
     .select(
-      "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, fase, modulo_atual_id, turno_origem"
+      "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em, fase, modulo_atual_id, turno_origem"
     )
     .in("id", caseIds);
 
@@ -103,6 +109,8 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
         confraternizacao_id: item.confraternizacao_id ?? null,
         confraternizacao_confirmada: Boolean(item.confraternizacao_confirmada),
         confraternizacao_confirmada_em: item.confraternizacao_confirmada_em ?? null,
+        confraternizacao_compareceu: Boolean(item.confraternizacao_compareceu),
+        confraternizacao_compareceu_em: item.confraternizacao_compareceu_em ?? null,
         fase: item.fase ?? "ACOLHIMENTO",
         modulo_atual_id: item.modulo_atual_id ?? null,
         turno_origem: item.turno_origem ?? null
@@ -160,6 +168,8 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         confraternizacao_id: null,
         confraternizacao_confirmada: false,
         confraternizacao_confirmada_em: null,
+        confraternizacao_compareceu: false,
+        confraternizacao_compareceu_em: null,
         fase: "ACOLHIMENTO",
         modulo_atual_id: null,
         turno_origem: null
@@ -273,6 +283,8 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       confraternizacao_id: null,
       confraternizacao_confirmada: false,
       confraternizacao_confirmada_em: null,
+      confraternizacao_compareceu: false,
+      confraternizacao_compareceu_em: null,
       fase: "ACOLHIMENTO",
       modulo_atual_id: null,
       turno_origem: null

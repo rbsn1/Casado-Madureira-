@@ -29,6 +29,8 @@ type ConfirmedCaseRow = {
   origemKey: CultoOrigemKey;
   origemLabel: string;
   confirmadoEm: string | null;
+  compareceu: boolean;
+  compareceuEm: string | null;
 };
 
 const ORIGIN_FILTER_OPTIONS: Array<{ key: OriginFilter; label: string }> = [
@@ -61,6 +63,15 @@ function toFileDate(value: string | null | undefined) {
   return `${year}-${month}-${day}`;
 }
 
+function isMissingCompareceuColumnsError(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("confraternizacao_compareceu") ||
+    message.includes("confraternizacao_compareceu_em")
+  );
+}
+
 export default function DiscipuladoConfraternizacaoPage() {
   const { confraternizacao: activeConfraternizacao } = useActiveConfraternizacao();
   const [hasAccess, setHasAccess] = useState(false);
@@ -72,6 +83,7 @@ export default function DiscipuladoConfraternizacaoPage() {
   const [confirmedRows, setConfirmedRows] = useState<ConfirmedCaseRow[]>([]);
   const [originFilter, setOriginFilter] = useState<OriginFilter>("TODAS");
   const [search, setSearch] = useState("");
+  const [updatingCompareceuCaseId, setUpdatingCompareceuCaseId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -146,14 +158,44 @@ export default function DiscipuladoConfraternizacaoPage() {
       setLoadingConfirmed(true);
       setStatusMessage("");
 
-      const { data: casesData, error: casesError } = await supabaseClient
+      const withCompareceu = await supabaseClient
         .from("discipleship_cases")
-        .select("id, member_id, confraternizacao_confirmada_em")
+        .select("id, member_id, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em")
         .eq("confraternizacao_id", selectedConfraternizacaoId)
         .eq("confraternizacao_confirmada", true)
         .order("confraternizacao_confirmada_em", { ascending: false });
 
+      let casesData: Array<{
+        id: string;
+        member_id: string;
+        confraternizacao_confirmada_em: string | null;
+        confraternizacao_compareceu?: boolean | null;
+        confraternizacao_compareceu_em?: string | null;
+      }> | null = (withCompareceu.data ?? null) as Array<{
+        id: string;
+        member_id: string;
+        confraternizacao_confirmada_em: string | null;
+        confraternizacao_compareceu?: boolean | null;
+        confraternizacao_compareceu_em?: string | null;
+      }> | null;
+      let casesError = withCompareceu.error;
+
       if (!active) return;
+
+      if (casesError && isMissingCompareceuColumnsError(casesError.message, casesError.code)) {
+        const fallback = await supabaseClient
+          .from("discipleship_cases")
+          .select("id, member_id, confraternizacao_confirmada_em")
+          .eq("confraternizacao_id", selectedConfraternizacaoId)
+          .eq("confraternizacao_confirmada", true)
+          .order("confraternizacao_confirmada_em", { ascending: false });
+        casesData = (fallback.data ?? null) as Array<{
+          id: string;
+          member_id: string;
+          confraternizacao_confirmada_em: string | null;
+        }> | null;
+        casesError = fallback.error;
+      }
 
       if (casesError) {
         setStatusMessage(casesError.message);
@@ -166,6 +208,8 @@ export default function DiscipuladoConfraternizacaoPage() {
         id: string;
         member_id: string;
         confraternizacao_confirmada_em: string | null;
+        confraternizacao_compareceu?: boolean | null;
+        confraternizacao_compareceu_em?: string | null;
       }>;
 
       if (!confirmedCases.length) {
@@ -209,7 +253,9 @@ export default function DiscipuladoConfraternizacaoPage() {
           nome: person?.nome ?? "Membro",
           origemKey,
           origemLabel: cultoOrigemLabel(origemKey),
-          confirmadoEm: item.confraternizacao_confirmada_em
+          confirmadoEm: item.confraternizacao_confirmada_em,
+          compareceu: Boolean(item.confraternizacao_compareceu),
+          compareceuEm: item.confraternizacao_compareceu_em ?? null
         } satisfies ConfirmedCaseRow;
       });
 
@@ -275,6 +321,43 @@ export default function DiscipuladoConfraternizacaoPage() {
       rows,
       { withBom: true }
     );
+  }
+
+  async function handleToggleCompareceu(item: ConfirmedCaseRow) {
+    if (!supabaseClient || updatingCompareceuCaseId) return;
+
+    const nextValue = !item.compareceu;
+    const nowIso = new Date().toISOString();
+
+    setUpdatingCompareceuCaseId(item.case_id);
+    setStatusMessage("");
+
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        confraternizacao_compareceu: nextValue,
+        confraternizacao_compareceu_em: nextValue ? nowIso : null
+      })
+      .eq("id", item.case_id);
+
+    if (error) {
+      setStatusMessage(error.message);
+      setUpdatingCompareceuCaseId(null);
+      return;
+    }
+
+    setConfirmedRows((prev) =>
+      prev.map((row) =>
+        row.case_id === item.case_id
+          ? {
+              ...row,
+              compareceu: nextValue,
+              compareceuEm: nextValue ? nowIso : null
+            }
+          : row
+      )
+    );
+    setUpdatingCompareceuCaseId(null);
   }
 
   if (!hasAccess) {
@@ -406,6 +489,33 @@ export default function DiscipuladoConfraternizacaoPage() {
                     ✓
                   </span>
                 </div>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span
+                    className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                      item.compareceu ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {item.compareceu ? "Compareceu" : "Não confirmado no evento"}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={updatingCompareceuCaseId === item.case_id}
+                    onClick={() => {
+                      void handleToggleCompareceu(item);
+                    }}
+                    className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                      item.compareceu
+                        ? "border-rose-200 bg-white text-rose-700 hover:bg-rose-50"
+                        : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-50"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {updatingCompareceuCaseId === item.case_id
+                      ? "Salvando..."
+                      : item.compareceu
+                        ? "Desfazer comparecimento"
+                        : "Confirmar comparecimento"}
+                  </button>
+                </div>
               </article>
             ))}
           </div>
@@ -416,12 +526,13 @@ export default function DiscipuladoConfraternizacaoPage() {
                 <tr>
                   <th className="px-3 py-2">Nome</th>
                   <th className="px-3 py-2">Origem de cadastro</th>
+                  <th className="px-3 py-2">Compareceu</th>
                 </tr>
               </thead>
               <tbody>
                 {!filteredRows.length ? (
                   <tr>
-                    <td className="px-3 py-3 text-slate-600" colSpan={2}>
+                    <td className="px-3 py-3 text-slate-600" colSpan={3}>
                       Nenhum confirmado encontrado.
                     </td>
                   </tr>
@@ -430,6 +541,31 @@ export default function DiscipuladoConfraternizacaoPage() {
                     <tr key={item.case_id} className="border-t border-slate-100">
                       <td className="px-3 py-2 text-slate-900">{item.nome}</td>
                       <td className="px-3 py-2 text-slate-700">{item.origemLabel}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                              item.compareceu ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                            }`}
+                          >
+                            {item.compareceu ? "Compareceu" : "Pendente"}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={updatingCompareceuCaseId === item.case_id}
+                            onClick={() => {
+                              void handleToggleCompareceu(item);
+                            }}
+                            className="rounded-lg border border-sky-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-sky-900 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {updatingCompareceuCaseId === item.case_id
+                              ? "Salvando..."
+                              : item.compareceu
+                                ? "Desmarcar"
+                                : "Confirmar"}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
