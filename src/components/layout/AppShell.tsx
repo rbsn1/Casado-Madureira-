@@ -97,6 +97,9 @@ const navSections: { title: string; items: NavItem[] }[] = [
   }
 ];
 
+const DISCIPULADO_SECTION_TITLE = "Discipulado";
+const DISCIPULADO_ORDER_STORAGE_KEY = "discipulado_nav_order_v1";
+
 function getNavGlyph(href: string): NavGlyphName {
   if (href === "/" || href.endsWith("/dashboard") || href === "/discipulado") return "dashboard";
   if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
@@ -193,6 +196,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [authResolved, setAuthResolved] = useState(false);
+  const [discipuladoNavOrder, setDiscipuladoNavOrder] = useState<string[]>([]);
   const hasCadastroDiscipuladoRole =
     roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
@@ -205,10 +209,46 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       ? "RBAC: ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO"
       : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO";
 
+  function reorderDiscipuladoItems(items: NavItem[]) {
+    if (!discipuladoNavOrder.length) return items;
+    const byHref = new Map(items.map((item) => [item.href, item]));
+    const ordered: NavItem[] = [];
+    for (const href of discipuladoNavOrder) {
+      const item = byHref.get(href);
+      if (!item) continue;
+      ordered.push(item);
+      byHref.delete(href);
+    }
+    return [...ordered, ...items.filter((item) => byHref.has(item.href))];
+  }
+
+  function persistDiscipuladoOrder(nextOrder: string[]) {
+    setDiscipuladoNavOrder(nextOrder);
+    try {
+      localStorage.setItem(DISCIPULADO_ORDER_STORAGE_KEY, JSON.stringify(nextOrder));
+    } catch {
+      // noop
+    }
+  }
+
+  function handleMoveDiscipuladoItem(items: NavItem[], href: string, direction: -1 | 1) {
+    const currentOrder = items.map((item) => item.href);
+    const index = currentOrder.indexOf(href);
+    if (index < 0) return;
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= currentOrder.length) return;
+    const nextOrder = [...currentOrder];
+    [nextOrder[index], nextOrder[targetIndex]] = [nextOrder[targetIndex], nextOrder[index]];
+    persistDiscipuladoOrder(nextOrder);
+  }
+
   const visibleSections = navSections
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => canAccessItem(item))
+      items:
+        section.title === DISCIPULADO_SECTION_TITLE
+          ? reorderDiscipuladoItems(section.items.filter((item) => canAccessItem(item)))
+          : section.items.filter((item) => canAccessItem(item))
     }))
     .filter((section) => section.items.length > 0);
   const mobileQuickItems = visibleSections
@@ -233,6 +273,19 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     if (href === "/") return current === "/";
     return current.startsWith(`${href}/`);
   }
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DISCIPULADO_ORDER_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const normalized = parsed.filter((value): value is string => typeof value === "string");
+      if (normalized.length) setDiscipuladoNavOrder(normalized);
+    } catch {
+      // noop
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -369,15 +422,18 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item) => {
+                    {section.items.map((item, index) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
+                      const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
+                      const canMoveUp = index > 0;
+                      const canMoveDown = index < section.items.length - 1;
                       return (
-                        <li key={item.href}>
+                        <li key={item.href} className="flex items-center gap-1">
                           <Link
                             href={item.href}
                             className={clsx(
-                              "group flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent hover:text-white",
+                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent hover:text-white",
                               isDiscipuladoConsole ? "hover:bg-sky-800/65" : "hover:bg-white/10",
                               active
                                 ? isDiscipuladoConsole
@@ -401,6 +457,42 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             </span>
                             <span>{item.label}</span>
                           </Link>
+                          {isDiscipuladoSection ? (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, -1)}
+                                disabled={!canMoveUp}
+                                aria-label={`Mover ${item.label} para cima`}
+                                className={clsx(
+                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  isDiscipuladoConsole
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
+                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35"
+                                )}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                                  <path d="m6 14 6-6 6 6" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, 1)}
+                                disabled={!canMoveDown}
+                                aria-label={`Mover ${item.label} para baixo`}
+                                className={clsx(
+                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  isDiscipuladoConsole
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
+                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-35"
+                                )}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                                  <path d="m6 10 6 6 6-6" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : null}
                         </li>
                       );
                     })}
@@ -571,16 +663,19 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     {section.title}
                   </p>
                   <ul className="space-y-1">
-                    {section.items.map((item) => {
+                    {section.items.map((item, index) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
+                      const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
+                      const canMoveUp = index > 0;
+                      const canMoveDown = index < section.items.length - 1;
                       return (
-                        <li key={item.href}>
+                        <li key={item.href} className="flex items-center gap-1">
                           <Link
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
                             className={clsx(
-                              "group flex items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white",
+                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white",
                               isDiscipuladoConsole ? "hover:bg-sky-800/80" : "hover:bg-brand-700/80",
                               active
                                 ? isDiscipuladoConsole
@@ -604,6 +699,42 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             </span>
                             <span>{item.label}</span>
                           </Link>
+                          {isDiscipuladoSection ? (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, -1)}
+                                disabled={!canMoveUp}
+                                aria-label={`Mover ${item.label} para cima`}
+                                className={clsx(
+                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  isDiscipuladoConsole
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
+                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-35"
+                                )}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                                  <path d="m6 14 6-6 6 6" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveDiscipuladoItem(section.items, item.href, 1)}
+                                disabled={!canMoveDown}
+                                aria-label={`Mover ${item.label} para baixo`}
+                                className={clsx(
+                                  "inline-flex h-8 w-8 items-center justify-center rounded-full border transition",
+                                  isDiscipuladoConsole
+                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-35"
+                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-35"
+                                )}
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                                  <path d="m6 10 6 6 6-6" />
+                                </svg>
+                              </button>
+                            </div>
+                          ) : null}
                         </li>
                       );
                     })}
