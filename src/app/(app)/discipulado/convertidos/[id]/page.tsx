@@ -182,6 +182,16 @@ function isMissingMemberEditFunctionError(message: string, code?: string) {
   return code === "PGRST202" || message.includes("update_ccm_member_profile_from_discipleship");
 }
 
+function isMissingCaseFlowColumnsError(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("'fase' column") ||
+    message.includes("modulo_atual_id") ||
+    message.includes("turno_origem")
+  );
+}
+
 function formatOutcomeLabel(value: ContactAttemptOutcome) {
   if (value === "no_answer") return "Sem resposta";
   if (value === "wrong_number") return "Número inválido";
@@ -665,6 +675,23 @@ export default function DiscipulandoDetalhePage() {
       .eq("id", caseData.id);
 
     if (caseFlowError) {
+      if (isMissingCaseFlowColumnsError(caseFlowError.message, caseFlowError.code)) {
+        const { error: fallbackError } = await supabaseClient
+          .from("discipleship_cases")
+          .update({ status: nextStatus })
+          .eq("id", caseData.id);
+        if (fallbackError) {
+          setStatusMessage(fallbackError.message);
+          return;
+        }
+        setToast({
+          kind: "warning",
+          message:
+            "Matrícula salva. Este ambiente ainda não possui campos de fase/turno/módulo no case (aplique a migração 0047)."
+        });
+        await loadCase();
+        return;
+      }
       setStatusMessage(caseFlowError.message);
       return;
     }
