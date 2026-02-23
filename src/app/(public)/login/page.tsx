@@ -608,10 +608,10 @@ export default function LoginPage() {
           <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-white via-emerald-50/70 to-white px-4 py-3 shadow-sm sm:rounded-3xl sm:px-6 sm:py-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
-                Romanos 15:7
+                Gálatas 4:19
               </p>
               <p className="text-sm font-semibold text-emerald-900 sm:text-base">
-                Portanto, acolhei-vos uns aos outros, como também Cristo nos acolheu para a glória de Deus.
+                Meus filhinhos, por quem de novo sinto as dores de parto, até ser Cristo formado em vós.
               </p>
               <p className="text-xs text-slate-600/90">
                 Texto base do nosso projeto de acolhimento.

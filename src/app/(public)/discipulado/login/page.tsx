@@ -172,9 +172,9 @@ export default function DiscipuladoLoginPage() {
                   </svg>
                 </div>
                 <p className="text-[clamp(1.04rem,1.4vw,1.56rem)] font-medium leading-relaxed italic text-white/95">
-                  “Ide, portanto, fazei discípulos de todas as nações...”
+                  “Meus filhinhos, por quem de novo sinto as dores de parto, até ser Cristo formado em vós.”
                 </p>
-                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">Mateus 28:19</p>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">Gálatas 4:19</p>
               </article>
               <p className="text-lg text-white/80">Acompanhe, registre e cuide de cada discípulo.</p>
             </div>
