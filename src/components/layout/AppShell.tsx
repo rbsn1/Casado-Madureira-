@@ -55,6 +55,16 @@ const navSections: { title: string; items: NavItem[] }[] = [
         roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
       },
       {
+        href: "/discipulado/discipulado",
+        label: "Discipulado",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
+      {
+        href: "/discipulado/integracao-pos-discipulado",
+        label: "Integração pós-discipulado",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
+      {
         href: "/discipulado/convertidos/novo",
         label: "Novo convertido",
         roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]

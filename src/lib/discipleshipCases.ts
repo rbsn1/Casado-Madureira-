@@ -20,6 +20,9 @@ export type DiscipleshipCaseSummaryItem = {
   confraternizacao_id: string | null;
   confraternizacao_confirmada: boolean;
   confraternizacao_confirmada_em: string | null;
+  fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO";
+  modulo_atual_id: string | null;
+  turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
 };
 
 type LoadDiscipleshipCaseSummariesOptions = {
@@ -40,11 +43,14 @@ type FallbackCaseRow = {
   days_to_confra?: number | null;
 };
 
-type ConfraternizacaoCaseRow = {
+type ExtraCaseRow = {
   id: string;
   confraternizacao_id: string | null;
   confraternizacao_confirmada: boolean | null;
   confraternizacao_confirmada_em: string | null;
+  fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO" | null;
+  modulo_atual_id: string | null;
+  turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
 };
 
 function isMissingListCasesFunctionError(message: string, code?: string) {
@@ -61,37 +67,45 @@ function isMissingCriticalityColumnsError(message: string, code?: string) {
   );
 }
 
-function isMissingConfraternizacaoColumnsError(message: string, code?: string) {
+function isMissingExtraColumnsError(message: string, code?: string) {
   return (
     code === "42703" ||
     code === "PGRST204" ||
     message.includes("confraternizacao_id") ||
     message.includes("confraternizacao_confirmada") ||
-    message.includes("confraternizacao_confirmada_em")
+    message.includes("confraternizacao_confirmada_em") ||
+    message.includes("fase") ||
+    message.includes("modulo_atual_id") ||
+    message.includes("turno_origem")
   );
 }
 
-async function withConfraternizacaoFields(items: DiscipleshipCaseSummaryItem[]) {
+async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
   if (!supabaseClient || !items.length) return items;
 
   const caseIds = [...new Set(items.map((item) => item.case_id))];
   const { data, error } = await supabaseClient
     .from("discipleship_cases")
-    .select("id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em")
+    .select(
+      "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, fase, modulo_atual_id, turno_origem"
+    )
     .in("id", caseIds);
 
   if (error) {
-    if (isMissingConfraternizacaoColumnsError(error.message, error.code)) return items;
+    if (isMissingExtraColumnsError(error.message, error.code)) return items;
     return items;
   }
 
   const byCaseId = new Map(
-    ((data ?? []) as ConfraternizacaoCaseRow[]).map((item) => [
+    ((data ?? []) as ExtraCaseRow[]).map((item) => [
       String(item.id),
       {
         confraternizacao_id: item.confraternizacao_id ?? null,
         confraternizacao_confirmada: Boolean(item.confraternizacao_confirmada),
-        confraternizacao_confirmada_em: item.confraternizacao_confirmada_em ?? null
+        confraternizacao_confirmada_em: item.confraternizacao_confirmada_em ?? null,
+        fase: item.fase ?? "ACOLHIMENTO",
+        modulo_atual_id: item.modulo_atual_id ?? null,
+        turno_origem: item.turno_origem ?? null
       }
     ])
   );
@@ -145,10 +159,13 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         days_to_confra: item.days_to_confra ?? null,
         confraternizacao_id: null,
         confraternizacao_confirmada: false,
-        confraternizacao_confirmada_em: null
+        confraternizacao_confirmada_em: null,
+        fase: "ACOLHIMENTO",
+        modulo_atual_id: null,
+        turno_origem: null
       } satisfies DiscipleshipCaseSummaryItem;
     });
-    const enriched = await withConfraternizacaoFields(normalized);
+    const enriched = await withCaseExtraFields(normalized);
     return { data: enriched, errorMessage: "", hasCriticalityColumns: true };
   }
 
@@ -255,10 +272,13 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       days_to_confra: item.days_to_confra ?? null,
       confraternizacao_id: null,
       confraternizacao_confirmada: false,
-      confraternizacao_confirmada_em: null
+      confraternizacao_confirmada_em: null,
+      fase: "ACOLHIMENTO",
+      modulo_atual_id: null,
+      turno_origem: null
     };
   });
 
-  const enriched = await withConfraternizacaoFields(summaries);
+  const enriched = await withCaseExtraFields(summaries);
   return { data: enriched, errorMessage: "", hasCriticalityColumns };
 }

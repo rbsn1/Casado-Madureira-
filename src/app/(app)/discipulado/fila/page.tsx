@@ -48,6 +48,12 @@ type AssigneeOption = {
   label: string;
 };
 
+type DiscipleshipModuleOption = {
+  id: string;
+  nome: string;
+  ordem: number;
+};
+
 type ActiveConfraternizacao = {
   id: string;
   titulo: string;
@@ -145,6 +151,13 @@ function groupByOrigin(items: QueueCase[], statuses: KanbanStatus[]): OriginSect
   }).filter((section) => section.total > 0);
 }
 
+function mapOriginToTurnoValue(origin: OriginKey): "MANHA" | "NOITE" | "EVENTO" | null {
+  if (origin === "MANHA") return "MANHA";
+  if (origin === "NOITE") return "NOITE";
+  if (origin === "EVENTO") return "EVENTO";
+  return null;
+}
+
 function CaseCard({
   item,
   canOpenCase,
@@ -153,7 +166,9 @@ function CaseCard({
   assigningCaseId,
   activeConfraternizacao,
   onToggleConfraternizacaoConfirmation,
-  updatingConfraternizacaoCaseId
+  updatingConfraternizacaoCaseId,
+  onStartDiscipulado,
+  startingCaseId
 }: {
   item: QueueCase;
   canOpenCase: boolean;
@@ -163,10 +178,13 @@ function CaseCard({
   activeConfraternizacao: ActiveConfraternizacao;
   onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
   updatingConfraternizacaoCaseId: string | null;
+  onStartDiscipulado: (item: QueueCase) => Promise<void>;
+  startingCaseId: string | null;
 }) {
   const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
   const isAssigning = assigningCaseId === item.case_id;
   const isConfraternizacaoLoading = updatingConfraternizacaoCaseId === item.case_id;
+  const isStartingDiscipulado = startingCaseId === item.case_id;
   const canConfirmConfraternizacao = Boolean(activeConfraternizacao);
 
   return (
@@ -249,14 +267,28 @@ function CaseCard({
           Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
         </p>
       </div>
-      {canOpenCase ? (
-        <Link
-          href={`/discipulado/convertidos/${item.case_id}`}
-          className="inline-flex items-center rounded-md border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50"
-        >
-          Abrir case
-        </Link>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        {item.fase === "ACOLHIMENTO" ? (
+          <button
+            type="button"
+            onClick={() => {
+              void onStartDiscipulado(item);
+            }}
+            disabled={isStartingDiscipulado}
+            className="inline-flex min-h-11 items-center rounded-md bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isStartingDiscipulado ? "Iniciando..." : "Iniciar Discipulado"}
+          </button>
+        ) : null}
+        {canOpenCase ? (
+          <Link
+            href={`/discipulado/convertidos/${item.case_id}`}
+            className="inline-flex items-center rounded-md border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50"
+          >
+            Abrir case
+          </Link>
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -269,7 +301,9 @@ function StatusColumn({
   assigningCaseId,
   activeConfraternizacao,
   onToggleConfraternizacaoConfirmation,
-  updatingConfraternizacaoCaseId
+  updatingConfraternizacaoCaseId,
+  onStartDiscipulado,
+  startingCaseId
 }: {
   column: StatusColumnModel;
   canOpenCase: boolean;
@@ -279,6 +313,8 @@ function StatusColumn({
   activeConfraternizacao: ActiveConfraternizacao;
   onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
   updatingConfraternizacaoCaseId: string | null;
+  onStartDiscipulado: (item: QueueCase) => Promise<void>;
+  startingCaseId: string | null;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
@@ -299,6 +335,8 @@ function StatusColumn({
               activeConfraternizacao={activeConfraternizacao}
               onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
               updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+              onStartDiscipulado={onStartDiscipulado}
+              startingCaseId={startingCaseId}
             />
           ))
         ) : (
@@ -317,7 +355,9 @@ function OriginSection({
   assigningCaseId,
   activeConfraternizacao,
   onToggleConfraternizacaoConfirmation,
-  updatingConfraternizacaoCaseId
+  updatingConfraternizacaoCaseId,
+  onStartDiscipulado,
+  startingCaseId
 }: {
   section: OriginSectionModel;
   canOpenCase: boolean;
@@ -327,6 +367,8 @@ function OriginSection({
   activeConfraternizacao: ActiveConfraternizacao;
   onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
   updatingConfraternizacaoCaseId: string | null;
+  onStartDiscipulado: (item: QueueCase) => Promise<void>;
+  startingCaseId: string | null;
 }) {
   return (
     <section className="discipulado-panel p-3 sm:p-4">
@@ -351,6 +393,8 @@ function OriginSection({
             activeConfraternizacao={activeConfraternizacao}
             onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
             updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+            onStartDiscipulado={onStartDiscipulado}
+            startingCaseId={startingCaseId}
           />
         ))}
       </div>
@@ -366,7 +410,9 @@ function KanbanByOrigin({
   assigningCaseId,
   activeConfraternizacao,
   onToggleConfraternizacaoConfirmation,
-  updatingConfraternizacaoCaseId
+  updatingConfraternizacaoCaseId,
+  onStartDiscipulado,
+  startingCaseId
 }: {
   sections: OriginSectionModel[];
   canOpenCase: boolean;
@@ -376,6 +422,8 @@ function KanbanByOrigin({
   activeConfraternizacao: ActiveConfraternizacao;
   onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
   updatingConfraternizacaoCaseId: string | null;
+  onStartDiscipulado: (item: QueueCase) => Promise<void>;
+  startingCaseId: string | null;
 }) {
   if (!sections.length) {
     return <div className="discipulado-panel p-4 text-sm text-slate-600">Sem casos nesta origem.</div>;
@@ -394,6 +442,8 @@ function KanbanByOrigin({
           activeConfraternizacao={activeConfraternizacao}
           onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
           updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+          onStartDiscipulado={onStartDiscipulado}
+          startingCaseId={startingCaseId}
         />
       ))}
     </div>
@@ -416,11 +466,13 @@ export default function DiscipuladoFilaPage() {
   const [kanbanGroupMode, setKanbanGroupMode] = useState<KanbanGroupMode>("origin");
   const [assigningCaseId, setAssigningCaseId] = useState<string | null>(null);
   const [updatingConfraternizacaoCaseId, setUpdatingConfraternizacaoCaseId] = useState<string | null>(null);
+  const [startingCaseId, setStartingCaseId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string | null }>({
     id: "",
     email: null
   });
   const [assigneeDirectory, setAssigneeDirectory] = useState<AssigneeOption[]>([]);
+  const [discipleshipModules, setDiscipleshipModules] = useState<DiscipleshipModuleOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -459,6 +511,25 @@ export default function DiscipuladoFilaPage() {
         );
       }
       setCases(data);
+
+      if (supabaseClient) {
+        const { data: modulesData, error: modulesError } = await supabaseClient
+          .from("discipleship_modules")
+          .select("id, title, sort_order, is_active")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+
+        if (!active) return;
+        if (!modulesError && modulesData) {
+          setDiscipleshipModules(
+            modulesData.map((module) => ({
+              id: String(module.id),
+              nome: String(module.title ?? "Módulo"),
+              ordem: Number(module.sort_order ?? 0)
+            }))
+          );
+        }
+      }
 
       if (supabaseClient && data.length) {
         const memberIds = [...new Set(data.map((item) => item.member_id))];
@@ -530,10 +601,11 @@ export default function DiscipuladoFilaPage() {
   const orderedCases = useMemo<QueueCase[]>(() => {
     // Regra de negócio: case confirmado na confraternização não aparece em "Em Acolhimento".
     const unconfirmedCases = cases.filter((item) => item.confraternizacao_confirmada !== true);
+    const acolhimentoCases = unconfirmedCases.filter((item) => item.fase === "ACOLHIMENTO");
     const base =
       statusFilter === "todos"
-        ? unconfirmedCases
-        : unconfirmedCases.filter(
+        ? acolhimentoCases
+        : acolhimentoCases.filter(
             (item) =>
               item.status === "pendente_matricula" ||
               item.status === "em_discipulado" ||
@@ -670,6 +742,48 @@ export default function DiscipuladoFilaPage() {
     setUpdatingConfraternizacaoCaseId(null);
   }
 
+  async function handleStartDiscipulado(item: QueueCase) {
+    if (!supabaseClient || startingCaseId) return;
+    const firstModule = [...discipleshipModules].sort((a, b) => a.ordem - b.ordem)[0] ?? null;
+    if (!firstModule) {
+      setStatusMessage("Nenhum módulo ativo disponível para iniciar o discipulado.");
+      return;
+    }
+
+    setStartingCaseId(item.case_id);
+    setStatusMessage("");
+
+    const targetTurno = item.turno_origem ?? mapOriginToTurnoValue(item.origin);
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        fase: "DISCIPULADO",
+        modulo_atual_id: firstModule.id,
+        turno_origem: targetTurno
+      })
+      .eq("id", item.case_id);
+
+    if (error) {
+      setStatusMessage(error.message);
+      setStartingCaseId(null);
+      return;
+    }
+
+    setCases((prev) =>
+      prev.map((caseItem) =>
+        caseItem.case_id === item.case_id
+          ? {
+              ...caseItem,
+              fase: "DISCIPULADO",
+              modulo_atual_id: firstModule.id,
+              turno_origem: targetTurno
+            }
+          : caseItem
+      )
+    );
+    setStartingCaseId(null);
+  }
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
@@ -791,6 +905,8 @@ export default function DiscipuladoFilaPage() {
               activeConfraternizacao={activeConfraternizacao}
               onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
               updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+              onStartDiscipulado={handleStartDiscipulado}
+              startingCaseId={startingCaseId}
             />
           ))}
         </div>
@@ -807,6 +923,8 @@ export default function DiscipuladoFilaPage() {
               activeConfraternizacao={activeConfraternizacao}
               onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
               updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+              onStartDiscipulado={handleStartDiscipulado}
+              startingCaseId={startingCaseId}
             />
           ))}
         </div>
@@ -820,6 +938,8 @@ export default function DiscipuladoFilaPage() {
           activeConfraternizacao={activeConfraternizacao}
           onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
           updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
+          onStartDiscipulado={handleStartDiscipulado}
+          startingCaseId={startingCaseId}
         />
       )}
 
