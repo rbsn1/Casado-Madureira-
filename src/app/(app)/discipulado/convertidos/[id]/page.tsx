@@ -93,6 +93,7 @@ type ContactAttemptOutcome =
   | "scheduled_visit";
 
 type ContactAttemptChannel = "whatsapp" | "ligacao" | "visita" | "outro";
+type EnrollmentTurno = "MANHA" | "NOITE" | "EVENTO";
 
 type ContactAttemptItem = {
   id: string;
@@ -121,6 +122,12 @@ const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "CONTATO",
   "INTEGRADO",
   "BATIZADO"
+];
+
+const ENROLLMENT_TURNO_OPTIONS: Array<{ value: EnrollmentTurno; label: string }> = [
+  { value: "MANHA", label: "Culto da manhã" },
+  { value: "NOITE", label: "Culto da noite" },
+  { value: "EVENTO", label: "Evento" }
 ];
 
 function normalizeOriginDraft(value: string | null | undefined) {
@@ -184,6 +191,19 @@ function formatOutcomeLabel(value: ContactAttemptOutcome) {
   return "Visita agendada";
 }
 
+function mapOriginToEnrollmentTurno(value: string | null | undefined): EnrollmentTurno {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized.includes("MANH")) return "MANHA";
+  if (normalized.includes("NOITE") || normalized.includes("QUARTA")) return "NOITE";
+  if (normalized.includes("EVENT") || normalized.includes("MJ")) return "EVENTO";
+  return "NOITE";
+}
+
 export default function DiscipulandoDetalhePage() {
   const params = useParams();
   const router = useRouter();
@@ -203,6 +223,7 @@ export default function DiscipulandoDetalhePage() {
   const [moduleStatusDrafts, setModuleStatusDrafts] = useState<Record<string, ProgressItem["status"]>>({});
   const [enrollmentModuleId, setEnrollmentModuleId] = useState("");
   const [enrollmentStatusDraft, setEnrollmentStatusDraft] = useState<ProgressItem["status"]>("nao_iniciado");
+  const [enrollmentTurnoDraft, setEnrollmentTurnoDraft] = useState<EnrollmentTurno>("NOITE");
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -370,6 +391,7 @@ export default function DiscipulandoDetalhePage() {
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
     setMemberOriginDraft(normalizeOriginDraft(memberData.origem));
+    setEnrollmentTurnoDraft(mapOriginToEnrollmentTurno(memberData.origem));
     setMemberChurchDraft(memberData.igreja_origem ?? "");
     setMemberNeighborhoodDraft(memberData.bairro ?? "");
     setMemberNotesDraft(memberData.observacoes ?? "");
@@ -605,6 +627,10 @@ export default function DiscipulandoDetalhePage() {
   async function handleEnrollInModule() {
     if (!supabaseClient || !caseData || !enrollmentModuleId) return;
     setStatusMessage("");
+    if (!enrollmentTurnoDraft) {
+      setStatusMessage("Selecione o turno para a matrícula.");
+      return;
+    }
     const completedAt = enrollmentStatusDraft === "concluido" ? new Date().toISOString() : null;
     const completedBy = enrollmentStatusDraft === "concluido" ? currentUserId : null;
 
@@ -626,15 +652,21 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
-    if (caseData.status === "concluido" && enrollmentStatusDraft !== "concluido") {
-      const { error: caseError } = await supabaseClient
-        .from("discipleship_cases")
-        .update({ status: "em_discipulado" })
-        .eq("id", caseData.id);
-      if (caseError) {
-        setStatusMessage(caseError.message);
-        return;
-      }
+    const shouldMoveToInProgress = caseData.status === "pendente_matricula" || caseData.status === "concluido";
+    const nextStatus = shouldMoveToInProgress ? "em_discipulado" : caseData.status;
+    const { error: caseFlowError } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        status: nextStatus,
+        fase: "DISCIPULADO",
+        modulo_atual_id: enrollmentModuleId,
+        turno_origem: enrollmentTurnoDraft
+      })
+      .eq("id", caseData.id);
+
+    if (caseFlowError) {
+      setStatusMessage(caseFlowError.message);
+      return;
     }
 
     await loadCase();
@@ -1193,7 +1225,7 @@ export default function DiscipulandoDetalhePage() {
           </p>
           {availableModulesForEnrollment.length ? (
             <>
-              <div className="mt-3 grid gap-2 md:grid-cols-3">
+              <div className="mt-3 grid gap-2 md:grid-cols-4">
                 <label className="space-y-1 text-sm md:col-span-2">
                   <span className="text-slate-700">Módulo disponível</span>
                   <select
@@ -1204,6 +1236,20 @@ export default function DiscipulandoDetalhePage() {
                     {availableModulesForEnrollment.map((moduleItem) => (
                       <option key={moduleItem.id} value={moduleItem.id}>
                         {moduleItem.title}
+                      </option>
+                    ))}
+                    </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-slate-700">Turno</span>
+                  <select
+                    value={enrollmentTurnoDraft}
+                    onChange={(event) => setEnrollmentTurnoDraft(event.target.value as EnrollmentTurno)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                  >
+                    {ENROLLMENT_TURNO_OPTIONS.map((turno) => (
+                      <option key={turno.value} value={turno.value}>
+                        {turno.label}
                       </option>
                     ))}
                   </select>
