@@ -107,7 +107,13 @@ type ToastState = {
   message: string;
 } | null;
 
-const ORIGIN_OPTIONS = ["Culto da Manhã", "Culto da Noite", "Outros eventos"] as const;
+const ORIGIN_OPTIONS = [
+  "Culto da Manhã",
+  "Culto da Noite",
+  "Culto de Quarta",
+  "Culto do MJ",
+  "Outros eventos"
+] as const;
 
 const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "PENDENTE",
@@ -125,6 +131,8 @@ function normalizeOriginDraft(value: string | null | undefined) {
     .toUpperCase();
   if (!normalized) return "";
   if (normalized.includes("MANH")) return "Culto da Manhã";
+  if (normalized.includes("QUARTA")) return "Culto de Quarta";
+  if (normalized.includes("MJ")) return "Culto do MJ";
   if (normalized.includes("NOITE")) return "Culto da Noite";
   if (normalized.includes("EVENT")) return "Outros eventos";
   return "";

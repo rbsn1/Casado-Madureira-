@@ -14,8 +14,19 @@ type MemberResult = {
   has_any_case: boolean;
 };
 
+type AssigneeOption = {
+  id: string;
+  label: string;
+};
+
 type EntryMode = "existing" | "new";
-const ORIGIN_OPTIONS = ["Culto da Manhã", "Culto da Noite", "Outros eventos"] as const;
+const ORIGIN_OPTIONS = [
+  "Culto da Manhã",
+  "Culto da Noite",
+  "Culto de Quarta",
+  "Culto do MJ",
+  "Outros eventos"
+] as const;
 
 function currentLocalDateInputValue() {
   const now = new Date();
@@ -225,6 +236,9 @@ export default function NovoConvertidoDiscipuladoPage() {
   const [newMemberObservations, setNewMemberObservations] = useState("");
   const [welcomedOn, setWelcomedOn] = useState(currentLocalDateInputValue());
   const [notes, setNotes] = useState("");
+  const [assigneesLoading, setAssigneesLoading] = useState(false);
+  const [assigneeOptions, setAssigneeOptions] = useState<AssigneeOption[]>([]);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
   const [message, setMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
@@ -289,6 +303,58 @@ export default function NovoConvertidoDiscipuladoPage() {
     };
   }, [entryMode, hasAccess, searchParams]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadAssignees() {
+      if (!supabaseClient || !hasAccess) return;
+      setAssigneesLoading(true);
+
+      const map = new Map<string, string>();
+      const { data: authData } = await supabaseClient.auth.getUser();
+      const currentUserId = authData.user?.id ?? "";
+      const currentUserEmail = authData.user?.email ?? null;
+      if (currentUserId) {
+        map.set(currentUserId, currentUserEmail ?? "Você");
+      }
+
+      const { data: casesData } = await supabaseClient.rpc("list_discipleship_cases_summary", {
+        status_filter: null,
+        target_congregation_id: null,
+        rows_limit: 1000
+      });
+
+      (Array.isArray(casesData) ? casesData : []).forEach((row) => {
+        const item = row as Partial<{ assigned_to: string | null; discipulador_email: string | null }>;
+        if (!item.assigned_to) return;
+        if (map.has(item.assigned_to)) return;
+        map.set(item.assigned_to, item.discipulador_email ?? `ID ${item.assigned_to.slice(0, 8)}`);
+      });
+
+      if (!active) return;
+
+      const options = Array.from(map.entries())
+        .map(([id, label]) => ({ id, label }))
+        .sort((a, b) => {
+          if (currentUserId && a.id === currentUserId) return -1;
+          if (currentUserId && b.id === currentUserId) return 1;
+          return a.label.localeCompare(b.label, "pt-BR");
+        });
+
+      setAssigneeOptions(options);
+      setSelectedAssigneeId((prev) => {
+        if (prev && options.some((option) => option.id === prev)) return prev;
+        return currentUserId || "";
+      });
+      setAssigneesLoading(false);
+    }
+
+    loadAssignees();
+    return () => {
+      active = false;
+    };
+  }, [hasAccess]);
+
   function resetForm(options?: { preserveFeedback?: boolean }) {
     setSelectedMember(null);
     setNewMemberName("");
@@ -305,14 +371,13 @@ export default function NovoConvertidoDiscipuladoPage() {
     }
   }
 
-  async function createCase(memberId: string, welcomedOnValue: string) {
+  async function createCase(memberId: string, welcomedOnValue: string, assignedTo: string | null) {
     if (!supabaseClient) return { ok: false as const, errorMessage: "Supabase não configurado." };
-    const { data: authData } = await supabaseClient.auth.getUser();
 
     const payload = {
       member_id: memberId,
       status: "pendente_matricula" as const,
-      assigned_to: authData.user?.id ?? null,
+      assigned_to: assignedTo,
       notes: notes.trim() || null,
       welcomed_on: welcomedOnValue,
       request_id: crypto.randomUUID()
@@ -405,7 +470,7 @@ export default function NovoConvertidoDiscipuladoPage() {
         setMessage("Informe a data de acolhimento.");
         return;
       }
-      const caseResult = await createCase(selectedMember.id, welcomedOn);
+      const caseResult = await createCase(selectedMember.id, welcomedOn, selectedAssigneeId || null);
       if (!caseResult.ok) {
         setStatus("error");
         setMessage(caseResult.errorMessage);
@@ -497,7 +562,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
-    const caseResult = await createCase(createdMemberId, welcomedOn);
+    const caseResult = await createCase(createdMemberId, welcomedOn, selectedAssigneeId || null);
     if (!caseResult.ok) {
       setStatus("error");
       setMessage(caseResult.errorMessage);
@@ -562,16 +627,40 @@ export default function NovoConvertidoDiscipuladoPage() {
           </button>
         </div>
 
-        <label className="block max-w-xs space-y-1 text-sm">
-          <span className="text-slate-700">Data de acolhimento</span>
-          <input
-            type="date"
-            value={welcomedOn}
-            onChange={(event) => setWelcomedOn(event.target.value)}
-            required
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-          />
-        </label>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="block max-w-xs space-y-1 text-sm">
+            <span className="text-slate-700">Data de acolhimento</span>
+            <input
+              type="date"
+              value={welcomedOn}
+              onChange={(event) => setWelcomedOn(event.target.value)}
+              required
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+            />
+          </label>
+
+          <label className="block max-w-md space-y-1 text-sm">
+            <span className="text-slate-700">Acolhedor responsável</span>
+            <select
+              value={selectedAssigneeId}
+              onChange={(event) => setSelectedAssigneeId(event.target.value)}
+              disabled={assigneesLoading}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+            >
+              <option value="">A definir</option>
+              {assigneeOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500">
+              {assigneesLoading
+                ? "Carregando acolhedores..."
+                : "Responsável padrão do case no momento da criação."}
+            </p>
+          </label>
+        </div>
 
         {entryMode === "existing" ? (
           <>

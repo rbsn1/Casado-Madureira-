@@ -41,6 +41,11 @@ type OriginSectionModel = {
   columns: StatusColumnModel[];
 };
 
+type AssigneeOption = {
+  id: string;
+  label: string;
+};
+
 const ORIGIN_ORDER: OriginKey[] = ["MANHA", "NOITE", "EVENTO", "SEM_ORIGEM"];
 
 function statusLabel(status: KanbanStatus) {
@@ -66,7 +71,9 @@ function normalizeOrigin(value: string | null | undefined): OriginKey {
 
   if (!normalized) return "SEM_ORIGEM";
   if (normalized.includes("MANH")) return "MANHA";
+  if (normalized.includes("QUARTA")) return "NOITE";
   if (normalized.includes("NOITE")) return "NOITE";
+  if (normalized.includes("MJ")) return "EVENTO";
   if (normalized.includes("EVENT")) return "EVENTO";
   return "SEM_ORIGEM";
 }
@@ -123,10 +130,24 @@ function groupByOrigin(items: QueueCase[], statuses: KanbanStatus[]): OriginSect
   }).filter((section) => section.total > 0);
 }
 
-function CaseCard({ item, canOpenCase }: { item: QueueCase; canOpenCase: boolean }) {
+function CaseCard({
+  item,
+  canOpenCase,
+  assigneeOptions,
+  onAssignResponsible,
+  assigningCaseId
+}: {
+  item: QueueCase;
+  canOpenCase: boolean;
+  assigneeOptions: AssigneeOption[];
+  onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
+  assigningCaseId: string | null;
+}) {
   const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
-  const cardContent = (
-    <div className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
+  const isAssigning = assigningCaseId === item.case_id;
+
+  return (
+    <article className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
@@ -144,6 +165,25 @@ function CaseCard({ item, canOpenCase }: { item: QueueCase; canOpenCase: boolean
       <p className="text-xs text-slate-600">
         Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
       </p>
+      <label className="block space-y-1">
+        <span className="text-xs font-semibold text-slate-600">Acolhedor responsável</span>
+        <select
+          value={item.assigned_to ?? ""}
+          onChange={(event) => {
+            const selected = event.target.value.trim();
+            void onAssignResponsible(item.case_id, selected || null);
+          }}
+          disabled={isAssigning}
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+        >
+          <option value="">A definir</option>
+          {assigneeOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <div>
         <div className="h-2 rounded-full bg-slate-100">
           <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />
@@ -152,21 +192,31 @@ function CaseCard({ item, canOpenCase }: { item: QueueCase; canOpenCase: boolean
           Progresso: {item.done_modules}/{item.total_modules} ({percent}%)
         </p>
       </div>
-    </div>
-  );
-
-  if (!canOpenCase) {
-    return <div key={item.case_id}>{cardContent}</div>;
-  }
-
-  return (
-    <Link key={item.case_id} href={`/discipulado/convertidos/${item.case_id}`}>
-      {cardContent}
-    </Link>
+      {canOpenCase ? (
+        <Link
+          href={`/discipulado/convertidos/${item.case_id}`}
+          className="inline-flex items-center rounded-md border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-800 hover:bg-sky-50"
+        >
+          Abrir case
+        </Link>
+      ) : null}
+    </article>
   );
 }
 
-function StatusColumn({ column, canOpenCase }: { column: StatusColumnModel; canOpenCase: boolean }) {
+function StatusColumn({
+  column,
+  canOpenCase,
+  assigneeOptions,
+  onAssignResponsible,
+  assigningCaseId
+}: {
+  column: StatusColumnModel;
+  canOpenCase: boolean;
+  assigneeOptions: AssigneeOption[];
+  onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
+  assigningCaseId: string | null;
+}) {
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -175,7 +225,16 @@ function StatusColumn({ column, canOpenCase }: { column: StatusColumnModel; canO
       </div>
       <div className="space-y-3">
         {column.items.length ? (
-          column.items.map((item) => <CaseCard key={item.case_id} item={item} canOpenCase={canOpenCase} />)
+          column.items.map((item) => (
+            <CaseCard
+              key={item.case_id}
+              item={item}
+              canOpenCase={canOpenCase}
+              assigneeOptions={assigneeOptions}
+              onAssignResponsible={onAssignResponsible}
+              assigningCaseId={assigningCaseId}
+            />
+          ))
         ) : (
           <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">Sem casos nesta coluna.</p>
         )}
@@ -184,7 +243,19 @@ function StatusColumn({ column, canOpenCase }: { column: StatusColumnModel; canO
   );
 }
 
-function OriginSection({ section, canOpenCase }: { section: OriginSectionModel; canOpenCase: boolean }) {
+function OriginSection({
+  section,
+  canOpenCase,
+  assigneeOptions,
+  onAssignResponsible,
+  assigningCaseId
+}: {
+  section: OriginSectionModel;
+  canOpenCase: boolean;
+  assigneeOptions: AssigneeOption[];
+  onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
+  assigningCaseId: string | null;
+}) {
   return (
     <section className="discipulado-panel p-3 sm:p-4">
       <div className="sticky top-2 z-20 -mx-3 mb-3 flex flex-wrap items-center gap-2 border-b border-slate-200/80 bg-white/95 px-3 pb-3 pt-2 backdrop-blur-sm sm:-mx-4 sm:px-4">
@@ -198,14 +269,33 @@ function OriginSection({ section, canOpenCase }: { section: OriginSectionModel; 
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {section.columns.map((column) => (
-          <StatusColumn key={`${section.origin}-${column.status}`} column={column} canOpenCase={canOpenCase} />
+          <StatusColumn
+            key={`${section.origin}-${column.status}`}
+            column={column}
+            canOpenCase={canOpenCase}
+            assigneeOptions={assigneeOptions}
+            onAssignResponsible={onAssignResponsible}
+            assigningCaseId={assigningCaseId}
+          />
         ))}
       </div>
     </section>
   );
 }
 
-function KanbanByOrigin({ sections, canOpenCase }: { sections: OriginSectionModel[]; canOpenCase: boolean }) {
+function KanbanByOrigin({
+  sections,
+  canOpenCase,
+  assigneeOptions,
+  onAssignResponsible,
+  assigningCaseId
+}: {
+  sections: OriginSectionModel[];
+  canOpenCase: boolean;
+  assigneeOptions: AssigneeOption[];
+  onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
+  assigningCaseId: string | null;
+}) {
   if (!sections.length) {
     return <div className="discipulado-panel p-4 text-sm text-slate-600">Sem casos nesta origem.</div>;
   }
@@ -213,7 +303,14 @@ function KanbanByOrigin({ sections, canOpenCase }: { sections: OriginSectionMode
   return (
     <div className="space-y-4">
       {sections.map((section) => (
-        <OriginSection key={section.origin} section={section} canOpenCase={canOpenCase} />
+        <OriginSection
+          key={section.origin}
+          section={section}
+          canOpenCase={canOpenCase}
+          assigneeOptions={assigneeOptions}
+          onAssignResponsible={onAssignResponsible}
+          assigningCaseId={assigningCaseId}
+        />
       ))}
     </div>
   );
@@ -229,6 +326,11 @@ export default function DiscipuladoFilaPage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
   const [kanbanGroupMode, setKanbanGroupMode] = useState<KanbanGroupMode>("origin");
+  const [assigningCaseId, setAssigningCaseId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string | null }>({
+    id: "",
+    email: null
+  });
 
   useEffect(() => {
     let active = true;
@@ -250,6 +352,14 @@ export default function DiscipuladoFilaPage() {
       if (errorMessage) {
         setStatusMessage(errorMessage);
         return;
+      }
+      const { data: authData } = await supabaseClient.auth.getUser();
+      if (!active) return;
+      if (authData.user?.id) {
+        setCurrentUser({
+          id: authData.user.id,
+          email: authData.user.email ?? null
+        });
       }
       if (!hasCriticalityColumns) {
         setStatusMessage(
@@ -330,6 +440,60 @@ export default function DiscipuladoFilaPage() {
 
   const kanbanColumns = useMemo(() => groupByStatus(visibleCases, kanbanStatuses), [visibleCases, kanbanStatuses]);
   const kanbanOriginSections = useMemo(() => groupByOrigin(visibleCases, kanbanStatuses), [visibleCases, kanbanStatuses]);
+  const assigneeOptions = useMemo<AssigneeOption[]>(() => {
+    const map = new Map<string, string>();
+
+    if (currentUser.id) {
+      const currentLabel = currentUser.email ?? "Você";
+      map.set(currentUser.id, currentLabel);
+    }
+
+    for (const item of cases) {
+      if (!item.assigned_to) continue;
+      if (map.has(item.assigned_to)) continue;
+      map.set(item.assigned_to, item.discipulador_email ?? `ID ${item.assigned_to.slice(0, 8)}`);
+    }
+
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => {
+        if (currentUser.id && a.id === currentUser.id) return -1;
+        if (currentUser.id && b.id === currentUser.id) return 1;
+        return a.label.localeCompare(b.label, "pt-BR");
+      });
+  }, [cases, currentUser.email, currentUser.id]);
+
+  async function handleAssignResponsible(caseId: string, assignedTo: string | null) {
+    if (!supabaseClient || assigningCaseId) return;
+    setAssigningCaseId(caseId);
+    setStatusMessage("");
+
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({ assigned_to: assignedTo })
+      .eq("id", caseId);
+
+    if (error) {
+      setStatusMessage(error.message);
+      setAssigningCaseId(null);
+      return;
+    }
+
+    setCases((prev) =>
+      prev.map((item) => {
+        if (item.case_id !== caseId) return item;
+        const assigneeLabel = assignedTo
+          ? assigneeOptions.find((option) => option.id === assignedTo)?.label ?? item.discipulador_email
+          : null;
+        return {
+          ...item,
+          assigned_to: assignedTo,
+          discipulador_email: assigneeLabel
+        };
+      })
+    );
+    setAssigningCaseId(null);
+  }
 
   if (!hasAccess) {
     return (
@@ -427,17 +591,37 @@ export default function DiscipuladoFilaPage() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {!orderedCases.length ? <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso na fila.</div> : null}
           {visibleCases.map((item) => (
-            <CaseCard key={item.case_id} item={item} canOpenCase={canOpenCase} />
+            <CaseCard
+              key={item.case_id}
+              item={item}
+              canOpenCase={canOpenCase}
+              assigneeOptions={assigneeOptions}
+              onAssignResponsible={handleAssignResponsible}
+              assigningCaseId={assigningCaseId}
+            />
           ))}
         </div>
       ) : kanbanGroupMode === "status" ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {kanbanColumns.map((column) => (
-            <StatusColumn key={column.status} column={column} canOpenCase={canOpenCase} />
+            <StatusColumn
+              key={column.status}
+              column={column}
+              canOpenCase={canOpenCase}
+              assigneeOptions={assigneeOptions}
+              onAssignResponsible={handleAssignResponsible}
+              assigningCaseId={assigningCaseId}
+            />
           ))}
         </div>
       ) : (
-        <KanbanByOrigin sections={kanbanOriginSections} canOpenCase={canOpenCase} />
+        <KanbanByOrigin
+          sections={kanbanOriginSections}
+          canOpenCase={canOpenCase}
+          assigneeOptions={assigneeOptions}
+          onAssignResponsible={handleAssignResponsible}
+          assigningCaseId={assigningCaseId}
+        />
       )}
 
       {hasMoreCases ? (
