@@ -638,37 +638,39 @@ export default function DiscipuladoDashboardPage() {
           <p className="text-sm text-sky-700">Discipulado</p>
           <h2 className="text-2xl font-semibold text-sky-950">Painel Discipulado</h2>
         </div>
-        <div className="flex items-center gap-2">
-          {isAdminMaster ? (
-            <select
-              value={congregationFilter}
-              onChange={(event) => setCongregationFilter(event.target.value)}
-              className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
-            >
-              <option value="">Todas as congregações</option>
-              {congregations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          {canManageDiscipulado ? (
-            <Link
-              href="/discipulado/admin"
-              className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:border-sky-400"
-            >
-              Admin do discipulado
-            </Link>
-          ) : null}
-          {canCreateNovoConvertido ? (
-            <Link
-              href="/discipulado/convertidos/novo"
-              className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
-            >
-              Novo convertido
-            </Link>
-          ) : null}
+        <div className="-mx-1 w-full overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="flex min-w-max items-center gap-2">
+            {isAdminMaster ? (
+              <select
+                value={congregationFilter}
+                onChange={(event) => setCongregationFilter(event.target.value)}
+                className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
+              >
+                <option value="">Todas as congregações</option>
+                {congregations.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+            {canManageDiscipulado ? (
+              <Link
+                href="/discipulado/admin"
+                className="rounded-lg border border-sky-200 bg-white px-4 py-2 text-sm font-semibold text-sky-900 hover:border-sky-400"
+              >
+                Admin do discipulado
+              </Link>
+            ) : null}
+            {canCreateNovoConvertido ? (
+              <Link
+                href="/discipulado/convertidos/novo"
+                className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+              >
+                Novo convertido
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
 

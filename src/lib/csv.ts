@@ -15,9 +15,15 @@ export function toCsv(headers: string[], rows: CsvValue[][]) {
   return [head, body].join("\n");
 }
 
-export function downloadCsv(filename: string, headers: string[], rows: CsvValue[][]) {
+export function downloadCsv(
+  filename: string,
+  headers: string[],
+  rows: CsvValue[][],
+  options: { withBom?: boolean } = {}
+) {
   const csv = toCsv(headers, rows);
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const payload = options.withBom ? `\uFEFF${csv}` : csv;
+  const blob = new Blob([payload], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = filename;

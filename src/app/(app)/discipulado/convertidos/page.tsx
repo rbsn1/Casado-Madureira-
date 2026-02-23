@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { useActiveConfraternizacao } from "@/hooks/useActiveConfraternizacao";
+import { formatDateBR } from "@/lib/date";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
 import {
@@ -30,7 +32,19 @@ function statusLabel(status: CaseSummaryItem["status"]) {
   return "PAUSADO";
 }
 
+function confraternizacaoHeading(
+  confraternizacao: { data_evento: string; status: "ativa" | "futura" | "encerrada" } | null
+) {
+  if (!confraternizacao) return "Sem confraternização ativa";
+  const prefix = confraternizacao.status === "ativa" ? "Ativa" : "Próxima";
+  return `${prefix}: ${formatDateBR(confraternizacao.data_evento)}`;
+}
+
 export default function DiscipuladoConvertidosPage() {
+  const {
+    confraternizacao: activeConfraternizacao,
+    errorMessage: activeConfraternizacaoErrorMessage
+  } = useActiveConfraternizacao();
   const [cases, setCases] = useState<CaseSummaryItem[]>([]);
   const [ccmMembers, setCcmMembers] = useState<CcmMemberWithoutCase[]>([]);
   const [visibleCcmMembersCount, setVisibleCcmMembersCount] = useState(0);
@@ -42,6 +56,7 @@ export default function DiscipuladoConvertidosPage() {
   const [canDeleteCadastrosAndCases, setCanDeleteCadastrosAndCases] = useState(false);
   const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
+  const [updatingConfraternizacaoCaseId, setUpdatingConfraternizacaoCaseId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("todos");
 
   useEffect(() => {
@@ -212,6 +227,11 @@ export default function DiscipuladoConvertidosPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!activeConfraternizacaoErrorMessage) return;
+    setStatusMessage((prev) => prev || activeConfraternizacaoErrorMessage);
+  }, [activeConfraternizacaoErrorMessage]);
+
   const filteredCases = useMemo(() => {
     if (statusFilter === "todos") return cases;
     return cases.filter((item) => item.status === statusFilter);
@@ -249,6 +269,48 @@ export default function DiscipuladoConvertidosPage() {
       return next;
     });
     setDeletingCaseId(null);
+  }
+
+  async function handleToggleConfraternizacaoConfirmation(item: CaseSummaryItem) {
+    if (!supabaseClient || updatingConfraternizacaoCaseId) return;
+    if (!activeConfraternizacao && !item.confraternizacao_confirmada) return;
+
+    const nextConfirmed = !item.confraternizacao_confirmada;
+    const nowIso = new Date().toISOString();
+    const confraternizacaoId = nextConfirmed
+      ? activeConfraternizacao?.id ?? item.confraternizacao_id ?? null
+      : item.confraternizacao_id ?? activeConfraternizacao?.id ?? null;
+
+    setStatusMessage("");
+    setUpdatingConfraternizacaoCaseId(item.case_id);
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        confraternizacao_id: confraternizacaoId,
+        confraternizacao_confirmada: nextConfirmed,
+        confraternizacao_confirmada_em: nextConfirmed ? nowIso : null
+      })
+      .eq("id", item.case_id);
+
+    if (error) {
+      setStatusMessage(error.message || "Não foi possível salvar a confirmação da confraternização.");
+      setUpdatingConfraternizacaoCaseId(null);
+      return;
+    }
+
+    setCases((prev) =>
+      prev.map((caseItem) =>
+        caseItem.case_id === item.case_id
+          ? {
+              ...caseItem,
+              confraternizacao_id: confraternizacaoId,
+              confraternizacao_confirmada: nextConfirmed,
+              confraternizacao_confirmada_em: nextConfirmed ? nowIso : null
+            }
+          : caseItem
+      )
+    );
+    setUpdatingConfraternizacaoCaseId(null);
   }
 
   async function handleDeleteCadastro(member: CcmMemberWithoutCase) {
@@ -300,31 +362,70 @@ export default function DiscipuladoConvertidosPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-sky-700">Discipulado</p>
-          <h2 className="text-xl font-semibold text-sky-950">Convertidos em acompanhamento</h2>
+          <h2 className="text-xl font-semibold text-sky-950">Vidas Acolhidas em acompanhamento</h2>
           <p className="mt-1 text-xs text-slate-600">
             CCM visíveis: {visibleCcmMembersCount} • sem case: {withoutCaseTotalCount}
           </p>
+          <p className="mt-1 text-xs text-slate-500">{confraternizacaoHeading(activeConfraternizacao)}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
-          >
-            <option value="todos">Todos</option>
-            <option value="pendente_matricula">Pendente matrícula</option>
-            <option value="em_discipulado">Em discipulado</option>
-            <option value="pausado">Pausado</option>
-            <option value="concluido">Concluído</option>
-          </select>
-          {canCreateNovoConvertido ? (
-            <Link
-              href="/discipulado/convertidos/novo"
-              className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
-            >
-              Novo convertido
-            </Link>
-          ) : null}
+        <div className="-mx-1 w-full overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="flex min-w-max items-center gap-2">
+            <div className="inline-flex min-h-11 rounded-full border border-sky-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("todos")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "todos" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("pendente_matricula")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "pendente_matricula" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Pendente
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("em_discipulado")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "em_discipulado" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Em discipulado
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("pausado")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "pausado" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Pausado
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("concluido")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "concluido" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Concluído
+              </button>
+            </div>
+            {canCreateNovoConvertido ? (
+              <Link
+                href="/discipulado/convertidos/novo"
+                className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+              >
+                Nova vida acolhida
+              </Link>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -338,6 +439,8 @@ export default function DiscipuladoConvertidosPage() {
         ) : null}
         {filteredCases.map((item) => {
           const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
+          const isConfraternizacaoLoading = updatingConfraternizacaoCaseId === item.case_id;
+          const canConfirmConfraternizacao = Boolean(activeConfraternizacao);
           return (
             <article key={item.case_id} className="discipulado-panel space-y-3 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -361,6 +464,40 @@ export default function DiscipuladoConvertidosPage() {
                 <p className="mt-1 text-xs text-slate-600">
                   Discipulador: <strong>{item.discipulador_email ?? "A definir"}</strong>
                 </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Confraternização</p>
+                  <span
+                    className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                      item.confraternizacao_confirmada
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {item.confraternizacao_confirmada ? "Confirmado" : "Não confirmado"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-700">{confraternizacaoHeading(activeConfraternizacao)}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleToggleConfraternizacaoConfirmation(item);
+                  }}
+                  disabled={!canConfirmConfraternizacao || isConfraternizacaoLoading}
+                  className={`mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                    item.confraternizacao_confirmada
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                      : "border-sky-300 bg-white text-sky-800 hover:bg-sky-50"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  aria-pressed={item.confraternizacao_confirmada}
+                >
+                  {isConfraternizacaoLoading
+                    ? "Salvando..."
+                    : item.confraternizacao_confirmada
+                      ? "Confirmado"
+                      : "Confirmar presença"}
+                </button>
               </div>
               <p className="text-xs text-slate-600">{item.notes || "Sem observações gerais."}</p>
               <div className="flex flex-wrap items-center gap-2">

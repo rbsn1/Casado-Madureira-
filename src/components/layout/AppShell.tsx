@@ -51,7 +51,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
       {
         href: "/discipulado/fila",
-        label: "Fila",
+        label: "Em Acolhimento",
         roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
       },
       {
@@ -64,7 +64,16 @@ const navSections: { title: string; items: NavItem[] }[] = [
         label: "Manual",
         roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
       },
-      { href: "/discipulado/convertidos", label: "Convertidos", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
+      {
+        href: "/discipulado/convertidos",
+        label: "Vidas Acolhidas",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"]
+      },
+      {
+        href: "/discipulado/confraternizacao",
+        label: "Confraternização",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
       { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
       { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_DISCIPULADO"] }
     ]
@@ -82,6 +91,7 @@ function getNavGlyph(href: string): NavGlyphName {
   if (href === "/" || href.endsWith("/dashboard") || href === "/discipulado") return "dashboard";
   if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
   if (href.includes("/cadastros") || href.includes("/convertidos")) return "list";
+  if (href.includes("/confraternizacao")) return "agenda";
   if (href.includes("/agenda")) return "agenda";
   if (href.includes("/relatorios")) return "report";
   if (href.includes("/admin")) return "admin";
@@ -435,7 +445,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                     : isDiscipuladoAccount
                       ? "Painel Discipulado"
                       : hasCadastroDiscipuladoRole
-                      ? "Cadastro de Convertidos"
+                      ? "Cadastro de Vidas Acolhidas"
                       : isDiscipuladoConsole
                         ? "Painel Discipulado"
                         : "Painel Interno"}

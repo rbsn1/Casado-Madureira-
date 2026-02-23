@@ -17,6 +17,9 @@ export type DiscipleshipCaseSummaryItem = {
   criticality: "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
   negative_contact_count: number;
   days_to_confra: number | null;
+  confraternizacao_id: string | null;
+  confraternizacao_confirmada: boolean;
+  confraternizacao_confirmada_em: string | null;
 };
 
 type LoadDiscipleshipCaseSummariesOptions = {
@@ -37,6 +40,13 @@ type FallbackCaseRow = {
   days_to_confra?: number | null;
 };
 
+type ConfraternizacaoCaseRow = {
+  id: string;
+  confraternizacao_id: string | null;
+  confraternizacao_confirmada: boolean | null;
+  confraternizacao_confirmada_em: string | null;
+};
+
 function isMissingListCasesFunctionError(message: string, code?: string) {
   return code === "PGRST202" || message.includes("list_discipleship_cases_summary");
 }
@@ -49,6 +59,51 @@ function isMissingCriticalityColumnsError(message: string, code?: string) {
     message.includes("negative_contact_count") ||
     message.includes("days_to_confra")
   );
+}
+
+function isMissingConfraternizacaoColumnsError(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("confraternizacao_id") ||
+    message.includes("confraternizacao_confirmada") ||
+    message.includes("confraternizacao_confirmada_em")
+  );
+}
+
+async function withConfraternizacaoFields(items: DiscipleshipCaseSummaryItem[]) {
+  if (!supabaseClient || !items.length) return items;
+
+  const caseIds = [...new Set(items.map((item) => item.case_id))];
+  const { data, error } = await supabaseClient
+    .from("discipleship_cases")
+    .select("id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em")
+    .in("id", caseIds);
+
+  if (error) {
+    if (isMissingConfraternizacaoColumnsError(error.message, error.code)) return items;
+    return items;
+  }
+
+  const byCaseId = new Map(
+    ((data ?? []) as ConfraternizacaoCaseRow[]).map((item) => [
+      String(item.id),
+      {
+        confraternizacao_id: item.confraternizacao_id ?? null,
+        confraternizacao_confirmada: Boolean(item.confraternizacao_confirmada),
+        confraternizacao_confirmada_em: item.confraternizacao_confirmada_em ?? null
+      }
+    ])
+  );
+
+  return items.map((item) => {
+    const confraternizacao = byCaseId.get(item.case_id);
+    if (!confraternizacao) return item;
+    return {
+      ...item,
+      ...confraternizacao
+    };
+  });
 }
 
 export async function loadDiscipleshipCaseSummariesWithFallback(
@@ -87,10 +142,14 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         total_modules: Number(item.total_modules ?? 0),
         criticality: (item.criticality ?? "BAIXA") as DiscipleshipCaseSummaryItem["criticality"],
         negative_contact_count: Number(item.negative_contact_count ?? 0),
-        days_to_confra: item.days_to_confra ?? null
+        days_to_confra: item.days_to_confra ?? null,
+        confraternizacao_id: null,
+        confraternizacao_confirmada: false,
+        confraternizacao_confirmada_em: null
       } satisfies DiscipleshipCaseSummaryItem;
     });
-    return { data: normalized, errorMessage: "", hasCriticalityColumns: true };
+    const enriched = await withConfraternizacaoFields(normalized);
+    return { data: enriched, errorMessage: "", hasCriticalityColumns: true };
   }
 
   if (!isMissingListCasesFunctionError(rpcError.message, rpcError.code)) {
@@ -193,9 +252,13 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       total_modules: progress.total,
       criticality: item.criticality ?? "BAIXA",
       negative_contact_count: item.negative_contact_count ?? 0,
-      days_to_confra: item.days_to_confra ?? null
+      days_to_confra: item.days_to_confra ?? null,
+      confraternizacao_id: null,
+      confraternizacao_confirmada: false,
+      confraternizacao_confirmada_em: null
     };
   });
 
-  return { data: summaries, errorMessage: "", hasCriticalityColumns };
+  const enriched = await withConfraternizacaoFields(summaries);
+  return { data: enriched, errorMessage: "", hasCriticalityColumns };
 }

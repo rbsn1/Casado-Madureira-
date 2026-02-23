@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { useActiveConfraternizacao } from "@/hooks/useActiveConfraternizacao";
 import { getAuthScope } from "@/lib/authScope";
+import { formatDateBR } from "@/lib/date";
 import {
   DiscipleshipCaseSummaryItem,
   loadDiscipleshipCaseSummariesWithFallback
@@ -46,6 +48,13 @@ type AssigneeOption = {
   label: string;
 };
 
+type ActiveConfraternizacao = {
+  id: string;
+  titulo: string;
+  data_evento: string;
+  status: "ativa" | "futura" | "encerrada";
+} | null;
+
 const ORIGIN_ORDER: OriginKey[] = ["MANHA", "NOITE", "EVENTO", "SEM_ORIGEM"];
 
 function statusLabel(status: KanbanStatus) {
@@ -82,6 +91,12 @@ function toDaysSince(value: string) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return 0;
   return Math.max(0, Math.floor((Date.now() - time) / 86400000));
+}
+
+function confraternizacaoHeading(confraternizacao: ActiveConfraternizacao) {
+  if (!confraternizacao) return "Sem confraternização ativa";
+  const prefix = confraternizacao.status === "ativa" ? "Ativa" : "Próxima";
+  return `${prefix}: ${formatDateBR(confraternizacao.data_evento)}`;
 }
 
 function sortCases(items: QueueCase[]) {
@@ -135,16 +150,24 @@ function CaseCard({
   canOpenCase,
   assigneeOptions,
   onAssignResponsible,
-  assigningCaseId
+  assigningCaseId,
+  activeConfraternizacao,
+  onToggleConfraternizacaoConfirmation,
+  updatingConfraternizacaoCaseId
 }: {
   item: QueueCase;
   canOpenCase: boolean;
   assigneeOptions: AssigneeOption[];
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
   assigningCaseId: string | null;
+  activeConfraternizacao: ActiveConfraternizacao;
+  onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
+  updatingConfraternizacaoCaseId: string | null;
 }) {
   const percent = item.total_modules ? Math.round((item.done_modules / item.total_modules) * 100) : 0;
   const isAssigning = assigningCaseId === item.case_id;
+  const isConfraternizacaoLoading = updatingConfraternizacaoCaseId === item.case_id;
+  const canConfirmConfraternizacao = Boolean(activeConfraternizacao);
 
   return (
     <article className="discipulado-panel block space-y-3 p-4 transition hover:border-sky-300">
@@ -184,6 +207,40 @@ function CaseCard({
           ))}
         </select>
       </label>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Confraternização</p>
+          <span
+            className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+              item.confraternizacao_confirmada
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {item.confraternizacao_confirmada ? "Confirmado" : "Não confirmado"}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-slate-700">{confraternizacaoHeading(activeConfraternizacao)}</p>
+        <button
+          type="button"
+          onClick={() => {
+            void onToggleConfraternizacaoConfirmation(item);
+          }}
+          disabled={!canConfirmConfraternizacao || isConfraternizacaoLoading}
+          className={`mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+            item.confraternizacao_confirmada
+              ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+              : "border-sky-300 bg-white text-sky-800 hover:bg-sky-50"
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+          aria-pressed={item.confraternizacao_confirmada}
+        >
+          {isConfraternizacaoLoading
+            ? "Salvando..."
+            : item.confraternizacao_confirmada
+              ? "Confirmado"
+              : "Confirmar presença"}
+        </button>
+      </div>
       <div>
         <div className="h-2 rounded-full bg-slate-100">
           <div className="h-2 rounded-full bg-sky-600" style={{ width: `${percent}%` }} />
@@ -209,13 +266,19 @@ function StatusColumn({
   canOpenCase,
   assigneeOptions,
   onAssignResponsible,
-  assigningCaseId
+  assigningCaseId,
+  activeConfraternizacao,
+  onToggleConfraternizacaoConfirmation,
+  updatingConfraternizacaoCaseId
 }: {
   column: StatusColumnModel;
   canOpenCase: boolean;
   assigneeOptions: AssigneeOption[];
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
   assigningCaseId: string | null;
+  activeConfraternizacao: ActiveConfraternizacao;
+  onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
+  updatingConfraternizacaoCaseId: string | null;
 }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
@@ -233,6 +296,9 @@ function StatusColumn({
               assigneeOptions={assigneeOptions}
               onAssignResponsible={onAssignResponsible}
               assigningCaseId={assigningCaseId}
+              activeConfraternizacao={activeConfraternizacao}
+              onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
+              updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
             />
           ))
         ) : (
@@ -248,13 +314,19 @@ function OriginSection({
   canOpenCase,
   assigneeOptions,
   onAssignResponsible,
-  assigningCaseId
+  assigningCaseId,
+  activeConfraternizacao,
+  onToggleConfraternizacaoConfirmation,
+  updatingConfraternizacaoCaseId
 }: {
   section: OriginSectionModel;
   canOpenCase: boolean;
   assigneeOptions: AssigneeOption[];
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
   assigningCaseId: string | null;
+  activeConfraternizacao: ActiveConfraternizacao;
+  onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
+  updatingConfraternizacaoCaseId: string | null;
 }) {
   return (
     <section className="discipulado-panel p-3 sm:p-4">
@@ -276,6 +348,9 @@ function OriginSection({
             assigneeOptions={assigneeOptions}
             onAssignResponsible={onAssignResponsible}
             assigningCaseId={assigningCaseId}
+            activeConfraternizacao={activeConfraternizacao}
+            onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
+            updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
           />
         ))}
       </div>
@@ -288,13 +363,19 @@ function KanbanByOrigin({
   canOpenCase,
   assigneeOptions,
   onAssignResponsible,
-  assigningCaseId
+  assigningCaseId,
+  activeConfraternizacao,
+  onToggleConfraternizacaoConfirmation,
+  updatingConfraternizacaoCaseId
 }: {
   sections: OriginSectionModel[];
   canOpenCase: boolean;
   assigneeOptions: AssigneeOption[];
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
   assigningCaseId: string | null;
+  activeConfraternizacao: ActiveConfraternizacao;
+  onToggleConfraternizacaoConfirmation: (item: QueueCase) => Promise<void>;
+  updatingConfraternizacaoCaseId: string | null;
 }) {
   if (!sections.length) {
     return <div className="discipulado-panel p-4 text-sm text-slate-600">Sem casos nesta origem.</div>;
@@ -310,6 +391,9 @@ function KanbanByOrigin({
           assigneeOptions={assigneeOptions}
           onAssignResponsible={onAssignResponsible}
           assigningCaseId={assigningCaseId}
+          activeConfraternizacao={activeConfraternizacao}
+          onToggleConfraternizacaoConfirmation={onToggleConfraternizacaoConfirmation}
+          updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
         />
       ))}
     </div>
@@ -317,6 +401,10 @@ function KanbanByOrigin({
 }
 
 export default function DiscipuladoFilaPage() {
+  const {
+    confraternizacao: activeConfraternizacao,
+    errorMessage: activeConfraternizacaoErrorMessage
+  } = useActiveConfraternizacao();
   const [hasAccess, setHasAccess] = useState(false);
   const [canOpenCase, setCanOpenCase] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -327,10 +415,12 @@ export default function DiscipuladoFilaPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("lista");
   const [kanbanGroupMode, setKanbanGroupMode] = useState<KanbanGroupMode>("origin");
   const [assigningCaseId, setAssigningCaseId] = useState<string | null>(null);
+  const [updatingConfraternizacaoCaseId, setUpdatingConfraternizacaoCaseId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string | null }>({
     id: "",
     email: null
   });
+  const [assigneeDirectory, setAssigneeDirectory] = useState<AssigneeOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -386,6 +476,33 @@ export default function DiscipuladoFilaPage() {
           setMemberOriginById(nextMap);
         }
       }
+
+      if (supabaseClient) {
+        const { data: sessionData } = await supabaseClient.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          const response = await fetch("/api/discipulado/assignees", {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const payload = (await response.json()) as {
+              assignees?: Array<{ id: string; label: string }>;
+            };
+            const assignees = Array.isArray(payload.assignees)
+              ? payload.assignees
+                  .filter((item) => item?.id)
+                  .map((item) => ({
+                    id: String(item.id),
+                    label: String(item.label ?? "")
+                  }))
+              : [];
+            if (!active) return;
+            setAssigneeDirectory(assignees);
+          }
+        }
+      }
     }
 
     load();
@@ -404,6 +521,11 @@ export default function DiscipuladoFilaPage() {
   useEffect(() => {
     localStorage.setItem(GROUP_MODE_STORAGE_KEY, kanbanGroupMode);
   }, [kanbanGroupMode]);
+
+  useEffect(() => {
+    if (!activeConfraternizacaoErrorMessage) return;
+    setStatusMessage((prev) => prev || activeConfraternizacaoErrorMessage);
+  }, [activeConfraternizacaoErrorMessage]);
 
   const orderedCases = useMemo<QueueCase[]>(() => {
     const base =
@@ -445,6 +567,10 @@ export default function DiscipuladoFilaPage() {
   const assigneeOptions = useMemo<AssigneeOption[]>(() => {
     const map = new Map<string, string>();
 
+    for (const option of assigneeDirectory) {
+      map.set(option.id, option.label || `ID ${option.id.slice(0, 8)}`);
+    }
+
     if (currentUser.id) {
       const currentLabel = currentUser.email ?? "Você";
       map.set(currentUser.id, currentLabel);
@@ -463,7 +589,7 @@ export default function DiscipuladoFilaPage() {
         if (currentUser.id && b.id === currentUser.id) return 1;
         return a.label.localeCompare(b.label, "pt-BR");
       });
-  }, [cases, currentUser.email, currentUser.id]);
+  }, [assigneeDirectory, cases, currentUser.email, currentUser.id]);
 
   async function handleAssignResponsible(caseId: string, assignedTo: string | null) {
     if (!supabaseClient || assigningCaseId) return;
@@ -497,6 +623,50 @@ export default function DiscipuladoFilaPage() {
     setAssigningCaseId(null);
   }
 
+  async function handleToggleConfraternizacaoConfirmation(item: QueueCase) {
+    if (!supabaseClient || updatingConfraternizacaoCaseId) return;
+    if (!activeConfraternizacao && !item.confraternizacao_confirmada) return;
+
+    const nextConfirmed = !item.confraternizacao_confirmada;
+    const nowIso = new Date().toISOString();
+    const confraternizacaoId = nextConfirmed
+      ? activeConfraternizacao?.id ?? item.confraternizacao_id ?? null
+      : item.confraternizacao_id ?? activeConfraternizacao?.id ?? null;
+
+    setUpdatingConfraternizacaoCaseId(item.case_id);
+    setStatusMessage("");
+
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        confraternizacao_id: confraternizacaoId,
+        confraternizacao_confirmada: nextConfirmed,
+        confraternizacao_confirmada_em: nextConfirmed ? nowIso : null
+      })
+      .eq("id", item.case_id);
+
+    if (error) {
+      setStatusMessage(error.message);
+      setUpdatingConfraternizacaoCaseId(null);
+      return;
+    }
+
+    setCases((prev) =>
+      prev.map((caseItem) =>
+        caseItem.case_id === item.case_id
+          ? {
+              ...caseItem,
+              confraternizacao_id: confraternizacaoId,
+              confraternizacao_confirmada: nextConfirmed,
+              confraternizacao_confirmada_em: nextConfirmed ? nowIso : null
+            }
+          : caseItem
+      )
+    );
+
+    setUpdatingConfraternizacaoCaseId(null);
+  }
+
   if (!hasAccess) {
     return (
       <div className="discipulado-panel p-6 text-sm text-slate-700">
@@ -510,22 +680,24 @@ export default function DiscipuladoFilaPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-sky-700">Discipulado</p>
-          <h2 className="text-xl font-semibold text-sky-950">Fila do acolhedor</h2>
+          <h2 className="text-xl font-semibold text-sky-950">Em Acolhimento</h2>
           <p className="mt-1 text-xs text-slate-600">
             Ordenação por criticidade (CRÍTICA primeiro) e proximidade da confra.
           </p>
+          <p className="mt-1 text-xs text-slate-500">{confraternizacaoHeading(activeConfraternizacao)}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="rounded-lg border border-sky-200 bg-white p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("lista")}
-              className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                viewMode === "lista" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
-              }`}
-            >
-              Lista
-            </button>
+        <div className="-mx-1 w-full overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 sm:pb-0">
+          <div className="flex min-w-max items-center gap-2">
+            <div className="rounded-lg border border-sky-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("lista")}
+                className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                  viewMode === "lista" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Lista
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -536,48 +708,61 @@ export default function DiscipuladoFilaPage() {
                   viewMode === "kanban" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
                 }`}
               >
-              Kanban
-            </button>
-          </div>
-
-          {viewMode === "kanban" ? (
-            <div className="rounded-lg border border-sky-200 bg-white p-1">
-              <span className="px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Agrupar por:</span>
-              <button
-                type="button"
-                onClick={() => setKanbanGroupMode("status")}
-                className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                  kanbanGroupMode === "status" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
-                }`}
-              >
-                Status
-              </button>
-              <button
-                type="button"
-                onClick={() => setKanbanGroupMode("origin")}
-                className={`rounded-md px-3 py-1 text-xs font-semibold ${
-                  kanbanGroupMode === "origin" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
-                }`}
-              >
-                Origem
+                Kanban
               </button>
             </div>
-          ) : null}
 
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm text-sky-900 focus:border-sky-400 focus:outline-none"
-          >
-            <option value="ativos">Pendentes/Ativos/Pausados</option>
-            <option value="todos">Todos</option>
-          </select>
-          <Link
-            href="/discipulado/convertidos/novo"
-            className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
-          >
-            Novo convertido
-          </Link>
+            {viewMode === "kanban" ? (
+              <div className="rounded-lg border border-sky-200 bg-white p-1">
+                <span className="px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Agrupar por:</span>
+                <button
+                  type="button"
+                  onClick={() => setKanbanGroupMode("status")}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                    kanbanGroupMode === "status" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                  }`}
+                >
+                  Status
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKanbanGroupMode("origin")}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                    kanbanGroupMode === "origin" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                  }`}
+                >
+                  Origem
+                </button>
+              </div>
+            ) : null}
+
+            <div className="inline-flex min-h-11 rounded-full border border-sky-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("ativos")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "ativos" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Ativos
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("todos")}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  statusFilter === "todos" ? "bg-sky-700 text-white" : "text-sky-900 hover:bg-sky-50"
+                }`}
+              >
+                Todos
+              </button>
+            </div>
+            <Link
+              href="/discipulado/convertidos/novo"
+              className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
+            >
+              Nova vida acolhida
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -600,6 +785,9 @@ export default function DiscipuladoFilaPage() {
               assigneeOptions={assigneeOptions}
               onAssignResponsible={handleAssignResponsible}
               assigningCaseId={assigningCaseId}
+              activeConfraternizacao={activeConfraternizacao}
+              onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
+              updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
             />
           ))}
         </div>
@@ -613,6 +801,9 @@ export default function DiscipuladoFilaPage() {
               assigneeOptions={assigneeOptions}
               onAssignResponsible={handleAssignResponsible}
               assigningCaseId={assigningCaseId}
+              activeConfraternizacao={activeConfraternizacao}
+              onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
+              updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
             />
           ))}
         </div>
@@ -623,6 +814,9 @@ export default function DiscipuladoFilaPage() {
           assigneeOptions={assigneeOptions}
           onAssignResponsible={handleAssignResponsible}
           assigningCaseId={assigningCaseId}
+          activeConfraternizacao={activeConfraternizacao}
+          onToggleConfraternizacaoConfirmation={handleToggleConfraternizacaoConfirmation}
+          updatingConfraternizacaoCaseId={updatingConfraternizacaoCaseId}
         />
       )}
 
