@@ -29,6 +29,19 @@ const TURMA_STATUS_OPTIONS: Array<{ value: TurmaStatusValue; label: string }> = 
 
 type ModuleLookup = Record<string, string>;
 type CaseTurnosByCaseId = Record<string, TurnoOrigem[]>;
+type ProgressTurnoRow = {
+  case_id: string | null;
+  turno: string | null;
+  module_id: string | null;
+  status: string | null;
+  created_at: string | null;
+};
+type TurmaModuleSummaryItem = {
+  moduleId: string;
+  startedAt: string | null;
+  members: number;
+};
+type TurmaModuleSummaryByTurno = Record<TurnoOrigem, TurmaModuleSummaryItem[]>;
 
 function statusLabel(value: DiscipleshipCaseSummaryItem["status"]) {
   if (value === "pendente_matricula") return "INICIADA";
@@ -56,7 +69,23 @@ function isMissingProgressTurnoColumnError(message: string, code?: string) {
   );
 }
 
-function buildCaseTurnosByCaseId(rows: Array<{ case_id: string | null; turno: string | null }>): CaseTurnosByCaseId {
+function createEmptyTurmaModuleSummaryByTurno(): TurmaModuleSummaryByTurno {
+  return {
+    MANHA: [],
+    TARDE: [],
+    NOITE: [],
+    NAO_INFORMADO: []
+  };
+}
+
+function formatDateBR(value: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString("pt-BR", { timeZone: "America/Manaus" });
+}
+
+function buildCaseTurnosByCaseId(rows: ProgressTurnoRow[]): CaseTurnosByCaseId {
   const map = new Map<string, Set<TurnoOrigem>>();
   for (const row of rows) {
     const caseId = String(row.case_id ?? "");
@@ -73,6 +102,51 @@ function buildCaseTurnosByCaseId(rows: Array<{ case_id: string | null; turno: st
     asObject[caseId] = Array.from(values).sort((a, b) => TURNO_ORDER.indexOf(a) - TURNO_ORDER.indexOf(b));
   }
   return asObject;
+}
+
+function buildTurmaModuleSummaryByTurno(rows: ProgressTurnoRow[]): TurmaModuleSummaryByTurno {
+  const summary = createEmptyTurmaModuleSummaryByTurno();
+  const mapByTurno: Record<TurnoOrigem, Map<string, TurmaModuleSummaryItem>> = {
+    MANHA: new Map<string, TurmaModuleSummaryItem>(),
+    TARDE: new Map<string, TurmaModuleSummaryItem>(),
+    NOITE: new Map<string, TurmaModuleSummaryItem>(),
+    NAO_INFORMADO: new Map<string, TurmaModuleSummaryItem>()
+  };
+
+  for (const row of rows) {
+    if (row.status !== "em_andamento") continue;
+
+    const turno = normalizeTurnoOrigem(row.turno);
+    const moduleId = String(row.module_id ?? "");
+    if (!moduleId) continue;
+
+    const current = mapByTurno[turno].get(moduleId);
+    if (!current) {
+      mapByTurno[turno].set(moduleId, {
+        moduleId,
+        startedAt: row.created_at ?? null,
+        members: 1
+      });
+      continue;
+    }
+
+    current.members += 1;
+    if (row.created_at && (!current.startedAt || row.created_at < current.startedAt)) {
+      current.startedAt = row.created_at;
+    }
+  }
+
+  for (const turno of TURNO_ORDER) {
+    summary[turno] = Array.from(mapByTurno[turno].values()).sort((a, b) => {
+      const membersDiff = b.members - a.members;
+      if (membersDiff !== 0) return membersDiff;
+      const aStart = a.startedAt ?? "9999-12-31T23:59:59.999Z";
+      const bStart = b.startedAt ?? "9999-12-31T23:59:59.999Z";
+      return aStart.localeCompare(bStart);
+    });
+  }
+
+  return summary;
 }
 
 function deriveTurnoStatus(cases: DiscipleshipCaseSummaryItem[]): TurmaStatusValue {
@@ -152,6 +226,38 @@ function CaseCard({
   );
 }
 
+function TurmaModuleSummary({
+  turnoKey,
+  moduleNameById,
+  moduleSummaryByTurno
+}: {
+  turnoKey: TurnoOrigem;
+  moduleNameById: ModuleLookup;
+  moduleSummaryByTurno: TurmaModuleSummaryByTurno;
+}) {
+  const summaries = moduleSummaryByTurno[turnoKey] ?? [];
+  if (!summaries.length) {
+    return <p className="mt-2 text-xs text-slate-500">Sem módulo em andamento nesta turma.</p>;
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3">
+      <p className="text-xs font-semibold text-slate-700">{summaries.length === 1 ? "Módulo ministrado" : "Módulos ministrados"}</p>
+      <div className="mt-1 space-y-1">
+        {summaries.map((summary) => {
+          const moduleName = moduleNameById[summary.moduleId] ?? `#${summary.moduleId.slice(0, 8)}`;
+          return (
+            <p key={summary.moduleId} className="text-xs text-slate-700">
+              <strong>{moduleName}</strong> • Início: <strong>{formatDateBR(summary.startedAt)}</strong> • Membros:{" "}
+              <strong>{summary.members}</strong>
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function DiscipuladoBoardPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
@@ -167,6 +273,9 @@ export default function DiscipuladoBoardPage() {
   });
   const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
   const [caseTurnosByCaseId, setCaseTurnosByCaseId] = useState<CaseTurnosByCaseId>({});
+  const [moduleSummaryByTurno, setModuleSummaryByTurno] = useState<TurmaModuleSummaryByTurno>(
+    createEmptyTurmaModuleSummaryByTurno()
+  );
 
   useEffect(() => {
     let active = true;
@@ -201,6 +310,7 @@ export default function DiscipuladoBoardPage() {
       });
       setCases(discipuladoCases);
       setCaseTurnosByCaseId({});
+      setModuleSummaryByTurno(createEmptyTurmaModuleSummaryByTurno());
 
       if (supabaseClient) {
         const { data: modulesData } = await supabaseClient
@@ -222,7 +332,7 @@ export default function DiscipuladoBoardPage() {
         const caseIds = discipuladoCases.map((item) => item.case_id);
         const progressTurnosResult = await supabaseClient
           .from("discipleship_progress")
-          .select("case_id, turno")
+          .select("case_id, turno, module_id, status, created_at")
           .in("case_id", caseIds);
 
         if (progressTurnosResult.error) {
@@ -230,11 +340,12 @@ export default function DiscipuladoBoardPage() {
             setStatusMessage((prev) => prev || progressTurnosResult.error?.message || "");
           }
         } else {
-          const turnosByCase = buildCaseTurnosByCaseId(
-            ((progressTurnosResult.data ?? []) as Array<{ case_id: string | null; turno: string | null }>)
-          );
+          const progressRows = (progressTurnosResult.data ?? []) as ProgressTurnoRow[];
+          const turnosByCase = buildCaseTurnosByCaseId(progressRows);
+          const moduleSummary = buildTurmaModuleSummaryByTurno(progressRows);
           if (!active) return;
           setCaseTurnosByCaseId(turnosByCase);
+          setModuleSummaryByTurno(moduleSummary);
         }
       }
 
@@ -342,6 +453,11 @@ export default function DiscipuladoBoardPage() {
           <div className="space-y-4 md:hidden">
             <section className="discipulado-panel p-4">
               <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
+              <TurmaModuleSummary
+                turnoKey={mobileTurno}
+                moduleNameById={moduleNameById}
+                moduleSummaryByTurno={moduleSummaryByTurno}
+              />
               {(byTurno[mobileTurno] ?? []).length ? (
                 <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
                   <label className="space-y-1">
@@ -400,6 +516,11 @@ export default function DiscipuladoBoardPage() {
               return (
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
+                  <TurmaModuleSummary
+                    turnoKey={turno.key}
+                    moduleNameById={moduleNameById}
+                    moduleSummaryByTurno={moduleSummaryByTurno}
+                  />
                   {turnoCases.length ? (
                     <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:max-w-sm">
                       <label className="space-y-1">
