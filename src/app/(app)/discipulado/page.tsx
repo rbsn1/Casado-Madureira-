@@ -32,9 +32,6 @@ import { supabaseClient } from "@/lib/supabaseClient";
 type DashboardCards = {
   em_discipulado: number;
   concluidos: number;
-  parados: number;
-  pendentes_criticos: number;
-  proximos_a_concluir: number;
 };
 
 type Congregation = {
@@ -93,10 +90,7 @@ const IMPACT_ORIGIN_LABELS: Record<DecisionOrigin, string> = {
 
 const emptyCards: DashboardCards = {
   em_discipulado: 0,
-  concluidos: 0,
-  parados: 0,
-  pendentes_criticos: 0,
-  proximos_a_concluir: 0
+  concluidos: 0
 };
 
 function normalizeDashboardErrorMessage(message: string) {
@@ -769,6 +763,26 @@ export default function DiscipuladoDashboardPage() {
   }, [mergedCases]);
   const stageMax = useMemo(() => Math.max(...stageConversion.map((entry) => entry.value), 1), [stageConversion]);
 
+  const operationalCards = useMemo(
+    () => {
+      const emAcolhimento = mergedCases.filter((item) => item.status === "pendente_matricula").length;
+      const emDiscipulado = mergedCases.length
+        ? mergedCases.filter((item) => item.status === "em_discipulado").length
+        : cards.em_discipulado;
+      const concluidos = mergedCases.length
+        ? mergedCases.filter((item) => item.status === "concluido").length
+        : cards.concluidos;
+
+      return {
+        em_discipulado: emDiscipulado,
+        concluidos,
+        em_acolhimento: emAcolhimento,
+        vidas_acolhidas: mergedCases.length || emDiscipulado + concluidos + emAcolhimento
+      };
+    },
+    [cards.concluidos, cards.em_discipulado, mergedCases]
+  );
+
   if (!hasAccess) {
     return <div className="discipulado-panel p-6 text-sm text-slate-700">Acesso restrito aos perfis do Discipulado.</div>;
   }
@@ -822,7 +836,7 @@ export default function DiscipuladoDashboardPage() {
 
       {loading ? <div className="discipulado-panel p-5 text-sm text-slate-600">Carregando indicadores...</div> : null}
 
-      <OperationalStatusCards cards={cards} />
+      <OperationalStatusCards cards={operationalCards} />
 
       {impactLoading ? <div className="discipulado-panel p-5 text-sm text-slate-600">Carregando impacto evangelístico...</div> : null}
 

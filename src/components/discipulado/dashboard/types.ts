@@ -1,9 +1,8 @@
 export type OperationalStatusCardsModel = {
   em_discipulado: number;
   concluidos: number;
-  parados: number;
-  pendentes_criticos: number;
-  proximos_a_concluir: number;
+  em_acolhimento: number;
+  vidas_acolhidas: number;
 };
 
 export type ExecutiveKpiPeriod = "today" | "7d" | "30d";
