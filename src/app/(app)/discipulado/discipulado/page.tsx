@@ -18,7 +18,18 @@ const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
   { key: "NAO_INFORMADO", label: "Não informado" }
 ];
 
+const TURMA_TURNO_OPTIONS: Array<{ value: "MANHA" | "EVENTO" | "NOITE"; label: string }> = [
+  { value: "MANHA", label: "Manhã" },
+  { value: "EVENTO", label: "Tarde" },
+  { value: "NOITE", label: "Noite" }
+];
+
 type AssigneeOption = {
+  id: string;
+  label: string;
+};
+
+type ModuleOption = {
   id: string;
   label: string;
 };
@@ -40,26 +51,47 @@ function turnoLabel(key: TurnoOrigem) {
   return TURNOS.find((item) => item.key === key)?.label ?? "Não informado";
 }
 
+function toTurmaTurnoValue(value: string | null | undefined): "MANHA" | "EVENTO" | "NOITE" {
+  const normalized = normalizeTurnoOrigem(value);
+  if (normalized === "MANHA") return "MANHA";
+  if (normalized === "NOITE") return "NOITE";
+  return "EVENTO";
+}
+
 function CaseCard({
   item,
   moduleNameById,
+  moduleOptions,
   assigneeOptions,
   assigningCaseId,
-  onAssignResponsible
+  savingTurmaCaseId,
+  onAssignResponsible,
+  onSaveTurma
 }: {
   item: DiscipleshipCaseSummaryItem;
   moduleNameById: ModuleLookup;
+  moduleOptions: ModuleOption[];
   assigneeOptions: AssigneeOption[];
   assigningCaseId: string | null;
+  savingTurmaCaseId: string | null;
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
+  onSaveTurma: (caseId: string, moduloAtualId: string | null, turno: "MANHA" | "EVENTO" | "NOITE") => Promise<void>;
 }) {
   const isAssigning = assigningCaseId === item.case_id;
+  const isSavingTurma = savingTurmaCaseId === item.case_id;
   const caseTurno = turnoLabel(normalizeTurnoOrigem(item.turno_origem));
   const caseStatus = statusLabel(item.status);
   const assignmentStatus = assignmentStatusLabel(item.assigned_to);
+  const [turmaModuleId, setTurmaModuleId] = useState(item.modulo_atual_id ?? "");
+  const [turmaTurno, setTurmaTurno] = useState<"MANHA" | "EVENTO" | "NOITE">(toTurmaTurnoValue(item.turno_origem));
   const moduloAtual = item.modulo_atual_id
     ? (moduleNameById[item.modulo_atual_id] ?? `#${item.modulo_atual_id.slice(0, 8)}`)
     : "Sem módulo";
+
+  useEffect(() => {
+    setTurmaModuleId(item.modulo_atual_id ?? "");
+    setTurmaTurno(toTurmaTurnoValue(item.turno_origem));
+  }, [item.case_id, item.modulo_atual_id, item.turno_origem]);
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -97,6 +129,52 @@ function CaseCard({
           ))}
         </select>
       </label>
+
+      <div className="mt-3 grid gap-2">
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">Turma (módulo)</span>
+          <select
+            value={turmaModuleId}
+            onChange={(event) => setTurmaModuleId(event.target.value)}
+            disabled={isSavingTurma}
+            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+          >
+            <option value="">Sem módulo</option>
+            {moduleOptions.map((moduleOption) => (
+              <option key={moduleOption.id} value={moduleOption.id}>
+                {moduleOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">Turno da turma</span>
+          <select
+            value={turmaTurno}
+            onChange={(event) => setTurmaTurno(event.target.value as "MANHA" | "EVENTO" | "NOITE")}
+            disabled={isSavingTurma}
+            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+          >
+            {TURMA_TURNO_OPTIONS.map((turnoOption) => (
+              <option key={turnoOption.value} value={turnoOption.value}>
+                {turnoOption.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => {
+            void onSaveTurma(item.case_id, turmaModuleId || null, turmaTurno);
+          }}
+          disabled={isSavingTurma}
+          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+        >
+          {isSavingTurma ? "Salvando turma..." : "Salvar turma"}
+        </button>
+      </div>
     </article>
   );
 }
@@ -108,12 +186,14 @@ export default function DiscipuladoBoardPage() {
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [mobileTurno, setMobileTurno] = useState<TurnoOrigem>("MANHA");
   const [assigningCaseId, setAssigningCaseId] = useState<string | null>(null);
+  const [savingTurmaCaseId, setSavingTurmaCaseId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string | null }>({
     id: "",
     email: null
   });
   const [assigneeDirectory, setAssigneeDirectory] = useState<AssigneeOption[]>([]);
   const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
+  const [moduleOptions, setModuleOptions] = useState<ModuleOption[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -155,12 +235,16 @@ export default function DiscipuladoBoardPage() {
           .order("sort_order", { ascending: true });
         if (!active) return;
         const nextMap: ModuleLookup = {};
+        const nextOptions: ModuleOption[] = [];
         for (const moduleItem of modulesData ?? []) {
           const id = String(moduleItem.id ?? "");
           if (!id) continue;
-          nextMap[id] = String(moduleItem.title ?? "Módulo");
+          const label = String(moduleItem.title ?? "Módulo");
+          nextMap[id] = label;
+          nextOptions.push({ id, label });
         }
         setModuleNameById(nextMap);
+        setModuleOptions(nextOptions);
       }
 
       if (supabaseClient) {
@@ -274,6 +358,43 @@ export default function DiscipuladoBoardPage() {
     setAssigningCaseId(null);
   }
 
+  async function handleSaveTurma(caseId: string, moduloAtualId: string | null, turno: "MANHA" | "EVENTO" | "NOITE") {
+    if (!supabaseClient || savingTurmaCaseId) return;
+
+    setSavingTurmaCaseId(caseId);
+    setStatusMessage("");
+
+    const { error } = await supabaseClient
+      .from("discipleship_cases")
+      .update({
+        modulo_atual_id: moduloAtualId,
+        turno_origem: turno,
+        fase: "DISCIPULADO"
+      })
+      .eq("id", caseId);
+
+    if (error) {
+      setStatusMessage(error.message);
+      setSavingTurmaCaseId(null);
+      return;
+    }
+
+    setCases((prev) =>
+      prev.map((item) =>
+        item.case_id === caseId
+          ? {
+              ...item,
+              modulo_atual_id: moduloAtualId,
+              turno_origem: turno,
+              fase: "DISCIPULADO"
+            }
+          : item
+      )
+    );
+
+    setSavingTurmaCaseId(null);
+  }
+
   if (!hasAccess) {
     return <div className="discipulado-panel p-6 text-sm text-slate-700">Acesso restrito aos perfis do Discipulado.</div>;
   }
@@ -283,7 +404,7 @@ export default function DiscipuladoBoardPage() {
       <div>
         <p className="text-sm text-sky-700">Discipulado</p>
         <h2 className="text-xl font-semibold text-sky-950">Em Discipulado</h2>
-        <p className="mt-1 text-xs text-slate-600">Painel focado na atribuição de responsável por case.</p>
+        <p className="mt-1 text-xs text-slate-600">Painel focado na gestão das turmas e atribuição de responsável por case.</p>
       </div>
 
       {statusMessage ? (
@@ -325,9 +446,12 @@ export default function DiscipuladoBoardPage() {
                       key={item.case_id}
                       item={item}
                       moduleNameById={moduleNameById}
+                      moduleOptions={moduleOptions}
                       assigneeOptions={assigneeOptions}
                       assigningCaseId={assigningCaseId}
+                      savingTurmaCaseId={savingTurmaCaseId}
                       onAssignResponsible={handleAssignResponsible}
+                      onSaveTurma={handleSaveTurma}
                     />
                   ))
                 )}
@@ -353,9 +477,12 @@ export default function DiscipuladoBoardPage() {
                           key={item.case_id}
                           item={item}
                           moduleNameById={moduleNameById}
+                          moduleOptions={moduleOptions}
                           assigneeOptions={assigneeOptions}
                           assigningCaseId={assigningCaseId}
+                          savingTurmaCaseId={savingTurmaCaseId}
                           onAssignResponsible={handleAssignResponsible}
+                          onSaveTurma={handleSaveTurma}
                         />
                       ))
                     )}
