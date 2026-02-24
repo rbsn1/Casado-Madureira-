@@ -50,3 +50,42 @@ export type ByAcolhedorRow = {
   criticos: number;
   semContatoSeteDias: number;
 };
+
+export type EvangelisticImpactPeriod = "7d" | "30d" | "90d";
+
+export type DecisionsChartGranularity = "day" | "month" | "year";
+
+export type EvangelisticImpactKpis = {
+  aceitouJesusTotal: number;
+  aceitouJesusPrevious: number;
+  aceitouJesusVariationPct: number | null;
+  aceitouJesusVariationAbs: number;
+  mediaPorCulto: number | null;
+  mediaPorCultoPrevious: number | null;
+  mediaPorCultoVariationPct: number | null;
+  mediaPorCultoVariationAbs: number | null;
+  pico: {
+    total: number;
+    dateLabel: string;
+    cultoLabel: string;
+  } | null;
+};
+
+export type DecisionsTrendPoint = {
+  key: string;
+  label: string;
+  total: number;
+  previousTotal: number | null;
+  variationPct: number | null;
+  variationAbs: number | null;
+};
+
+export type OriginImpactRow = {
+  origin: "MANHA" | "NOITE" | "MJ" | "QUARTA";
+  label: string;
+  current: number;
+  previous: number;
+  sharePct: number;
+  variationPct: number | null;
+  variationAbs: number;
+};

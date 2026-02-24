@@ -4,21 +4,37 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ByAcolhedorTable,
+  DecisionsByOriginPanel,
+  DecisionsTrendChart,
   EntryVsProgressChart,
+  EvangelisticImpactKpisSection,
   ExecutiveKpiRow,
   OperationalStatusCards,
   RecommendedActionsPanel,
   RiskNowPanel,
   type ByAcolhedorRow,
+  type DecisionsChartGranularity,
+  type DecisionsTrendPoint,
   type EntryVsProgressPoint,
+  type EvangelisticImpactKpis,
+  type EvangelisticImpactPeriod,
   type ExecutiveKpiModel,
   type ExecutiveKpiPeriod,
+  type OriginImpactRow,
   type RecommendedActionItem,
   type RiskNowItem
 } from "@/components/discipulado/dashboard";
 import { getAuthScope } from "@/lib/authScope";
 import { criticalityRank } from "@/lib/discipleshipCriticality";
 import { DiscipleshipCaseSummaryItem, loadDiscipleshipCaseSummariesWithFallback } from "@/lib/discipleshipCases";
+import {
+  calculateMediaPorCulto,
+  DecisionOrigin,
+  groupByDay,
+  groupByMonth,
+  groupByOrigin,
+  groupByYear
+} from "@/lib/evangelisticImpact";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type DashboardCards = {
@@ -58,6 +74,19 @@ type ProgressEventRow = {
   updated_at: string;
 };
 
+type EvangelisticDecisionRow = {
+  id: string;
+  created_at: string | null;
+  origem: string | null;
+  cadastro_origem?: string | null;
+};
+
+type CultoRow = {
+  id: string;
+  tipo: string | null;
+  data: string;
+};
+
 type MergedCase = DiscipleshipCaseSummaryItem & {
   created_at: string;
   last_contact_at: string | null;
@@ -70,6 +99,13 @@ const DAYS_WITHOUT_CONTACT_RISK = 7;
 const DAYS_OVERDUE_FALLBACK = 3;
 const DAYS_TO_DEADLINE_ALERT = 7;
 const CHART_WEEKS = 12;
+const IMPACT_ORIGIN_ORDER: DecisionOrigin[] = ["MANHA", "NOITE", "MJ", "QUARTA"];
+const IMPACT_ORIGIN_LABELS: Record<DecisionOrigin, string> = {
+  MANHA: "Culto da manhã",
+  NOITE: "Culto da noite",
+  MJ: "Culto do MJ",
+  QUARTA: "Culto de Quarta"
+};
 
 const emptyCards: DashboardCards = {
   em_discipulado: 0,
@@ -150,6 +186,49 @@ function computeVariationPct(currentValue: number, previousValue: number) {
   return ((currentValue - previousValue) / previousValue) * 100;
 }
 
+function normalizeDecisionOrigin(value: string | null | undefined): DecisionOrigin | null {
+  if (!value) return null;
+  const raw = value.trim().toUpperCase();
+  if (raw.includes("MANH")) return "MANHA";
+  if (raw.includes("NOITE")) return "NOITE";
+  if (raw === "MJ") return "MJ";
+  if (raw.includes("QUARTA")) return "QUARTA";
+  return null;
+}
+
+function formatDateToYmd(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDecisionDateLabel(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Data inválida";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function formatCultoTypeLabel(value: string | null | undefined, fallbackOrigin: DecisionOrigin | null) {
+  if (value && value.trim()) return value.trim();
+  if (!fallbackOrigin) return "Culto não informado";
+  return IMPACT_ORIGIN_LABELS[fallbackOrigin];
+}
+
+function getImpactRange(period: EvangelisticImpactPeriod) {
+  const now = new Date();
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  const fromDate = startOfDay(new Date(now.getTime() - (days - 1) * 86400000));
+  const from = fromDate.getTime();
+  const to = now.getTime();
+  const previousFrom = from - days * 86400000;
+  const previousTo = from;
+  return { from, to, previousFrom, previousTo, days };
+}
+
 export default function DiscipuladoDashboardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -168,6 +247,12 @@ export default function DiscipuladoDashboardPage() {
   const [congregationFilter, setCongregationFilter] = useState("");
 
   const [kpiPeriod, setKpiPeriod] = useState<ExecutiveKpiPeriod>("7d");
+  const [impactPeriod, setImpactPeriod] = useState<EvangelisticImpactPeriod>("30d");
+  const [decisionsGranularity, setDecisionsGranularity] = useState<DecisionsChartGranularity>("day");
+  const [impactLoading, setImpactLoading] = useState(true);
+  const [impactStatusMessage, setImpactStatusMessage] = useState("");
+  const [evangelisticDecisions, setEvangelisticDecisions] = useState<EvangelisticDecisionRow[]>([]);
+  const [cultos, setCultos] = useState<CultoRow[]>([]);
 
   const loadDashboard = useCallback(async (adminMaster: boolean, targetCongregation: string) => {
     if (!supabaseClient) return;
@@ -263,6 +348,140 @@ export default function DiscipuladoDashboardPage() {
     setLoading(false);
   }, []);
 
+  const loadEvangelisticImpact = useCallback(
+    async (adminMaster: boolean, targetCongregation: string, period: EvangelisticImpactPeriod) => {
+      if (!supabaseClient) return;
+
+      setImpactLoading(true);
+      setImpactStatusMessage("");
+
+      const range = getImpactRange(period);
+      const startIso = new Date(range.previousFrom).toISOString();
+      const endIso = new Date(range.to).toISOString();
+      const fromDateYmd = formatDateToYmd(new Date(range.previousFrom));
+      const toDateYmd = formatDateToYmd(new Date(range.to));
+
+      let decisionsQuery = supabaseClient
+        .from("pessoas")
+        .select("id, created_at, origem, cadastro_origem")
+        .eq("cadastro_origem", "ccm")
+        .gte("created_at", startIso)
+        .lt("created_at", endIso);
+
+      if (adminMaster && targetCongregation) {
+        decisionsQuery = decisionsQuery.eq("congregation_id", targetCongregation);
+      }
+
+      let cultosQuery = supabaseClient
+        .from("cultos")
+        .select("id, tipo, data")
+        .gte("data", fromDateYmd)
+        .lte("data", toDateYmd);
+
+      if (adminMaster && targetCongregation) {
+        cultosQuery = cultosQuery.eq("congregation_id", targetCongregation);
+      }
+
+      const [initialDecisionsResult, initialCultosResult] = await Promise.all([decisionsQuery, cultosQuery]);
+      let decisionsResult: {
+        data: EvangelisticDecisionRow[] | null;
+        error: { code?: string; message: string } | null;
+      } = {
+        data: (initialDecisionsResult.data ?? null) as EvangelisticDecisionRow[] | null,
+        error: initialDecisionsResult.error
+      };
+      let cultosResult: {
+        data: CultoRow[] | null;
+        error: { code?: string; message: string } | null;
+      } = {
+        data: (initialCultosResult.data ?? null) as CultoRow[] | null,
+        error: initialCultosResult.error
+      };
+
+      if (decisionsResult.error && adminMaster && targetCongregation && decisionsResult.error.code === "42703") {
+        const fallbackResult = await supabaseClient
+          .from("pessoas")
+          .select("id, created_at, origem")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso);
+        decisionsResult = {
+          data: (fallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
+          error: fallbackResult.error
+        };
+      }
+
+      if (decisionsResult.error && decisionsResult.error.code === "42703") {
+        const fallbackResult = await supabaseClient
+          .from("pessoas")
+          .select("id, created_at, origem")
+          .gte("created_at", startIso)
+          .lt("created_at", endIso);
+        decisionsResult = {
+          data: (fallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
+          error: fallbackResult.error
+        };
+
+        if (adminMaster && targetCongregation && !decisionsResult.error) {
+          const scopedFallbackResult = await supabaseClient
+            .from("pessoas")
+            .select("id, created_at, origem")
+            .eq("congregation_id", targetCongregation)
+            .gte("created_at", startIso)
+            .lt("created_at", endIso);
+          decisionsResult = {
+            data: (scopedFallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
+            error: scopedFallbackResult.error
+          };
+        }
+      }
+
+      if (cultosResult.error && adminMaster && targetCongregation && cultosResult.error.code === "42703") {
+        const fallbackResult = await supabaseClient
+          .from("cultos")
+          .select("id, tipo, data")
+          .gte("data", fromDateYmd)
+          .lte("data", toDateYmd);
+        cultosResult = {
+          data: (fallbackResult.data ?? null) as CultoRow[] | null,
+          error: fallbackResult.error
+        };
+      }
+
+      const impactErrors: string[] = [];
+
+      if (decisionsResult.error) {
+        const code = decisionsResult.error.code ?? "";
+        if (code === "42703" || code === "42P01") {
+          impactErrors.push(
+            "Dados de decisões indisponíveis no banco (cadastros/origem de culto)."
+          );
+        } else {
+          impactErrors.push(decisionsResult.error.message);
+        }
+        setEvangelisticDecisions([]);
+      } else {
+        const decisionRows = ((decisionsResult.data ?? []) as EvangelisticDecisionRow[]).filter((item) => Boolean(item.created_at));
+        setEvangelisticDecisions(decisionRows);
+      }
+
+      if (cultosResult.error) {
+        const code = cultosResult.error.code ?? "";
+        if (code === "42P01") {
+          impactErrors.push("Tabela de cultos não encontrada no banco.");
+        } else {
+          impactErrors.push(cultosResult.error.message);
+        }
+        setCultos([]);
+      } else {
+        setCultos((cultosResult.data ?? []) as CultoRow[]);
+      }
+
+      setImpactStatusMessage(impactErrors.join(" "));
+      setImpactLoading(false);
+    },
+    []
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -330,6 +549,11 @@ export default function DiscipuladoDashboardPage() {
     void loadDashboard(isAdminMaster, congregationFilter);
   }, [congregationFilter, hasAccess, isAdminMaster, loadDashboard, scopeBootstrapped]);
 
+  useEffect(() => {
+    if (!hasAccess || !scopeBootstrapped) return;
+    void loadEvangelisticImpact(isAdminMaster, congregationFilter, impactPeriod);
+  }, [congregationFilter, hasAccess, impactPeriod, isAdminMaster, loadEvangelisticImpact, scopeBootstrapped]);
+
   const mergedCases = useMemo<MergedCase[]>(() => {
     const now = Date.now();
 
@@ -387,6 +611,142 @@ export default function DiscipuladoDashboardPage() {
     const previousTo = from;
     return { from, to, previousFrom, previousTo };
   }, [kpiPeriod]);
+
+  const impactRange = useMemo(() => getImpactRange(impactPeriod), [impactPeriod]);
+
+  const normalizedDecisionRecords = useMemo(
+    () =>
+      evangelisticDecisions
+        .filter((item) => Boolean(item.created_at))
+        .map((item) => ({
+          acceptedAt: item.created_at as string,
+          origin: normalizeDecisionOrigin(item.origem)
+        })),
+    [evangelisticDecisions]
+  );
+
+  const currentDecisionRecords = useMemo(
+    () =>
+      normalizedDecisionRecords.filter((item) => {
+        return inRange(parseTime(item.acceptedAt), impactRange.from, impactRange.to);
+      }),
+    [impactRange.from, impactRange.to, normalizedDecisionRecords]
+  );
+
+  const previousDecisionRecords = useMemo(
+    () =>
+      normalizedDecisionRecords.filter((item) => {
+        return inRange(parseTime(item.acceptedAt), impactRange.previousFrom, impactRange.previousTo);
+      }),
+    [impactRange.previousFrom, impactRange.previousTo, normalizedDecisionRecords]
+  );
+
+  const currentCultosCount = useMemo(
+    () => cultos.filter((item) => inRange(parseTime(item.data), impactRange.from, impactRange.to)).length,
+    [cultos, impactRange.from, impactRange.to]
+  );
+
+  const previousCultosCount = useMemo(
+    () => cultos.filter((item) => inRange(parseTime(item.data), impactRange.previousFrom, impactRange.previousTo)).length,
+    [cultos, impactRange.previousFrom, impactRange.previousTo]
+  );
+
+  const impactKpis = useMemo<EvangelisticImpactKpis>(() => {
+    const currentTotal = currentDecisionRecords.length;
+    const previousTotal = previousDecisionRecords.length;
+
+    const mediaAtual = calculateMediaPorCulto(currentTotal, currentCultosCount);
+    const mediaAnterior = calculateMediaPorCulto(previousTotal, previousCultosCount);
+
+    const picoByCulto = new Map<string, { total: number; acceptedAt: string; origin: DecisionOrigin | null }>();
+    for (const record of currentDecisionRecords) {
+      const acceptedAt = record.acceptedAt;
+      const dateKey = acceptedAt.slice(0, 10);
+      const originKey = record.origin ?? "SEM_ORIGEM";
+      const key = `${dateKey}::${originKey}`;
+      const current = picoByCulto.get(key) ?? { total: 0, acceptedAt, origin: record.origin };
+      current.total += 1;
+      picoByCulto.set(key, current);
+    }
+
+    const pico =
+      [...picoByCulto.values()].sort((a, b) => b.total - a.total)[0] ?? null;
+
+    const picoDateKey = pico?.acceptedAt.slice(0, 10) ?? null;
+    const cultoDoPico = picoDateKey
+      ? cultos.find((item) => {
+          const cultoDateKey = item.data.slice(0, 10);
+          if (cultoDateKey !== picoDateKey) return false;
+          const tipoNormalizado = normalizeDecisionOrigin(item.tipo);
+          return pico?.origin ? tipoNormalizado === pico.origin : true;
+        }) ?? null
+      : null;
+
+    return {
+      aceitouJesusTotal: currentTotal,
+      aceitouJesusPrevious: previousTotal,
+      aceitouJesusVariationAbs: currentTotal - previousTotal,
+      aceitouJesusVariationPct: computeVariationPct(currentTotal, previousTotal),
+      mediaPorCulto: mediaAtual,
+      mediaPorCultoPrevious: mediaAnterior,
+      mediaPorCultoVariationAbs:
+        mediaAtual === null || mediaAnterior === null ? null : Number((mediaAtual - mediaAnterior).toFixed(2)),
+      mediaPorCultoVariationPct:
+        mediaAtual === null || mediaAnterior === null || mediaAnterior <= 0
+          ? null
+          : ((mediaAtual - mediaAnterior) / mediaAnterior) * 100,
+      pico: pico
+        ? {
+            total: pico.total,
+            dateLabel: formatDecisionDateLabel(pico.acceptedAt),
+            cultoLabel: formatCultoTypeLabel(cultoDoPico?.tipo ?? null, pico.origin)
+          }
+        : null
+    };
+  }, [cultos, currentCultosCount, currentDecisionRecords, previousCultosCount, previousDecisionRecords]);
+
+  const groupedCurrentDecisions = useMemo(() => {
+    if (decisionsGranularity === "month") return groupByMonth(currentDecisionRecords);
+    if (decisionsGranularity === "year") return groupByYear(currentDecisionRecords);
+    return groupByDay(currentDecisionRecords);
+  }, [currentDecisionRecords, decisionsGranularity]);
+
+  const decisionsTrendData = useMemo<DecisionsTrendPoint[]>(
+    () =>
+      groupedCurrentDecisions.map((point, index) => {
+        const previous = index > 0 ? groupedCurrentDecisions[index - 1] : null;
+        const variationAbs = previous ? point.total - previous.total : null;
+        return {
+          key: point.key,
+          label: point.label,
+          total: point.total,
+          previousTotal: previous?.total ?? null,
+          variationAbs,
+          variationPct: previous ? computeVariationPct(point.total, previous.total) : null
+        };
+      }),
+    [groupedCurrentDecisions]
+  );
+
+  const originImpactRows = useMemo<OriginImpactRow[]>(() => {
+    const currentByOrigin = new Map(groupByOrigin(currentDecisionRecords).map((item) => [item.origin, item.total]));
+    const previousByOrigin = new Map(groupByOrigin(previousDecisionRecords).map((item) => [item.origin, item.total]));
+    const currentTotal = currentDecisionRecords.length;
+
+    return IMPACT_ORIGIN_ORDER.map((origin) => {
+      const current = currentByOrigin.get(origin) ?? 0;
+      const previous = previousByOrigin.get(origin) ?? 0;
+      return {
+        origin,
+        label: IMPACT_ORIGIN_LABELS[origin],
+        current,
+        previous,
+        sharePct: currentTotal > 0 ? (current / currentTotal) * 100 : 0,
+        variationAbs: current - previous,
+        variationPct: computeVariationPct(current, previous)
+      };
+    });
+  }, [currentDecisionRecords, previousDecisionRecords]);
 
   const activeCases = useMemo(
     () => mergedCases.filter((item) => item.status !== "concluido"),
@@ -685,48 +1045,66 @@ export default function DiscipuladoDashboardPage() {
 
       <OperationalStatusCards cards={cards} />
 
-      <ExecutiveKpiRow period={kpiPeriod} onPeriodChange={setKpiPeriod} metrics={kpiMetrics} />
+      {impactLoading ? <div className="discipulado-panel p-5 text-sm text-slate-600">Carregando impacto evangelístico...</div> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
-        <EntryVsProgressChart data={entryVsProgressSeries} />
-        <div className="space-y-4">
-          <RiskNowPanel items={riskItems} />
-          <RecommendedActionsPanel items={recommendedActions} />
-        </div>
-      </div>
+      {impactStatusMessage ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{impactStatusMessage}</p>
+      ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,1fr)]">
-        <ByAcolhedorTable rows={byAcolhedor} />
+      <EvangelisticImpactKpisSection period={impactPeriod} onPeriodChange={setImpactPeriod} metrics={impactKpis} />
 
-        <section className="discipulado-panel p-4 sm:p-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-sky-900">Conversão por etapa</h3>
-            <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">Resumo</span>
+      <DecisionsTrendChart
+        data={decisionsTrendData}
+        granularity={decisionsGranularity}
+        onGranularityChange={setDecisionsGranularity}
+      />
+
+      <DecisionsByOriginPanel rows={originImpactRows} />
+
+      <section className="space-y-4" aria-label="Gestão complementar">
+        <ExecutiveKpiRow period={kpiPeriod} onPeriodChange={setKpiPeriod} metrics={kpiMetrics} />
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
+          <EntryVsProgressChart data={entryVsProgressSeries} />
+          <div className="space-y-4">
+            <RiskNowPanel items={riskItems} />
+            <RecommendedActionsPanel items={recommendedActions} />
           </div>
+        </div>
 
-          {stageConversion.some((item) => item.value > 0) ? (
-            <div className="mt-3 space-y-3">
-              {stageConversion.map((item) => {
-                return (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-                      <span>{item.label}</span>
-                      <span>{item.value}</span>
-                    </div>
-                    <div className="mt-1 h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full bg-sky-600" style={{ width: `${(item.value / stageMax) * 100}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,1fr)]">
+          <ByAcolhedorTable rows={byAcolhedor} />
+
+          <section className="discipulado-panel p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-sky-900">Conversão por etapa</h3>
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">Resumo</span>
             </div>
-          ) : (
-            <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-5 text-sm text-slate-500">
-              Sem dados no período.
-            </p>
-          )}
-        </section>
-      </div>
+
+            {stageConversion.some((item) => item.value > 0) ? (
+              <div className="mt-3 space-y-3">
+                {stageConversion.map((item) => {
+                  return (
+                    <div key={item.label}>
+                      <div className="flex items-center justify-between text-xs font-medium text-slate-700">
+                        <span>{item.label}</span>
+                        <span>{item.value}</span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-slate-100">
+                        <div className="h-2 rounded-full bg-sky-600" style={{ width: `${(item.value / stageMax) * 100}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white px-3 py-5 text-sm text-slate-500">
+                Sem dados no período.
+              </p>
+            )}
+          </section>
+        </div>
+      </section>
     </div>
   );
 }
