@@ -20,6 +20,15 @@ const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
 const TURNO_ORDER: TurnoOrigem[] = ["MANHA", "TARDE", "NOITE", "NAO_INFORMADO"];
 
 type TurmaStatusValue = "em_discipulado" | "pausado" | "concluido";
+type TurmaPlanningDraft = {
+  moduleId: string;
+  startDate: string;
+};
+type TurmaPlanningByTurno = Record<TurnoOrigem, TurmaPlanningDraft>;
+type ModuleOption = {
+  id: string;
+  title: string;
+};
 
 const TURMA_STATUS_OPTIONS: Array<{ value: TurmaStatusValue; label: string }> = [
   { value: "em_discipulado", label: "Iniciada" },
@@ -42,6 +51,11 @@ type TurmaModuleSummaryItem = {
   members: number;
 };
 type TurmaModuleSummaryByTurno = Record<TurnoOrigem, TurmaModuleSummaryItem[]>;
+type TurmaPlanningRow = {
+  turno: string | null;
+  module_id: string | null;
+  start_date: string | null;
+};
 
 function statusLabel(value: DiscipleshipCaseSummaryItem["status"]) {
   if (value === "pendente_matricula") return "INICIADA";
@@ -69,12 +83,31 @@ function isMissingProgressTurnoColumnError(message: string, code?: string) {
   );
 }
 
+function isMissingTurmaPlanningTableError(message: string, code?: string) {
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("discipleship_turma_settings") ||
+    message.includes("start_date") ||
+    message.includes("module_id")
+  );
+}
+
 function createEmptyTurmaModuleSummaryByTurno(): TurmaModuleSummaryByTurno {
   return {
     MANHA: [],
     TARDE: [],
     NOITE: [],
     NAO_INFORMADO: []
+  };
+}
+
+function createEmptyTurmaPlanningByTurno(): TurmaPlanningByTurno {
+  return {
+    MANHA: { moduleId: "", startDate: "" },
+    TARDE: { moduleId: "", startDate: "" },
+    NOITE: { moduleId: "", startDate: "" },
+    NAO_INFORMADO: { moduleId: "", startDate: "" }
   };
 }
 
@@ -258,20 +291,90 @@ function TurmaModuleSummary({
   );
 }
 
+function TurmaPlanningForm({
+  turnoKey,
+  draft,
+  moduleOptions,
+  saving,
+  onChange,
+  onSave
+}: {
+  turnoKey: TurnoOrigem;
+  draft: TurmaPlanningDraft;
+  moduleOptions: ModuleOption[];
+  saving: boolean;
+  onChange: (next: TurmaPlanningDraft) => void;
+  onSave: (turnoKey: TurnoOrigem) => void;
+}) {
+  return (
+    <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:max-w-md">
+      <p className="text-xs font-semibold text-slate-700">Dados da turma</p>
+      <label className="space-y-1">
+        <span className="text-xs font-semibold text-slate-600">Módulo ministrado</span>
+        <select
+          value={draft.moduleId}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              moduleId: event.target.value
+            })
+          }
+          disabled={saving}
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+        >
+          <option value="">Não informado</option>
+          {moduleOptions.map((moduleOption) => (
+            <option key={moduleOption.id} value={moduleOption.id}>
+              {moduleOption.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="space-y-1">
+        <span className="text-xs font-semibold text-slate-600">Data de início</span>
+        <input
+          type="date"
+          value={draft.startDate}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              startDate: event.target.value
+            })
+          }
+          disabled={saving}
+          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+        />
+      </label>
+      <button
+        type="button"
+        onClick={() => onSave(turnoKey)}
+        disabled={saving}
+        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+      >
+        {saving ? "Salvando dados..." : "Salvar dados da turma"}
+      </button>
+    </div>
+  );
+}
+
 export default function DiscipuladoBoardPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currentCongregationId, setCurrentCongregationId] = useState<string | null>(null);
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [mobileTurno, setMobileTurno] = useState<TurnoOrigem>("MANHA");
   const [savingTurnoStatusKey, setSavingTurnoStatusKey] = useState<TurnoOrigem | null>(null);
+  const [savingTurmaPlanningKey, setSavingTurmaPlanningKey] = useState<TurnoOrigem | null>(null);
   const [turnoStatusDrafts, setTurnoStatusDrafts] = useState<Record<TurnoOrigem, TurmaStatusValue>>({
     MANHA: "em_discipulado",
     TARDE: "em_discipulado",
     NOITE: "em_discipulado",
     NAO_INFORMADO: "em_discipulado"
   });
+  const [turmaPlanningDrafts, setTurmaPlanningDrafts] = useState<TurmaPlanningByTurno>(createEmptyTurmaPlanningByTurno());
   const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
+  const [moduleOptions, setModuleOptions] = useState<ModuleOption[]>([]);
   const [caseTurnosByCaseId, setCaseTurnosByCaseId] = useState<CaseTurnosByCaseId>({});
   const [moduleSummaryByTurno, setModuleSummaryByTurno] = useState<TurmaModuleSummaryByTurno>(
     createEmptyTurmaModuleSummaryByTurno()
@@ -289,6 +392,7 @@ export default function DiscipuladoBoardPage() {
         scope.roles.includes("DISCIPULADOR") ||
         scope.roles.includes("SM_DISCIPULADO") ||
         scope.roles.includes("SECRETARIA_DISCIPULADO");
+      setCurrentCongregationId(scope.congregationId ?? null);
 
       setHasAccess(allowed);
       if (!allowed) {
@@ -311,6 +415,7 @@ export default function DiscipuladoBoardPage() {
       setCases(discipuladoCases);
       setCaseTurnosByCaseId({});
       setModuleSummaryByTurno(createEmptyTurmaModuleSummaryByTurno());
+      setTurmaPlanningDrafts(createEmptyTurmaPlanningByTurno());
 
       if (supabaseClient) {
         const { data: modulesData } = await supabaseClient
@@ -326,6 +431,36 @@ export default function DiscipuladoBoardPage() {
           nextMap[id] = label;
         }
         setModuleNameById(nextMap);
+        setModuleOptions(
+          (modulesData ?? []).map((moduleItem) => ({
+            id: String(moduleItem.id ?? ""),
+            title: String(moduleItem.title ?? "Módulo")
+          }))
+        );
+
+        let turmaPlanningQuery = supabaseClient
+          .from("discipleship_turma_settings")
+          .select("turno, module_id, start_date");
+        if (scope.congregationId) {
+          turmaPlanningQuery = turmaPlanningQuery.eq("congregation_id", scope.congregationId);
+        }
+        const turmaPlanningResult = await turmaPlanningQuery;
+        if (turmaPlanningResult.error) {
+          if (!isMissingTurmaPlanningTableError(turmaPlanningResult.error.message, turmaPlanningResult.error.code)) {
+            setStatusMessage((prev) => prev || turmaPlanningResult.error?.message || "");
+          }
+        } else {
+          const nextPlanningDrafts = createEmptyTurmaPlanningByTurno();
+          const rows = (turmaPlanningResult.data ?? []) as TurmaPlanningRow[];
+          for (const row of rows) {
+            const turnoKey = normalizeTurnoOrigem(row.turno);
+            nextPlanningDrafts[turnoKey] = {
+              moduleId: String(row.module_id ?? ""),
+              startDate: row.start_date ? String(row.start_date).slice(0, 10) : ""
+            };
+          }
+          setTurmaPlanningDrafts(nextPlanningDrafts);
+        }
       }
 
       if (supabaseClient && discipuladoCases.length) {
@@ -411,6 +546,45 @@ export default function DiscipuladoBoardPage() {
     setSavingTurnoStatusKey(null);
   }
 
+  async function handleSaveTurmaPlanning(turnoKey: TurnoOrigem) {
+    if (!supabaseClient || savingTurmaPlanningKey) return;
+
+    if (!currentCongregationId) {
+      setStatusMessage("Não foi possível identificar a congregação para salvar os dados da turma.");
+      return;
+    }
+
+    setSavingTurmaPlanningKey(turnoKey);
+    setStatusMessage("");
+
+    const draft = turmaPlanningDrafts[turnoKey] ?? { moduleId: "", startDate: "" };
+    const { error } = await supabaseClient.from("discipleship_turma_settings").upsert(
+      {
+        congregation_id: currentCongregationId,
+        turno: turnoKey,
+        module_id: draft.moduleId || null,
+        start_date: draft.startDate || null
+      },
+      {
+        onConflict: "congregation_id,turno"
+      }
+    );
+
+    if (error) {
+      if (isMissingTurmaPlanningTableError(error.message, error.code)) {
+        setStatusMessage(
+          "Configuração da turma indisponível neste ambiente. Aplique a migração 0050_discipulado_turma_planejamento.sql."
+        );
+      } else {
+        setStatusMessage(error.message);
+      }
+      setSavingTurmaPlanningKey(null);
+      return;
+    }
+
+    setSavingTurmaPlanningKey(null);
+  }
+
   if (!hasAccess) {
     return <div className="discipulado-panel p-6 text-sm text-slate-700">Acesso restrito aos perfis do Discipulado.</div>;
   }
@@ -453,6 +627,21 @@ export default function DiscipuladoBoardPage() {
           <div className="space-y-4 md:hidden">
             <section className="discipulado-panel p-4">
               <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
+              <TurmaPlanningForm
+                turnoKey={mobileTurno}
+                draft={turmaPlanningDrafts[mobileTurno]}
+                moduleOptions={moduleOptions}
+                saving={savingTurmaPlanningKey === mobileTurno}
+                onChange={(next) =>
+                  setTurmaPlanningDrafts((prev) => ({
+                    ...prev,
+                    [mobileTurno]: next
+                  }))
+                }
+                onSave={(turnoKey) => {
+                  void handleSaveTurmaPlanning(turnoKey);
+                }}
+              />
               <TurmaModuleSummary
                 turnoKey={mobileTurno}
                 moduleNameById={moduleNameById}
@@ -516,6 +705,21 @@ export default function DiscipuladoBoardPage() {
               return (
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
+                  <TurmaPlanningForm
+                    turnoKey={turno.key}
+                    draft={turmaPlanningDrafts[turno.key]}
+                    moduleOptions={moduleOptions}
+                    saving={savingTurmaPlanningKey === turno.key}
+                    onChange={(next) =>
+                      setTurmaPlanningDrafts((prev) => ({
+                        ...prev,
+                        [turno.key]: next
+                      }))
+                    }
+                    onSave={(turnoKey) => {
+                      void handleSaveTurmaPlanning(turnoKey);
+                    }}
+                  />
                   <TurmaModuleSummary
                     turnoKey={turno.key}
                     moduleNameById={moduleNameById}
