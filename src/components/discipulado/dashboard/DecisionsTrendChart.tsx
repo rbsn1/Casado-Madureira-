@@ -3,7 +3,7 @@
 import { CSSProperties, useId, useMemo, useState } from "react";
 import { DecisionsChartGranularity, DecisionsTrendPoint } from "./types";
 
-const HEIGHT_DESKTOP = 260;
+const HEIGHT_DESKTOP = 280;
 const HEIGHT_MOBILE = 220;
 const GRID_LINES = 5;
 
@@ -12,6 +12,9 @@ const VIEWBOX_HEIGHT = 44;
 const PLOT_TOP = 4.8;
 const PLOT_BOTTOM = 33.8;
 const PLOT_HEIGHT = PLOT_BOTTOM - PLOT_TOP;
+const CHART_LINE_COLOR = "#0369A1";
+const CHART_PEAK_COLOR = "#7C3AED";
+const CHART_GRID_COLOR = "#E2E8F0";
 
 const GRANULARITY_OPTIONS: Array<{ value: DecisionsChartGranularity; label: string }> = [
   { value: "day", label: "Dia" },
@@ -40,6 +43,13 @@ function variationTone(value: number | null) {
   if (value > 0) return "text-emerald-700";
   if (value < 0) return "text-rose-700";
   return "text-slate-500";
+}
+
+function variationArrow(value: number | null) {
+  if (value === null) return "";
+  if (value > 0) return "↑";
+  if (value < 0) return "↓";
+  return "→";
 }
 
 function buildTickIndexes(size: number, maxTicks = 6) {
@@ -104,6 +114,7 @@ export function DecisionsTrendChart({
   const activePoint = hoveredIndex === null ? null : points[hoveredIndex] ?? null;
   const tooltipPoint = activePoint ?? peakPoint;
   const tooltipLeft = tooltipPoint ? clamp(tooltipPoint.x, 12, 88) : 50;
+  const peakPointKey = peakPoint?.key ?? null;
 
   const xAxisPoints = useMemo(() => {
     const indexes = buildTickIndexes(points.length, 6);
@@ -172,15 +183,25 @@ export function DecisionsTrendChart({
           <svg viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} className="h-full w-full" role="img" aria-label="Gráfico de decisões">
             <defs>
               <linearGradient id={`decisions-${gradientId}`} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.02" />
+                <stop offset="0%" stopColor={CHART_LINE_COLOR} stopOpacity="0.25" />
+                <stop offset="100%" stopColor={CHART_LINE_COLOR} stopOpacity="0.04" />
               </linearGradient>
             </defs>
 
             {Array.from({ length: GRID_LINES }).map((_, idx) => {
               const y = PLOT_TOP + (idx / (GRID_LINES - 1)) * PLOT_HEIGHT;
               return (
-                <line key={idx} x1={0} y1={y} x2={VIEWBOX_WIDTH} y2={y} stroke="rgba(148,163,184,0.16)" strokeWidth="0.3" />
+                <line
+                  key={idx}
+                  x1={0}
+                  y1={y}
+                  x2={VIEWBOX_WIDTH}
+                  y2={y}
+                  stroke={CHART_GRID_COLOR}
+                  strokeWidth="0.35"
+                  strokeDasharray="3 3"
+                  opacity="0.6"
+                />
               );
             })}
 
@@ -198,8 +219,25 @@ export function DecisionsTrendChart({
               />
             ) : null}
 
-            <path d={linePath} fill="none" stroke="rgba(2,132,199,0.2)" strokeWidth="1.35" />
-            <path d={linePath} fill="none" stroke="#0284c7" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke={CHART_LINE_COLOR}
+              strokeOpacity="0.16"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={linePath}
+              fill="none"
+              stroke={CHART_LINE_COLOR}
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+            />
 
             {Array.from({ length: GRID_LINES }).map((_, idx) => {
               const y = PLOT_TOP + (idx / (GRID_LINES - 1)) * PLOT_HEIGHT;
@@ -215,20 +253,6 @@ export function DecisionsTrendChart({
                 >
                   {value}
                 </text>
-              );
-            })}
-
-            {points.map((point, index) => {
-              const active = hoveredIndex === index;
-              return (
-                <circle
-                  key={point.key}
-                  cx={point.x}
-                  cy={point.y}
-                  r={active ? 1.1 : 0.65}
-                  fill="#0284c7"
-                  fillOpacity={active ? 0.95 : 0.28}
-                />
               );
             })}
 
@@ -250,6 +274,19 @@ export function DecisionsTrendChart({
               );
             })}
 
+            {peakPoint ? (
+              <text
+                x={clamp(peakPoint.x, 8, 92)}
+                y={clamp(peakPoint.y - 1.6, PLOT_TOP + 1.4, PLOT_BOTTOM - 1)}
+                textAnchor="middle"
+                fontSize="1.8"
+                fill={CHART_PEAK_COLOR}
+                fontWeight="700"
+              >
+                Pico
+              </text>
+            ) : null}
+
             {points.map((point, index) => {
               const previous = points[index - 1];
               const next = points[index + 1];
@@ -269,17 +306,47 @@ export function DecisionsTrendChart({
             })}
           </svg>
 
+          <div className="pointer-events-none absolute inset-0">
+            {points.map((point, index) => {
+              const isActive = hoveredIndex === index;
+              const isPeak = point.key === peakPointKey;
+              const size = isActive ? 14 : 10;
+              const color = isPeak ? CHART_PEAK_COLOR : CHART_LINE_COLOR;
+              const top = `${(point.y / VIEWBOX_HEIGHT) * 100}%`;
+
+              return (
+                <span
+                  key={`dot-${point.key}`}
+                  className="absolute rounded-full border-2 border-white"
+                  style={{
+                    left: `${point.x}%`,
+                    top,
+                    width: `${size}px`,
+                    height: `${size}px`,
+                    transform: "translate(-50%, -50%)",
+                    backgroundColor: color,
+                    boxShadow: isPeak
+                      ? "0 0 0 3px rgba(124,58,237,0.22)"
+                      : "0 0 0 2px rgba(3,105,161,0.12)"
+                  }}
+                />
+              );
+            })}
+          </div>
+
           {tooltipPoint ? (
             <div
               className="pointer-events-none absolute -top-2 rounded-xl border border-slate-200/95 bg-white/95 px-3 py-2 text-[10.5px] shadow-[0_12px_24px_rgba(15,23,42,0.12)]"
               style={{ left: `${tooltipLeft}%`, transform: "translateX(-50%)" }}
             >
               <p className="font-semibold text-slate-700">{tooltipPoint.label}</p>
-              <p className="text-sky-700">
-                Total: <span className="font-semibold">{tooltipPoint.total}</span>
-              </p>
+              <p className="mt-1 text-2xl font-bold leading-none text-sky-800">{tooltipPoint.total}</p>
+              <p className="text-[11px] text-slate-600">decisões</p>
               <p className={`${variationTone(tooltipPoint.variationPct)}`}>
-                Variação: <span className="font-semibold">{variationText(tooltipPoint)}</span>
+                Variação:{" "}
+                <span className="font-semibold">
+                  {variationArrow(tooltipPoint.variationAbs)} {variationText(tooltipPoint)}
+                </span>
               </p>
               {peakPoint && tooltipPoint.key === peakPoint.key ? (
                 <p className="font-semibold text-indigo-700">Pico do período</p>
