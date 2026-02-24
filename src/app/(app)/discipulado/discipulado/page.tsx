@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAuthScope } from "@/lib/authScope";
-import { groupByTurno, normalizeTurnoOrigem, sortCases, TurnoOrigem } from "@/lib/discipuladoPanels";
+import { normalizeTurnoOrigem, sortCases, TurnoOrigem } from "@/lib/discipuladoPanels";
 import {
   DiscipleshipCaseSummaryItem,
   loadDiscipleshipCaseSummariesWithFallback
@@ -83,6 +83,29 @@ function deriveTurnoStatus(cases: DiscipleshipCaseSummaryItem[]): TurmaStatusVal
   const allPaused = normalized.every((item) => item === "pausado");
   if (allPaused) return "pausado";
   return "em_discipulado";
+}
+
+function groupCasesByTurnos(
+  items: DiscipleshipCaseSummaryItem[],
+  caseTurnosByCaseId: CaseTurnosByCaseId
+): Record<TurnoOrigem, DiscipleshipCaseSummaryItem[]> {
+  const grouped: Record<TurnoOrigem, DiscipleshipCaseSummaryItem[]> = {
+    MANHA: [],
+    TARDE: [],
+    NOITE: [],
+    NAO_INFORMADO: []
+  };
+
+  for (const item of items) {
+    const enrolledTurnos = caseTurnosByCaseId[item.case_id] ?? [];
+    const targetTurnos = enrolledTurnos.length ? enrolledTurnos : [normalizeTurnoOrigem(item.turno_origem)];
+
+    for (const turno of targetTurnos) {
+      grouped[turno].push(item);
+    }
+  }
+
+  return grouped;
 }
 
 function CaseCard({
@@ -226,7 +249,7 @@ export default function DiscipuladoBoardPage() {
   }, []);
 
   const orderedCases = useMemo(() => sortCases(cases), [cases]);
-  const byTurno = useMemo(() => groupByTurno(orderedCases), [orderedCases]);
+  const byTurno = useMemo(() => groupCasesByTurnos(orderedCases, caseTurnosByCaseId), [orderedCases, caseTurnosByCaseId]);
 
   useEffect(() => {
     setTurnoStatusDrafts({
