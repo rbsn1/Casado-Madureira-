@@ -11,11 +11,11 @@ type ChartEntry = {
 const defaultMonthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 // Chart tuning constants
-export const HEIGHT_DESKTOP = 220;
-export const HEIGHT_MOBILE = 180;
+export const HEIGHT_DESKTOP = 280;
+export const HEIGHT_MOBILE = 220;
 export const GRID_LINES = 4;
-export const AREA_OPACITY = 0.07;
-export const STROKE_WIDTH = 1.05;
+export const AREA_OPACITY = 0.22;
+export const STROKE_WIDTH = 4;
 
 const VIEWBOX_WIDTH = 100;
 const VIEWBOX_HEIGHT = 40;
@@ -28,18 +28,57 @@ function sanitizeNumber(value: number | null | undefined) {
   return Math.max(0, value);
 }
 
+function shouldHideMonthValue(targetYear: number, month: number) {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  return targetYear > currentYear || (targetYear === currentYear && month > currentMonth);
+}
+
 function formatVariation(current: number, previous: number | null) {
   if (previous === null || previous <= 0) {
-    return { text: "—", tone: "text-slate-500" };
+    return {
+      arrow: "—",
+      absolute: "—",
+      percentage: "—",
+      tone: "text-slate-500"
+    };
   }
 
+  const delta = current - previous;
   const pct = ((current - previous) / previous) * 100;
-  const rounded = Math.abs(pct) >= 10 ? pct.toFixed(0) : pct.toFixed(1);
-  const signed = `${pct > 0 ? "+" : ""}${rounded}%`;
+  const roundedPct = Math.abs(pct) >= 10 ? pct.toFixed(0) : pct.toFixed(1);
+  const absolute = `${delta > 0 ? "+" : ""}${delta}`;
+  const percentage = `${pct > 0 ? "+" : ""}${roundedPct}%`;
+  const arrow = delta > 0 ? "↑" : delta < 0 ? "↓" : "→";
 
-  if (pct > 0) return { text: signed, tone: "text-emerald-700" };
-  if (pct < 0) return { text: signed, tone: "text-rose-700" };
-  return { text: signed, tone: "text-slate-500" };
+  if (delta > 0) return { arrow, absolute, percentage, tone: "text-emerald-700" };
+  if (delta < 0) return { arrow, absolute, percentage, tone: "text-rose-700" };
+  return { arrow, absolute, percentage, tone: "text-slate-500" };
+}
+
+function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+  if (!points.length) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    path += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
+  }
+
+  return path;
 }
 
 export function MonthlyRegistrationsChart({
@@ -69,13 +108,15 @@ export function MonthlyRegistrationsChart({
     return Array.from({ length: 12 }, (_, index) => {
       const month = index + 1;
       const source = byMonth.get(month);
+      const isFuture = shouldHideMonthValue(year, month);
       return {
         month,
         label: source?.label ?? defaultMonthLabels[index],
-        value: sanitizeNumber(source?.value)
+        value: isFuture ? null : sanitizeNumber(source?.value),
+        isFuture
       };
     });
-  }, [data]);
+  }, [data, year]);
 
   const normalizedPreviousData = useMemo(() => {
     if (!previousYearData?.length) return null;
@@ -87,30 +128,49 @@ export function MonthlyRegistrationsChart({
       return {
         month,
         label: source?.label ?? defaultMonthLabels[index],
-        value: sanitizeNumber(source?.value)
+        value: sanitizeNumber(source?.value),
+        isFuture: false
       };
     });
   }, [previousYearData]);
 
-  const total = useMemo(() => normalizedData.reduce((acc, item) => acc + item.value, 0), [normalizedData]);
+  const total = useMemo(
+    () => normalizedData.reduce((acc, item) => acc + (item.value ?? 0), 0),
+    [normalizedData]
+  );
   const peak = useMemo(
-    () => normalizedData.reduce((best, item) => (item.value > best.value ? item : best), normalizedData[0]),
+    () =>
+      normalizedData.reduce(
+        (best, item) => ((item.value ?? 0) > (best.value ?? 0) ? item : best),
+        normalizedData[0]
+      ),
     [normalizedData]
   );
   const average = useMemo(() => total / normalizedData.length, [total, normalizedData.length]);
 
   const maxValue = useMemo(() => {
     const previousMax = normalizedPreviousData
-      ? Math.max(...normalizedPreviousData.map((item) => item.value), 0)
+      ? Math.max(...normalizedPreviousData.map((item) => item.value ?? 0), 0)
       : 0;
-    return Math.max(Math.max(...normalizedData.map((item) => item.value), 0), previousMax, 1);
+    return Math.max(Math.max(...normalizedData.map((item) => item.value ?? 0), 0), previousMax, 1);
   }, [normalizedData, normalizedPreviousData]);
 
   const currentPoints = useMemo(() => {
-    return normalizedData.map((entry, index): ChartEntry & { x: number; y: number; prevValue: number | null } => {
+    return normalizedData.map((entry, index): ChartEntry & {
+      x: number;
+      y: number | null;
+      prevValue: number | null;
+      isFuture?: boolean;
+    } => {
       const x = (index / (normalizedData.length - 1)) * 100;
-      const y = plotBottom - (entry.value / maxValue) * plotHeight;
-      const prevValue = index > 0 ? normalizedData[index - 1].value : null;
+      const y = entry.value === null ? null : plotBottom - ((entry.value ?? 0) / maxValue) * plotHeight;
+      let prevValue: number | null = null;
+      for (let i = index - 1; i >= 0; i -= 1) {
+        if (normalizedData[i].value !== null) {
+          prevValue = normalizedData[i].value;
+          break;
+        }
+      }
       return { ...entry, x, y, prevValue };
     });
   }, [normalizedData, maxValue]);
@@ -119,36 +179,62 @@ export function MonthlyRegistrationsChart({
     if (!normalizedPreviousData) return [];
     return normalizedPreviousData.map((entry, index) => {
       const x = (index / (normalizedPreviousData.length - 1)) * 100;
-      const y = plotBottom - (entry.value / maxValue) * plotHeight;
+      const y = plotBottom - ((entry.value ?? 0) / maxValue) * plotHeight;
       return { ...entry, x, y };
     });
   }, [normalizedPreviousData, maxValue]);
 
-  const currentLinePath = useMemo(() => {
-    if (!currentPoints.length) return "";
-    return currentPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+  const currentLineSegments = useMemo(() => {
+    const segments: Array<Array<{ x: number; y: number }>> = [];
+    let buffer: Array<{ x: number; y: number }> = [];
+    currentPoints.forEach((point) => {
+      if (point.y === null) {
+        if (buffer.length) segments.push(buffer);
+        buffer = [];
+        return;
+      }
+      buffer.push({ x: point.x, y: point.y });
+    });
+    if (buffer.length) segments.push(buffer);
+    return segments;
   }, [currentPoints]);
+
+  const currentLinePath = useMemo(
+    () => currentLineSegments.map((segment) => buildSmoothPath(segment)).join(" "),
+    [currentLineSegments]
+  );
 
   const previousLinePath = useMemo(() => {
     if (!previousPoints.length) return "";
-    return previousPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
+    return buildSmoothPath(previousPoints.map((point) => ({ x: point.x, y: point.y })));
   }, [previousPoints]);
 
-  const areaPath = useMemo(() => {
-    if (!currentPoints.length) return "";
-    const start = `M ${currentPoints[0].x} ${plotBottom}`;
-    const lines = currentPoints.map((point) => `L ${point.x} ${point.y}`).join(" ");
-    const end = `L ${currentPoints[currentPoints.length - 1].x} ${plotBottom} Z`;
-    return `${start} ${lines} ${end}`;
-  }, [currentPoints]);
+  const areaPaths = useMemo(
+    () =>
+      currentLineSegments
+        .filter((segment) => segment.length)
+        .map((segment) => {
+          const smooth = buildSmoothPath(segment);
+          const startX = segment[0].x;
+          const endX = segment[segment.length - 1].x;
+          return `${smooth} L ${endX} ${plotBottom} L ${startX} ${plotBottom} Z`;
+        }),
+    [currentLineSegments]
+  );
 
   const hoveredPoint = useMemo(
-    () => (hoveredMonth ? currentPoints.find((point) => point.month === hoveredMonth) ?? null : null),
+    () =>
+      hoveredMonth
+        ? currentPoints.find((point) => point.month === hoveredMonth && point.value !== null) ?? null
+        : null,
     [hoveredMonth, currentPoints]
   );
 
   const selectedPoint = useMemo(
-    () => (selectedMonth ? currentPoints.find((point) => point.month === selectedMonth) ?? null : null),
+    () =>
+      selectedMonth
+        ? currentPoints.find((point) => point.month === selectedMonth && point.value !== null) ?? null
+        : null,
     [selectedMonth, currentPoints]
   );
 
@@ -175,11 +261,16 @@ export function MonthlyRegistrationsChart({
   );
 
   const lastNonZeroPoint = useMemo(() => {
-    const found = [...currentPoints].reverse().find((point) => point.value > 0) ?? null;
-    if (!found || !peakPoint) return found;
+    const found = [...currentPoints].reverse().find((point) => point.value !== null && point.value > 0 && point.y !== null) ?? null;
+    if (!found || !peakPoint || peakPoint.y === null || found.y === null) return found;
     const conflict = Math.abs(found.x - peakPoint.x) < 10 && Math.abs(found.y - peakPoint.y) < 6;
     return conflict ? null : found;
   }, [currentPoints, peakPoint]);
+
+  const showAverageLine = useMemo(
+    () => normalizedData.some((item) => item.value !== null),
+    [normalizedData]
+  );
 
   const chartHeightVars = useMemo(
     () =>
@@ -275,7 +366,7 @@ export function MonthlyRegistrationsChart({
             <defs>
               <linearGradient id={`areaGradient-${gradientId}`} x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0%" stopColor="#10b981" stopOpacity={AREA_OPACITY} />
-                <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.03" />
               </linearGradient>
             </defs>
 
@@ -288,23 +379,41 @@ export function MonthlyRegistrationsChart({
                   x2={VIEWBOX_WIDTH}
                   y1={y}
                   y2={y}
-                  stroke="rgba(148,163,184,0.16)"
-                  strokeWidth="0.32"
+                  stroke="#E2E8F0"
+                  strokeOpacity="0.6"
+                  strokeDasharray="3 3"
+                  strokeWidth="0.28"
                 />
               );
             })}
 
-            <line
-              x1={0}
-              x2={VIEWBOX_WIDTH}
-              y1={averageY}
-              y2={averageY}
-              stroke="rgba(30,41,59,0.2)"
-              strokeWidth="0.28"
-              strokeDasharray="1.3 1.2"
-            />
+            {showAverageLine ? (
+              <>
+                <line
+                  x1={0}
+                  x2={VIEWBOX_WIDTH}
+                  y1={averageY}
+                  y2={averageY}
+                  stroke="rgba(71,85,105,0.35)"
+                  strokeWidth="0.18"
+                  strokeDasharray="1.2 1.2"
+                />
+                <text
+                  x={VIEWBOX_WIDTH - 0.8}
+                  y={Math.max(plotTop + 0.8, averageY - 0.6)}
+                  textAnchor="end"
+                  fill="rgba(71,85,105,0.7)"
+                  fontSize="1.8"
+                  fontWeight="500"
+                >
+                  Média
+                </text>
+              </>
+            ) : null}
 
-            <path d={areaPath} fill={`url(#areaGradient-${gradientId})`} />
+            {areaPaths.map((pathData, index) => (
+              <path key={`area-${index}`} d={pathData} fill={`url(#areaGradient-${gradientId})`} />
+            ))}
 
             {hasPreviousLine ? (
               <path
@@ -324,13 +433,12 @@ export function MonthlyRegistrationsChart({
                 y1={plotTop}
                 x2={hoveredPoint.x}
                 y2={plotBottom}
-                stroke="rgba(16,185,129,0.24)"
-                strokeWidth="0.3"
-                strokeDasharray="1 1.2"
+                stroke="rgba(15,23,42,0.2)"
+                strokeWidth="0.2"
+                strokeDasharray="0.9 1.1"
               />
             ) : null}
 
-            <path d={currentLinePath} fill="none" stroke="rgba(5,150,105,0.08)" strokeWidth={STROKE_WIDTH + 0.45} />
             <path
               d={currentLinePath}
               fill="none"
@@ -340,26 +448,31 @@ export function MonthlyRegistrationsChart({
               strokeLinecap="round"
             />
 
-            {currentPoints.map((point) => {
-              const isHovered = hoveredMonth === point.month;
-              const isSelected = selectedMonth === point.month;
-              return (
-                <circle
-                  key={point.month}
-                  cx={point.x}
-                  cy={point.y}
-                  r={isHovered ? 1.28 : isSelected ? 1.08 : 0.62}
-                  fill={isHovered ? "#047857" : "#10b981"}
-                  fillOpacity={isHovered || isSelected ? 0.95 : 0}
-                />
-              );
-            })}
+            {peakPoint && peakPoint.y !== null ? (
+              <circle cx={peakPoint.x} cy={peakPoint.y} r={0.86} fill="#047857" />
+            ) : null}
+
+            {lastNonZeroPoint && lastNonZeroPoint.y !== null ? (
+              <circle cx={lastNonZeroPoint.x} cy={lastNonZeroPoint.y} r={0.72} fill="#0f766e" fillOpacity={0.92} />
+            ) : null}
+
+            {activePoint && activePoint.y !== null ? (
+              <circle
+                cx={activePoint.x}
+                cy={activePoint.y}
+                r={0.96}
+                fill="#ffffff"
+                stroke="#059669"
+                strokeWidth="0.24"
+              />
+            ) : null}
 
             {currentPoints.map((point, index) => {
               const previousPoint = currentPoints[index - 1];
               const nextPoint = currentPoints[index + 1];
               const startX = previousPoint ? (previousPoint.x + point.x) / 2 : 0;
               const endX = nextPoint ? (nextPoint.x + point.x) / 2 : VIEWBOX_WIDTH;
+              const isFuture = point.value === null;
               return (
                 <rect
                   key={`hover-zone-${point.month}`}
@@ -368,9 +481,13 @@ export function MonthlyRegistrationsChart({
                   width={endX - startX}
                   height={plotHeight}
                   fill="transparent"
-                  onMouseEnter={() => setHoveredMonth(point.month)}
-                  onClick={() => onMonthSelect?.(selectedMonth === point.month ? null : point.month)}
-                  style={{ cursor: "pointer" }}
+                  onMouseEnter={() => {
+                    if (!isFuture) setHoveredMonth(point.month);
+                  }}
+                  onClick={() => {
+                    if (!isFuture) onMonthSelect?.(selectedMonth === point.month ? null : point.month);
+                  }}
+                  style={{ cursor: isFuture ? "default" : "pointer" }}
                 />
               );
             })}
@@ -381,12 +498,11 @@ export function MonthlyRegistrationsChart({
               className="pointer-events-none absolute -top-2 rounded-xl border border-slate-200/95 bg-white/95 px-3 py-2 text-[10.5px] shadow-[0_12px_24px_rgba(15,23,42,0.12)] backdrop-blur-sm"
               style={{ left: `${activePoint.x}%`, transform: "translateX(-50%)" }}
             >
-              <p className="font-semibold text-slate-700">
-                {activePoint.label} · {activePoint.value}
-              </p>
+              <p className="font-semibold text-slate-800">{activePoint.label}/{year}</p>
+              <p className="text-sm font-semibold text-emerald-900">{activePoint.value}</p>
               {activeVariation ? (
                 <p className={activeVariation.tone}>
-                  Variação: <span className="font-semibold">{activeVariation.text}</span>
+                  Variação: <span className="font-semibold">{activeVariation.arrow} {activeVariation.absolute} ({activeVariation.percentage})</span>
                 </p>
               ) : null}
             </div>
@@ -407,9 +523,9 @@ export function MonthlyRegistrationsChart({
                     ? "bg-emerald-50 font-semibold text-emerald-900"
                     : "text-slate-500 hover:bg-tea-100/60 hover:text-slate-700"
                   }`}
-                aria-label={`${entry.label}: ${entry.value} cadastros`}
+                aria-label={`${entry.isFuture ? "Mês futuro" : `${entry.label}: ${entry.value} cadastros`}`}
               >
-                {entry.label}
+                {entry.isFuture ? "—" : entry.label}
               </button>
             );
           })}
