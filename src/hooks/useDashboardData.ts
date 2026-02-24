@@ -139,10 +139,17 @@ export function useDashboardData() {
                 return;
             }
 
-            // Base total (sem filtro de periodo) para ajudar quando o periodo atual nao contem os cadastros importados.
-            // Usamos count head=true para nao trazer dados.
+            // Preferimos o valor consolidado retornado pelo RPC (pessoas + histórico agregado mensal).
             let baseTotalCasados = 0;
-            {
+            const hasBaseTotalFromRpc =
+                data !== null &&
+                typeof data === "object" &&
+                Object.prototype.hasOwnProperty.call(data, "base_total");
+
+            if (hasBaseTotalFromRpc) {
+                baseTotalCasados = Number((data as any).base_total ?? 0);
+            } else {
+                // Compatibilidade com ambientes sem a migração de histórico mensal aplicada.
                 let baseCountQuery = supabaseClient
                     .from("pessoas")
                     .select("id", { count: "exact", head: true })
@@ -157,6 +164,9 @@ export function useDashboardData() {
                     baseTotalCasados = baseCountResult.count ?? 0;
                 }
             }
+
+            // Guarda de consistência visual: base total nunca deve ficar abaixo do total do período.
+            baseTotalCasados = Math.max(baseTotalCasados, Number(data?.total ?? 0));
 
             const origemEntries = (data?.origem ?? []).map((item: any) => ({ label: item.label, count: item.count }));
             const manha = origemEntries.find((item: InsightEntry) => item.label === "Manhã")?.count ?? 0;
