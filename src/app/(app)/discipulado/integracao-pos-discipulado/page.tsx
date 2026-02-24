@@ -58,7 +58,9 @@ export default function IntegracaoPosDiscipuladoPage() {
       }
 
       const [casesResult, modulesResult] = await Promise.all([
-        loadDiscipleshipCaseSummariesWithFallback(),
+        loadDiscipleshipCaseSummariesWithFallback({
+          includeExtraFields: true
+        }),
         supabaseClient
           ?.from("discipleship_modules")
           .select("id, title, sort_order, is_active")

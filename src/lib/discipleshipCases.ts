@@ -31,6 +31,7 @@ type LoadDiscipleshipCaseSummariesOptions = {
   statusFilter?: string | null;
   targetCongregationId?: string | null;
   rowsLimit?: number;
+  includeExtraFields?: boolean;
 };
 
 type FallbackCaseRow = {
@@ -131,7 +132,7 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
 export async function loadDiscipleshipCaseSummariesWithFallback(
   options: LoadDiscipleshipCaseSummariesOptions = {}
 ) {
-  const { statusFilter = null, targetCongregationId = null, rowsLimit = 500 } = options;
+  const { statusFilter = null, targetCongregationId = null, rowsLimit = 500, includeExtraFields = false } = options;
   if (!supabaseClient) {
     return {
       data: [] as DiscipleshipCaseSummaryItem[],
@@ -148,6 +149,14 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
 
   if (!rpcError) {
     const rows: unknown[] = Array.isArray(rpcData) ? rpcData : [];
+    const firstRow = (rows[0] ?? null) as Record<string, unknown> | null;
+    const rpcHasExtraFields =
+      firstRow !== null &&
+      "fase" in firstRow &&
+      "confraternizacao_id" in firstRow &&
+      "modulo_atual_id" in firstRow &&
+      "turno_origem" in firstRow;
+
     const normalized = rows.map((row) => {
       const item = row as Partial<DiscipleshipCaseSummaryItem>;
       return {
@@ -165,16 +174,21 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         criticality: (item.criticality ?? "BAIXA") as DiscipleshipCaseSummaryItem["criticality"],
         negative_contact_count: Number(item.negative_contact_count ?? 0),
         days_to_confra: item.days_to_confra ?? null,
-        confraternizacao_id: null,
-        confraternizacao_confirmada: false,
-        confraternizacao_confirmada_em: null,
-        confraternizacao_compareceu: false,
-        confraternizacao_compareceu_em: null,
-        fase: "ACOLHIMENTO",
-        modulo_atual_id: null,
-        turno_origem: null
+        confraternizacao_id: item.confraternizacao_id ?? null,
+        confraternizacao_confirmada: Boolean(item.confraternizacao_confirmada),
+        confraternizacao_confirmada_em: item.confraternizacao_confirmada_em ?? null,
+        confraternizacao_compareceu: Boolean(item.confraternizacao_compareceu),
+        confraternizacao_compareceu_em: item.confraternizacao_compareceu_em ?? null,
+        fase: (item.fase ?? "ACOLHIMENTO") as DiscipleshipCaseSummaryItem["fase"],
+        modulo_atual_id: item.modulo_atual_id ?? null,
+        turno_origem: (item.turno_origem ?? null) as DiscipleshipCaseSummaryItem["turno_origem"]
       } satisfies DiscipleshipCaseSummaryItem;
     });
+
+    if (!includeExtraFields || rpcHasExtraFields) {
+      return { data: normalized, errorMessage: "", hasCriticalityColumns: true };
+    }
+
     const enriched = await withCaseExtraFields(normalized);
     return { data: enriched, errorMessage: "", hasCriticalityColumns: true };
   }
@@ -290,6 +304,10 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       turno_origem: null
     };
   });
+
+  if (!includeExtraFields) {
+    return { data: summaries, errorMessage: "", hasCriticalityColumns };
+  }
 
   const enriched = await withCaseExtraFields(summaries);
   return { data: enriched, errorMessage: "", hasCriticalityColumns };

@@ -161,6 +161,7 @@ export default function DiscipuladoDashboardPage() {
 
   const [hasAccess, setHasAccess] = useState(false);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
+  const [scopeBootstrapped, setScopeBootstrapped] = useState(false);
   const [canManageDiscipulado, setCanManageDiscipulado] = useState(false);
   const [canCreateNovoConvertido, setCanCreateNovoConvertido] = useState(false);
   const [congregations, setCongregations] = useState<Congregation[]>([]);
@@ -183,7 +184,8 @@ export default function DiscipuladoDashboardPage() {
       }),
       loadDiscipleshipCaseSummariesWithFallback({
         targetCongregationId,
-        rowsLimit: 500
+        rowsLimit: 500,
+        includeExtraFields: false
       })
     ]);
 
@@ -292,6 +294,7 @@ export default function DiscipuladoDashboardPage() {
       );
 
       if (!allowed) {
+        setScopeBootstrapped(true);
         setLoading(false);
         return;
       }
@@ -312,7 +315,7 @@ export default function DiscipuladoDashboardPage() {
         }
       }
 
-      await loadDashboard(scope.isAdminMaster, "");
+      setScopeBootstrapped(true);
     }
 
     bootstrap();
@@ -320,12 +323,12 @@ export default function DiscipuladoDashboardPage() {
     return () => {
       active = false;
     };
-  }, [loadDashboard]);
+  }, []);
 
   useEffect(() => {
-    if (!hasAccess) return;
-    loadDashboard(isAdminMaster, congregationFilter);
-  }, [congregationFilter, hasAccess, isAdminMaster, loadDashboard]);
+    if (!hasAccess || !scopeBootstrapped) return;
+    void loadDashboard(isAdminMaster, congregationFilter);
+  }, [congregationFilter, hasAccess, isAdminMaster, loadDashboard, scopeBootstrapped]);
 
   const mergedCases = useMemo<MergedCase[]>(() => {
     const now = Date.now();

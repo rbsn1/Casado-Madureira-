@@ -88,7 +88,9 @@ export default function DiscipuladoConvertidosPage() {
       if (!allowed) return;
 
       const { data: caseSummaries, errorMessage, hasCriticalityColumns } =
-        await loadDiscipleshipCaseSummariesWithFallback();
+        await loadDiscipleshipCaseSummariesWithFallback({
+          includeExtraFields: true
+        });
       if (!active) return;
       if (errorMessage) {
         setStatusMessage(errorMessage);

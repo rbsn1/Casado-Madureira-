@@ -423,7 +423,9 @@ export default function DiscipuladoFilaPage() {
       setCanOpenCase(scope.roles.includes("DISCIPULADOR") || scope.roles.includes("ADMIN_DISCIPULADO"));
       if (!allowed) return;
 
-      const { data, errorMessage, hasCriticalityColumns } = await loadDiscipleshipCaseSummariesWithFallback();
+      const { data, errorMessage, hasCriticalityColumns } = await loadDiscipleshipCaseSummariesWithFallback({
+        includeExtraFields: true
+      });
       if (!active) return;
       if (errorMessage) {
         setStatusMessage(errorMessage);

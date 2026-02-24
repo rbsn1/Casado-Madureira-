@@ -349,7 +349,9 @@ export default function DiscipuladoBoardPage() {
         return;
       }
 
-      const { data, errorMessage } = await loadDiscipleshipCaseSummariesWithFallback();
+      const { data, errorMessage } = await loadDiscipleshipCaseSummariesWithFallback({
+        includeExtraFields: true
+      });
       if (!active) return;
 
       if (errorMessage) {
