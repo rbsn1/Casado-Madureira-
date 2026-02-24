@@ -214,6 +214,31 @@ function mapOriginToEnrollmentTurno(value: string | null | undefined): Enrollmen
   return "NOITE";
 }
 
+function parseEnrollmentTurno(value: string | null | undefined): EnrollmentTurno | null {
+  const normalized = String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+  if (normalized === "MANHA") return "MANHA";
+  if (normalized === "NOITE") return "NOITE";
+  if (normalized === "EVENTO") return "EVENTO";
+  return null;
+}
+
+function enrollmentTurnoLabel(value: EnrollmentTurno) {
+  if (value === "MANHA") return "Culto da manhã";
+  if (value === "NOITE") return "Culto da noite";
+  return "Evento";
+}
+
+function caseStatusLabel(value: CaseItem["status"]) {
+  if (value === "pendente_matricula") return "Pendente de matrícula";
+  if (value === "em_discipulado") return "Em discipulado";
+  if (value === "concluido") return "Concluído";
+  return "Pausado";
+}
+
 export default function DiscipulandoDetalhePage() {
   const params = useParams();
   const router = useRouter();
@@ -234,6 +259,7 @@ export default function DiscipulandoDetalhePage() {
   const [enrollmentModuleId, setEnrollmentModuleId] = useState("");
   const [enrollmentStatusDraft, setEnrollmentStatusDraft] = useState<ProgressItem["status"]>("nao_iniciado");
   const [enrollmentTurnoDraft, setEnrollmentTurnoDraft] = useState<EnrollmentTurno>("NOITE");
+  const [caseTurnoDisplay, setCaseTurnoDisplay] = useState<EnrollmentTurno>("NOITE");
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -397,11 +423,13 @@ export default function DiscipulandoDetalhePage() {
     }, {});
 
     const memberData = memberResult as MemberItem;
+    const turnoFromOrigin = mapOriginToEnrollmentTurno(memberData.origem);
     setMember(memberData);
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
     setMemberOriginDraft(normalizeOriginDraft(memberData.origem));
-    setEnrollmentTurnoDraft(mapOriginToEnrollmentTurno(memberData.origem));
+    setEnrollmentTurnoDraft(turnoFromOrigin);
+    setCaseTurnoDisplay(turnoFromOrigin);
     setMemberChurchDraft(memberData.igreja_origem ?? "");
     setMemberNeighborhoodDraft(memberData.bairro ?? "");
     setMemberNotesDraft(memberData.observacoes ?? "");
@@ -502,6 +530,22 @@ export default function DiscipulandoDetalhePage() {
     if (secondaryError) {
       setStatusMessage(secondaryError);
     }
+
+    const { data: caseFlowData, error: caseFlowError } = await supabaseClient
+      .from("discipleship_cases")
+      .select("turno_origem")
+      .eq("id", currentCase.id)
+      .single();
+    if (!caseFlowError) {
+      const parsedTurno = parseEnrollmentTurno((caseFlowData as { turno_origem?: string | null })?.turno_origem);
+      if (parsedTurno) {
+        setCaseTurnoDisplay(parsedTurno);
+        setEnrollmentTurnoDraft(parsedTurno);
+      }
+    } else if (!isMissingCaseFlowColumnsError(caseFlowError.message, caseFlowError.code)) {
+      setStatusMessage((prev) => prev || caseFlowError.message);
+    }
+
     setLoading(false);
   }, [caseId]);
 
@@ -689,6 +733,7 @@ export default function DiscipulandoDetalhePage() {
           message:
             "Matrícula salva. Este ambiente ainda não possui campos de fase/turno/módulo no case (aplique a migração 0047)."
         });
+        setCaseTurnoDisplay(enrollmentTurnoDraft);
         await loadCase();
         return;
       }
@@ -696,6 +741,7 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
+    setCaseTurnoDisplay(enrollmentTurnoDraft);
     await loadCase();
   }
 
@@ -1329,6 +1375,10 @@ export default function DiscipulandoDetalhePage() {
                   </div>
                   <StatusBadge value={progressBadgeValue(item.status)} />
                 </div>
+                <p className="mt-2 text-xs text-slate-700">
+                  Turno: <strong>{enrollmentTurnoLabel(caseTurnoDisplay)}</strong> • Status do case:{" "}
+                  <strong>{caseStatusLabel(caseData?.status ?? "pendente_matricula")}</strong>
+                </p>
 
                 <label className="mt-3 block space-y-1 text-sm">
                   <span className="text-slate-700">Observações do módulo</span>

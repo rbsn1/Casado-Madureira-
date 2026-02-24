@@ -2,6 +2,7 @@ import clsx from "clsx";
 
 const variants: Record<string, string> = {
   PENDENTE: "bg-warning-100 text-warning-600",
+  ATRIBUIDO: "bg-success-100 text-success-600",
   EM_ANDAMENTO: "bg-info-100 text-info-600",
   EM_DISCIPULADO: "bg-info-100 text-info-600",
   PAUSADO: "bg-amber-100 text-amber-700",

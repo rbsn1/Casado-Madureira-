@@ -70,6 +70,10 @@ function statusLabel(status: KanbanStatus) {
   return "PAUSADO";
 }
 
+function assignmentStatusLabel(assignedTo: string | null) {
+  return assignedTo ? "ATRIBUIDO" : "PENDENTE";
+}
+
 function originLabel(origin: OriginKey) {
   if (origin === "MANHA") return "Culto da Manhã";
   if (origin === "NOITE") return "Culto da Noite";
@@ -186,7 +190,7 @@ function CaseCard({
           <p className="text-sm font-semibold text-slate-900">{item.member_name || "Membro"}</p>
           <p className="text-xs text-slate-600">{item.member_phone ?? "-"}</p>
         </div>
-        <StatusBadge value={statusLabel(item.status)} />
+        <StatusBadge value={assignmentStatusLabel(item.assigned_to)} />
       </div>
       <div className="flex items-center justify-between gap-2">
         <StatusBadge value={item.criticality} />

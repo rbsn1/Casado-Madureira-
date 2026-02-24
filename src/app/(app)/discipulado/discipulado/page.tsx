@@ -23,33 +23,59 @@ type AssigneeOption = {
   label: string;
 };
 
+type ModuleLookup = Record<string, string>;
+
+function statusLabel(value: DiscipleshipCaseSummaryItem["status"]) {
+  if (value === "pendente_matricula") return "PENDENTE";
+  if (value === "em_discipulado") return "EM_DISCIPULADO";
+  if (value === "concluido") return "CONCLUIDO";
+  return "PAUSADO";
+}
+
+function assignmentStatusLabel(assignedTo: string | null) {
+  return assignedTo ? "ATRIBUIDO" : "PENDENTE";
+}
+
 function turnoLabel(key: TurnoOrigem) {
   return TURNOS.find((item) => item.key === key)?.label ?? "Não informado";
 }
 
 function CaseCard({
   item,
+  moduleNameById,
   assigneeOptions,
   assigningCaseId,
   onAssignResponsible
 }: {
   item: DiscipleshipCaseSummaryItem;
+  moduleNameById: ModuleLookup;
   assigneeOptions: AssigneeOption[];
   assigningCaseId: string | null;
   onAssignResponsible: (caseId: string, assignedTo: string | null) => Promise<void>;
 }) {
   const isAssigning = assigningCaseId === item.case_id;
+  const caseTurno = turnoLabel(normalizeTurnoOrigem(item.turno_origem));
+  const caseStatus = statusLabel(item.status);
+  const assignmentStatus = assignmentStatusLabel(item.assigned_to);
+  const moduloAtual = item.modulo_atual_id
+    ? (moduleNameById[item.modulo_atual_id] ?? `#${item.modulo_atual_id.slice(0, 8)}`)
+    : "Sem módulo";
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <p className="text-sm font-semibold text-slate-900">{item.member_name}</p>
       <p className="mt-1 text-xs text-slate-600">{item.member_phone ?? "-"}</p>
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge value={item.criticality} />
+        <StatusBadge value={caseStatus} />
+        <StatusBadge value={assignmentStatus} />
         <span className="text-xs text-slate-600">{criticalityLabel(item.criticality)}</span>
       </div>
       <p className="mt-2 text-xs text-slate-700">
         Dias para confra: <strong>{item.days_to_confra ?? "-"}</strong> • Negativos: <strong>{item.negative_contact_count}</strong>
+      </p>
+      <p className="text-xs text-slate-700">
+        Turno: <strong>{caseTurno}</strong> • Módulo: <strong>{moduloAtual}</strong>
       </p>
 
       <label className="mt-3 block space-y-1">
@@ -87,6 +113,7 @@ export default function DiscipuladoBoardPage() {
     email: null
   });
   const [assigneeDirectory, setAssigneeDirectory] = useState<AssigneeOption[]>([]);
+  const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
 
   useEffect(() => {
     let active = true;
@@ -115,6 +142,21 @@ export default function DiscipuladoBoardPage() {
       }
 
       setCases((data ?? []).filter((item) => item.fase === "DISCIPULADO"));
+
+      if (supabaseClient) {
+        const { data: modulesData } = await supabaseClient
+          .from("discipleship_modules")
+          .select("id, title")
+          .order("sort_order", { ascending: true });
+        if (!active) return;
+        const nextMap: ModuleLookup = {};
+        for (const moduleItem of modulesData ?? []) {
+          const id = String(moduleItem.id ?? "");
+          if (!id) continue;
+          nextMap[id] = String(moduleItem.title ?? "Módulo");
+        }
+        setModuleNameById(nextMap);
+      }
 
       if (supabaseClient) {
         const { data: authData } = await supabaseClient.auth.getUser();
@@ -277,6 +319,7 @@ export default function DiscipuladoBoardPage() {
                     <CaseCard
                       key={item.case_id}
                       item={item}
+                      moduleNameById={moduleNameById}
                       assigneeOptions={assigneeOptions}
                       assigningCaseId={assigningCaseId}
                       onAssignResponsible={handleAssignResponsible}
@@ -304,6 +347,7 @@ export default function DiscipuladoBoardPage() {
                         <CaseCard
                           key={item.case_id}
                           item={item}
+                          moduleNameById={moduleNameById}
                           assigneeOptions={assigneeOptions}
                           assigningCaseId={assigningCaseId}
                           onAssignResponsible={handleAssignResponsible}
