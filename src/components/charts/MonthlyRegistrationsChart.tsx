@@ -73,28 +73,9 @@ function formatVariation(current: number, previous: number | null) {
   return { arrow, absolute, percentage, tone: "text-slate-500" };
 }
 
-function buildSmoothPath(points: Array<{ x: number; y: number }>) {
+function buildLinePath(points: Array<{ x: number; y: number }>) {
   if (!points.length) return "";
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-  if (points.length === 2) return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
-
-  let path = `M ${points[0].x} ${points[0].y}`;
-
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? p2;
-
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-    path += ` C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${p2.x} ${p2.y}`;
-  }
-
-  return path;
+  return points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`).join(" ");
 }
 
 export function MonthlyRegistrationsChart({
@@ -211,13 +192,13 @@ export function MonthlyRegistrationsChart({
   }, [currentPoints]);
 
   const currentLinePath = useMemo(
-    () => currentLineSegments.map((segment) => buildSmoothPath(segment)).join(" "),
+    () => currentLineSegments.map((segment) => buildLinePath(segment)).join(" "),
     [currentLineSegments]
   );
 
   const previousLinePath = useMemo(() => {
     if (!previousPoints.length) return "";
-    return buildSmoothPath(previousPoints.map((point) => ({ x: point.x, y: point.y })));
+    return buildLinePath(previousPoints.map((point) => ({ x: point.x, y: point.y })));
   }, [previousPoints]);
 
   const areaPaths = useMemo(
@@ -225,7 +206,7 @@ export function MonthlyRegistrationsChart({
       currentLineSegments
         .filter((segment) => segment.length)
         .map((segment) => {
-          const smooth = buildSmoothPath(segment);
+          const smooth = buildLinePath(segment);
           const startX = segment[0].x;
           const endX = segment[segment.length - 1].x;
           return `${smooth} L ${endX} ${plotBottom} L ${startX} ${plotBottom} Z`;
@@ -397,7 +378,8 @@ export function MonthlyRegistrationsChart({
                   stroke="#E2E8F0"
                   strokeOpacity="0.6"
                   strokeDasharray="3 3"
-                  strokeWidth="0.28"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
                 />
               );
             })}
@@ -410,8 +392,9 @@ export function MonthlyRegistrationsChart({
                   y1={averageY}
                   y2={averageY}
                   stroke="rgba(71,85,105,0.35)"
-                  strokeWidth="0.18"
+                  strokeWidth="1.5"
                   strokeDasharray="1.2 1.2"
+                  vectorEffect="non-scaling-stroke"
                 />
                 <text
                   x={VIEWBOX_WIDTH - 0.8}
@@ -435,10 +418,11 @@ export function MonthlyRegistrationsChart({
                 d={previousLinePath}
                 fill="none"
                 stroke="rgba(100,116,139,0.5)"
-                strokeWidth="0.95"
+                strokeWidth="1.5"
                 strokeDasharray="1.6 1.6"
                 strokeLinejoin="round"
                 strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
               />
             ) : null}
 
@@ -449,8 +433,9 @@ export function MonthlyRegistrationsChart({
                 x2={hoveredPoint.x}
                 y2={plotBottom}
                 stroke="rgba(15,23,42,0.2)"
-                strokeWidth="0.2"
+                strokeWidth="1"
                 strokeDasharray="0.9 1.1"
+                vectorEffect="non-scaling-stroke"
               />
             ) : null}
 
@@ -461,21 +446,18 @@ export function MonthlyRegistrationsChart({
               strokeWidth={STROKE_WIDTH}
               strokeLinejoin="round"
               strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
 
             {peakPoint && peakPoint.y !== null ? (
-              <circle cx={peakPoint.x} cy={peakPoint.y} r={0.86} fill="#047857" />
+              <circle cx={peakPoint.x} cy={peakPoint.y} r={0.72} fill="#047857" />
             ) : null}
 
-            {lastNonZeroPoint && lastNonZeroPoint.y !== null ? (
-              <circle cx={lastNonZeroPoint.x} cy={lastNonZeroPoint.y} r={0.72} fill="#0f766e" fillOpacity={0.92} />
-            ) : null}
-
-            {activePoint && activePoint.y !== null ? (
+            {hoveredPoint && hoveredPoint.y !== null ? (
               <circle
-                cx={activePoint.x}
-                cy={activePoint.y}
-                r={0.96}
+                cx={hoveredPoint.x}
+                cy={hoveredPoint.y}
+                r={0.86}
                 fill="#ffffff"
                 stroke="#059669"
                 strokeWidth="0.24"
