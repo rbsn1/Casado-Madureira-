@@ -42,10 +42,6 @@ function formatVariation(current: number, previous: number | null) {
   return { text: signed, tone: "text-slate-500" };
 }
 
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
 export function MonthlyRegistrationsChart({
   data,
   year,
@@ -250,6 +246,20 @@ export function MonthlyRegistrationsChart({
         </div>
       ) : null}
 
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-medium text-emerald-800">
+          Pico: {peak.label} ({peak.value})
+        </span>
+        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-700">
+          Média: {average.toFixed(1)}
+        </span>
+        {lastNonZeroPoint ? (
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-medium text-slate-700">
+            Último com cadastro: {lastNonZeroPoint.label} ({lastNonZeroPoint.value})
+          </span>
+        ) : null}
+      </div>
+
       <div className="relative mt-3">
         <div
           className="relative h-[var(--chart-height-mobile)] w-full md:h-[var(--chart-height-desktop)]"
@@ -293,15 +303,6 @@ export function MonthlyRegistrationsChart({
               strokeWidth="0.28"
               strokeDasharray="1.3 1.2"
             />
-            <text
-              x={99}
-              y={clamp(averageY - 0.8, plotTop + 1, plotBottom - 0.8)}
-              textAnchor="end"
-              fontSize="1.75"
-              fill="rgba(100,116,139,0.92)"
-            >
-              média {average.toFixed(1)}
-            </text>
 
             <path d={areaPath} fill={`url(#areaGradient-${gradientId})`} />
 
@@ -338,31 +339,6 @@ export function MonthlyRegistrationsChart({
               strokeLinejoin="round"
               strokeLinecap="round"
             />
-
-            {peakPoint ? (
-              <text
-                x={clamp(peakPoint.x, 7, 93)}
-                y={clamp(peakPoint.y - 1.6, plotTop + 1.5, plotBottom - 1.2)}
-                textAnchor="middle"
-                fontSize="1.95"
-                fill="rgba(6,78,59,0.92)"
-                fontWeight="600"
-              >
-                {`${peakPoint.label} · ${peakPoint.value}`}
-              </text>
-            ) : null}
-
-            {lastNonZeroPoint ? (
-              <text
-                x={clamp(lastNonZeroPoint.x, 7, 93)}
-                y={clamp(lastNonZeroPoint.y - 1.2, plotTop + 1.5, plotBottom - 1.2)}
-                textAnchor="middle"
-                fontSize="1.75"
-                fill="rgba(100,116,139,0.92)"
-              >
-                {`${lastNonZeroPoint.label} · ${lastNonZeroPoint.value}`}
-              </text>
-            ) : null}
 
             {currentPoints.map((point) => {
               const isHovered = hoveredMonth === point.month;
