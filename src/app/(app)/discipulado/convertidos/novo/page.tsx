@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
+import { CULTO_ORIGEM_OPTIONS, cultoOrigemToLegacyOrigem, parseCultoOrigemCode } from "@/lib/cultoOrigem";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
 type MemberResult = {
@@ -20,14 +21,6 @@ type AssigneeOption = {
 };
 
 type EntryMode = "existing" | "new";
-const ORIGIN_OPTIONS = [
-  "Culto da Manhã",
-  "Culto da Noite",
-  "Culto de Quarta",
-  "Culto do MJ",
-  "Outros eventos"
-] as const;
-
 function currentLocalDateInputValue() {
   const now = new Date();
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
@@ -502,10 +495,10 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
-    const normalizedOrigin = newMemberOrigin.trim();
-    if (!normalizedOrigin) {
+    const normalizedCulto = parseCultoOrigemCode(newMemberOrigin);
+    if (!normalizedCulto) {
       setStatus("error");
-      setMessage("Selecione a origem do cadastro.");
+      setMessage("Selecione o culto.");
       return;
     }
 
@@ -521,6 +514,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       return;
     }
 
+    const normalizedOrigin = cultoOrigemToLegacyOrigem(normalizedCulto);
     const { data: createdData, error: createMemberError } = await supabaseClient.rpc(
       "create_ccm_member_from_discipleship",
       {
@@ -726,17 +720,17 @@ export default function NovoConvertidoDiscipuladoPage() {
               />
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Origem</span>
+              <span className="text-slate-700">Culto</span>
               <select
                 value={newMemberOrigin}
                 onChange={(event) => setNewMemberOrigin(event.target.value)}
                 required
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
               >
-                <option value="">Selecione a origem</option>
-                {ORIGIN_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                <option value="">Selecione o culto</option>
+                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>

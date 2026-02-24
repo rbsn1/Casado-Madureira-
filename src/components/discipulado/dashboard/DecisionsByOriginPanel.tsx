@@ -17,9 +17,9 @@ export function DecisionsByOriginPanel({ rows }: { rows: OriginImpactRow[] }) {
   const hasData = rows.some((row) => row.current > 0);
 
   return (
-    <section className="discipulado-panel p-4 sm:p-5" aria-label="Decisões por origem">
+    <section className="discipulado-panel p-4 sm:p-5" aria-label="Decisões por culto">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-sky-900">Por origem (no período)</h3>
+        <h3 className="text-sm font-semibold text-sky-900">Por culto (no período)</h3>
         <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-800">Cultos</span>
       </div>
 

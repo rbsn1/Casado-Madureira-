@@ -5,6 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
+import {
+  CULTO_ORIGEM_OPTIONS,
+  CultoOrigemCode,
+  cultoOrigemLabel,
+  cultoOrigemToLegacyOrigem,
+  parseCultoOrigemCode
+} from "@/lib/cultoOrigem";
 import { formatDateBR } from "@/lib/date";
 import { criticalityLabel, criticalityRank, isNegativeContactOutcome } from "@/lib/discipleshipCriticality";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
@@ -29,6 +36,7 @@ type MemberItem = {
   nome_completo: string;
   telefone_whatsapp: string | null;
   origem: string | null;
+  culto_origem: string | null;
   igreja_origem: string | null;
   bairro: string | null;
   observacoes: string | null;
@@ -115,14 +123,6 @@ type ToastState = {
   message: string;
 } | null;
 
-const ORIGIN_OPTIONS = [
-  "Culto da Manhã",
-  "Culto da Noite",
-  "Culto de Quarta",
-  "Culto do MJ",
-  "Outros eventos"
-] as const;
-
 const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
   "PENDENTE",
   "EM_ANDAMENTO",
@@ -137,19 +137,8 @@ const ENROLLMENT_TURNO_OPTIONS: Array<{ value: EnrollmentTurno; label: string }>
   { value: "NOITE", label: "Noite" }
 ];
 
-function normalizeOriginDraft(value: string | null | undefined) {
-  const normalized = String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toUpperCase();
-  if (!normalized) return "";
-  if (normalized.includes("MANH")) return "Culto da Manhã";
-  if (normalized.includes("QUARTA")) return "Culto de Quarta";
-  if (normalized.includes("MJ")) return "Culto do MJ";
-  if (normalized.includes("NOITE")) return "Culto da Noite";
-  if (normalized.includes("EVENT")) return "Outros eventos";
-  return "";
+function normalizeCultoDraft(value: string | null | undefined): CultoOrigemCode | "" {
+  return parseCultoOrigemCode(value) ?? "";
 }
 
 function caseBadgeValue(status: CaseItem["status"]) {
@@ -227,17 +216,18 @@ function formatOutcomeLabel(value: ContactAttemptOutcome) {
 }
 
 function mapOriginToEnrollmentTurno(value: string | null | undefined): EnrollmentTurno {
-  const normalized = String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim()
-    .toUpperCase();
-
-  if (normalized.includes("MANH")) return "MANHA";
-  if (normalized.includes("TARDE")) return "EVENTO";
-  if (normalized.includes("NOITE") || normalized.includes("QUARTA")) return "NOITE";
-  if (normalized.includes("EVENT") || normalized.includes("MJ")) return "EVENTO";
+  const normalized = parseCultoOrigemCode(value);
+  if (normalized === "MANHA") return "MANHA";
+  if (normalized === "NOITE" || normalized === "QUARTA") return "NOITE";
+  if (normalized === "MJ" || normalized === "OUTROS") return "EVENTO";
   return "NOITE";
+}
+
+function cultoValueLabel(cultoOrigem: string | null | undefined, origem: string | null | undefined) {
+  const normalized = parseCultoOrigemCode(cultoOrigem ?? origem);
+  if (normalized) return cultoOrigemLabel(normalized);
+  const fallback = String(origem ?? "").trim();
+  return fallback || "-";
 }
 
 function parseEnrollmentTurno(value: string | null | undefined): EnrollmentTurno | null {
@@ -279,7 +269,7 @@ export default function DiscipulandoDetalhePage() {
   const [isEditingMember, setIsEditingMember] = useState(false);
   const [memberNameDraft, setMemberNameDraft] = useState("");
   const [memberPhoneDraft, setMemberPhoneDraft] = useState("");
-  const [memberOriginDraft, setMemberOriginDraft] = useState("");
+  const [memberOriginDraft, setMemberOriginDraft] = useState<CultoOrigemCode | "">("");
   const [memberChurchDraft, setMemberChurchDraft] = useState("");
   const [memberNeighborhoodDraft, setMemberNeighborhoodDraft] = useState("");
   const [memberNotesDraft, setMemberNotesDraft] = useState("");
@@ -397,7 +387,7 @@ export default function DiscipulandoDetalhePage() {
 
     const { data: memberResult, error: memberError } = await supabaseClient
       .from("pessoas")
-      .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, observacoes")
+      .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, igreja_origem, bairro, observacoes")
       .eq("id", currentCase.member_id)
       .single();
 
@@ -465,7 +455,7 @@ export default function DiscipulandoDetalhePage() {
     }, {});
 
     const memberData = memberResult as MemberItem;
-    const turnoFromOrigin = mapOriginToEnrollmentTurno(memberData.origem);
+    const turnoFromOrigin = mapOriginToEnrollmentTurno(memberData.culto_origem ?? memberData.origem);
 
     const progressRows = rawProgressRows.map((item) => ({
       id: String(item.id ?? ""),
@@ -516,7 +506,7 @@ export default function DiscipulandoDetalhePage() {
     setMember(memberData);
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
-    setMemberOriginDraft(normalizeOriginDraft(memberData.origem));
+    setMemberOriginDraft(normalizeCultoDraft(memberData.culto_origem ?? memberData.origem));
     setEnrollmentTurnoDraft(turnoFromOrigin);
     setCaseTurnoDisplay(turnoFromOrigin);
     setMemberChurchDraft(memberData.igreja_origem ?? "");
@@ -960,11 +950,12 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
-    const normalizedOrigin = memberOriginDraft.trim();
-    if (!normalizedOrigin) {
-      setStatusMessage("Selecione a origem do cadastro.");
+    const normalizedCulto = parseCultoOrigemCode(memberOriginDraft);
+    if (!normalizedCulto) {
+      setStatusMessage("Selecione o culto.");
       return;
     }
+    const normalizedOrigin = cultoOrigemToLegacyOrigem(normalizedCulto);
 
     const trimmedNeighborhood = memberNeighborhoodDraft.trim();
     if (trimmedNeighborhood && trimmedNeighborhood.length < 2) {
@@ -1253,7 +1244,7 @@ export default function DiscipulandoDetalhePage() {
                   setIsEditingMember(false);
                   setMemberNameDraft(member?.nome_completo ?? "");
                   setMemberPhoneDraft(formatBrazilPhoneInput(member?.telefone_whatsapp ?? ""));
-                  setMemberOriginDraft(normalizeOriginDraft(member?.origem));
+                  setMemberOriginDraft(normalizeCultoDraft(member?.culto_origem ?? member?.origem));
                   setMemberChurchDraft(member?.igreja_origem ?? "");
                   setMemberNeighborhoodDraft(member?.bairro ?? "");
                   setMemberNotesDraft(member?.observacoes ?? "");
@@ -1294,17 +1285,17 @@ export default function DiscipulandoDetalhePage() {
               />
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Origem</span>
+              <span className="text-slate-700">Culto</span>
               <select
                 value={memberOriginDraft}
-                onChange={(event) => setMemberOriginDraft(event.target.value)}
+                onChange={(event) => setMemberOriginDraft(parseCultoOrigemCode(event.target.value) ?? "")}
                 required
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
               >
-                <option value="">Selecione a origem</option>
-                {ORIGIN_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                <option value="">Selecione o culto</option>
+                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -1342,8 +1333,10 @@ export default function DiscipulandoDetalhePage() {
               <p className="text-sm font-semibold text-slate-900">{member?.telefone_whatsapp ?? "-"}</p>
             </div>
             <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
-              <p className="text-xs text-slate-500">Origem</p>
-              <p className="text-sm font-semibold text-slate-900">{member?.origem ?? "-"}</p>
+              <p className="text-xs text-slate-500">Culto</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {cultoValueLabel(member?.culto_origem, member?.origem)}
+              </p>
             </div>
             <div className="rounded-lg border border-slate-100 bg-white px-3 py-2">
               <p className="text-xs text-slate-500">Igreja de origem</p>

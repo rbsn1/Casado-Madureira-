@@ -35,6 +35,7 @@ import {
   groupByOrigin,
   groupByYear
 } from "@/lib/evangelisticImpact";
+import { parseCultoOrigemCode } from "@/lib/cultoOrigem";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 type DashboardCards = {
@@ -78,6 +79,7 @@ type EvangelisticDecisionRow = {
   id: string;
   created_at: string | null;
   origem: string | null;
+  culto_origem?: string | null;
   cadastro_origem?: string | null;
 };
 
@@ -187,13 +189,9 @@ function computeVariationPct(currentValue: number, previousValue: number) {
 }
 
 function normalizeDecisionOrigin(value: string | null | undefined): DecisionOrigin | null {
-  if (!value) return null;
-  const raw = value.trim().toUpperCase();
-  if (raw.includes("MANH")) return "MANHA";
-  if (raw.includes("NOITE")) return "NOITE";
-  if (raw === "MJ") return "MJ";
-  if (raw.includes("QUARTA")) return "QUARTA";
-  return null;
+  const normalized = parseCultoOrigemCode(value);
+  if (!normalized || normalized === "OUTROS") return null;
+  return normalized;
 }
 
 function formatDateToYmd(date: Date) {
@@ -381,7 +379,7 @@ export default function DiscipuladoDashboardPage() {
 
       let decisionsQuery = supabaseClient
         .from("pessoas")
-        .select("id, created_at, origem")
+        .select("id, created_at, origem, culto_origem")
         .gte("created_at", startIso)
         .lt("created_at", endIso);
 
@@ -470,7 +468,7 @@ export default function DiscipuladoDashboardPage() {
         const code = decisionsResult.error.code ?? "";
         if (code === "42703" || code === "42P01") {
           impactErrors.push(
-            "Dados de decisões indisponíveis no banco (cadastros/origem de culto)."
+            "Dados de decisões indisponíveis no banco (cadastros/culto de origem)."
           );
         } else {
           impactErrors.push(decisionsResult.error.message);
@@ -634,7 +632,7 @@ export default function DiscipuladoDashboardPage() {
         .filter((item) => Boolean(item.created_at))
         .map((item) => ({
           acceptedAt: item.created_at as string,
-          origin: normalizeDecisionOrigin(item.origem)
+          origin: normalizeDecisionOrigin(item.culto_origem ?? item.origem)
         })),
     [evangelisticDecisions]
   );

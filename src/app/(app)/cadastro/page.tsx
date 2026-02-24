@@ -2,9 +2,9 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { CULTO_ORIGEM_OPTIONS, CultoOrigemCode, cultoOrigemToLegacyOrigem, parseCultoOrigemCode } from "@/lib/cultoOrigem";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
-const origemOptions = ["Culto da Manhã", "Culto da Tarde", "Culto da Noite"];
 const igrejaOptions = [
   "Sede",
   "Congregação Cidade Nova",
@@ -60,7 +60,7 @@ const bairroOptions = [
 export default function CadastroInternoPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [origem, setOrigem] = useState("Culto da Manhã");
+  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("MANHA");
   const [igreja, setIgreja] = useState("Sede");
   const [igrejaOutra, setIgrejaOutra] = useState("");
   const [igrejaBusca, setIgrejaBusca] = useState("");
@@ -115,7 +115,8 @@ export default function CadastroInternoPage() {
     const payload = {
       nome_completo: String(formData.get("nome_completo") ?? ""),
       telefone_whatsapp: telefoneParsed.formatted,
-      origem,
+      origem: cultoOrigemToLegacyOrigem(cultoOrigem),
+      culto_origem: cultoOrigem,
       igreja_origem: igrejaOrigem || null,
       bairro: bairroFinal || null,
       data: formData.get("data") ? String(formData.get("data")) : null,
@@ -123,11 +124,17 @@ export default function CadastroInternoPage() {
       request_id: crypto.randomUUID()
     };
 
-    let { error } = await supabaseClient.from("pessoas").insert(payload);
-    // Ambientes legados podem não ter a coluna request_id ou o schema cache pode estar desatualizado.
+    let insertPayload: Record<string, unknown> = payload;
+    let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
     if (error && error.code === "PGRST204" && error.message.includes("request_id")) {
-      const { request_id: _requestId, ...fallbackPayload } = payload;
-      ({ error } = await supabaseClient.from("pessoas").insert(fallbackPayload));
+      const { request_id: _requestId, ...fallbackPayload } = insertPayload;
+      insertPayload = fallbackPayload;
+      ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
+    }
+    if (error && error.code === "PGRST204" && error.message.includes("culto_origem")) {
+      const { culto_origem: _cultoOrigem, ...fallbackPayload } = insertPayload;
+      insertPayload = fallbackPayload;
+      ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
     }
 
     if (error) {
@@ -144,7 +151,7 @@ export default function CadastroInternoPage() {
     form.reset();
     setStatus("success");
     setMessage("Cadastro enviado com sucesso. Aguarde o contato da equipe.");
-    setOrigem("Culto da Manhã");
+    setCultoOrigem("MANHA");
     setIgreja("Sede");
     setIgrejaOutra("");
     setIgrejaBusca("");
@@ -187,16 +194,19 @@ export default function CadastroInternoPage() {
               />
             </label>
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Origem</span>
+              <span className="text-slate-700">Culto</span>
               <select
-                name="origem"
-                value={origem}
-                onChange={(event) => setOrigem(event.target.value)}
+                name="culto_origem"
+                value={cultoOrigem}
+                onChange={(event) => {
+                  const parsed = parseCultoOrigemCode(event.target.value);
+                  if (parsed) setCultoOrigem(parsed);
+                }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
               >
-                {origemOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
@@ -304,7 +314,7 @@ export default function CadastroInternoPage() {
           <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Checklist rápido</h3>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
             <li>Nome completo e telefone com DDD.</li>
-            <li>Origem do contato e congregação de referência.</li>
+            <li>Culto de origem e congregação de referência.</li>
             <li>Bairro e observações úteis para acompanhamento.</li>
             <li>Evite duplicidade: confirme telefone antes de enviar.</li>
           </ul>
