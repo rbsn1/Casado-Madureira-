@@ -141,7 +141,12 @@ export default function DiscipuladoBoardPage() {
         setStatusMessage(errorMessage);
       }
 
-      setCases((data ?? []).filter((item) => item.fase === "DISCIPULADO"));
+      const discipuladoCases = (data ?? []).filter((item) => {
+        if (item.fase === "DISCIPULADO") return true;
+        if (item.fase === "POS_DISCIPULADO") return false;
+        return item.status === "em_discipulado" || item.status === "pausado";
+      });
+      setCases(discipuladoCases);
 
       if (supabaseClient) {
         const { data: modulesData } = await supabaseClient
