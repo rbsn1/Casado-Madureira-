@@ -532,10 +532,21 @@ export default function DiscipuladoFilaPage() {
     setStatusMessage((prev) => prev || activeConfraternizacaoErrorMessage);
   }, [activeConfraternizacaoErrorMessage]);
 
+  const unconfirmedCases = useMemo(() => cases.filter((item) => item.confraternizacao_confirmada !== true), [cases]);
+  const acolhimentoCases = useMemo(
+    () => unconfirmedCases.filter((item) => item.fase === "ACOLHIMENTO"),
+    [unconfirmedCases]
+  );
+  const discipuladoCasesCount = useMemo(
+    () => unconfirmedCases.filter((item) => item.fase === "DISCIPULADO").length,
+    [unconfirmedCases]
+  );
+  const confirmedCasesCount = useMemo(
+    () => cases.filter((item) => item.confraternizacao_confirmada === true).length,
+    [cases]
+  );
+
   const orderedCases = useMemo<QueueCase[]>(() => {
-    // Regra de negócio: case confirmado na confraternização não aparece em "Em Acolhimento".
-    const unconfirmedCases = cases.filter((item) => item.confraternizacao_confirmada !== true);
-    const acolhimentoCases = unconfirmedCases.filter((item) => item.fase === "ACOLHIMENTO");
     const base =
       statusFilter === "todos"
         ? acolhimentoCases
@@ -553,7 +564,7 @@ export default function DiscipuladoFilaPage() {
     }));
 
     return sortCases(normalized);
-  }, [cases, memberOriginById, statusFilter]);
+  }, [acolhimentoCases, memberOriginById, statusFilter]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -780,9 +791,30 @@ export default function DiscipuladoFilaPage() {
         Exibindo {Math.min(visibleCases.length, orderedCases.length)} de {orderedCases.length} casos.
       </p>
 
+      {!orderedCases.length ? (
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
+          <p>Nenhum caso elegível para a fila de Acolhimento.</p>
+          {discipuladoCasesCount > 0 ? (
+            <p className="mt-1">
+              {discipuladoCasesCount} {discipuladoCasesCount === 1 ? "caso está" : "casos estão"} em{" "}
+              <strong>Discipulado</strong>.{" "}
+              <Link href="/discipulado/discipulado" className="font-semibold text-sky-700 hover:text-sky-900">
+                Ir para o painel Em Discipulado
+              </Link>
+              .
+            </p>
+          ) : null}
+          {confirmedCasesCount > 0 ? (
+            <p className="mt-1">
+              {confirmedCasesCount} {confirmedCasesCount === 1 ? "caso já foi confirmado" : "casos já foram confirmados"} na
+              confraternização e não aparecem nesta fila.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {viewMode === "lista" ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {!orderedCases.length ? <div className="discipulado-panel p-4 text-sm text-slate-600">Nenhum caso na fila.</div> : null}
           {visibleCases.map((item) => (
             <CaseCard
               key={item.case_id}
