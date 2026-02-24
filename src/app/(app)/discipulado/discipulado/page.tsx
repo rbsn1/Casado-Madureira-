@@ -19,7 +19,7 @@ const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
 ];
 const TURNO_ORDER: TurnoOrigem[] = ["MANHA", "TARDE", "NOITE", "NAO_INFORMADO"];
 
-type TurmaStatusValue = "em_discipulado" | "pausado" | "concluido";
+type TurmaStatusValue = "pendente_matricula" | "em_discipulado" | "pausado" | "concluido";
 type TurmaPlanningDraft = {
   moduleId: string;
   startDate: string;
@@ -31,6 +31,7 @@ type ModuleOption = {
 };
 
 const TURMA_STATUS_OPTIONS: Array<{ value: TurmaStatusValue; label: string }> = [
+  { value: "pendente_matricula", label: "Não iniciada" },
   { value: "em_discipulado", label: "Iniciada" },
   { value: "pausado", label: "Pausada" },
   { value: "concluido", label: "Finalizada" }
@@ -69,6 +70,7 @@ function turnoLabel(key: TurnoOrigem) {
 }
 
 function toTurmaStatusValue(value: DiscipleshipCaseSummaryItem["status"]): TurmaStatusValue {
+  if (value === "pendente_matricula") return "pendente_matricula";
   if (value === "pausado") return "pausado";
   if (value === "concluido") return "concluido";
   return "em_discipulado";
@@ -185,6 +187,8 @@ function buildTurmaModuleSummaryByTurno(rows: ProgressTurnoRow[]): TurmaModuleSu
 function deriveTurnoStatus(cases: DiscipleshipCaseSummaryItem[]): TurmaStatusValue {
   if (!cases.length) return "em_discipulado";
   const normalized = cases.map((item) => toTurmaStatusValue(item.status));
+  const allPending = normalized.every((item) => item === "pendente_matricula");
+  if (allPending) return "pendente_matricula";
   const allConcluded = normalized.every((item) => item === "concluido");
   if (allConcluded) return "concluido";
   const allPaused = normalized.every((item) => item === "pausado");
