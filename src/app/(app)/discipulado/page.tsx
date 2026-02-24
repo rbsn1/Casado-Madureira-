@@ -375,8 +375,7 @@ export default function DiscipuladoDashboardPage() {
 
       let decisionsQuery = supabaseClient
         .from("pessoas")
-        .select("id, created_at, origem, cadastro_origem")
-        .eq("cadastro_origem", "ccm")
+        .select("id, created_at, origem")
         .gte("created_at", startIso)
         .lt("created_at", endIso);
 
