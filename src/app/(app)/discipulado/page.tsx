@@ -203,6 +203,12 @@ function formatDateToYmd(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function toLocalDateKey(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return formatDateToYmd(date);
+}
+
 function formatDecisionDateLabel(value: string) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "Data inválida";
@@ -666,28 +672,61 @@ export default function DiscipuladoDashboardPage() {
     const mediaAtual = calculateMediaPorCulto(currentTotal, currentCultosCount);
     const mediaAnterior = calculateMediaPorCulto(previousTotal, previousCultosCount);
 
-    const picoByCulto = new Map<string, { total: number; acceptedAt: string; origin: DecisionOrigin | null }>();
-    for (const record of currentDecisionRecords) {
-      const acceptedAt = record.acceptedAt;
-      const dateKey = acceptedAt.slice(0, 10);
-      const originKey = record.origin ?? "SEM_ORIGEM";
-      const key = `${dateKey}::${originKey}`;
-      const current = picoByCulto.get(key) ?? { total: 0, acceptedAt, origin: record.origin };
-      current.total += 1;
-      picoByCulto.set(key, current);
-    }
+    const hasCultosData = cultos.length > 0;
 
-    const pico =
-      [...picoByCulto.values()].sort((a, b) => b.total - a.total)[0] ?? null;
+    const pico = (() => {
+      if (hasCultosData) {
+        const byCulto = new Map<string, { total: number; acceptedAt: string; origin: DecisionOrigin | null; mixed: boolean }>();
+        for (const record of currentDecisionRecords) {
+          const dateKey = toLocalDateKey(record.acceptedAt);
+          if (!dateKey) continue;
+          const originKey = record.origin ?? "SEM_ORIGEM";
+          const key = `${dateKey}::${originKey}`;
+          const current = byCulto.get(key) ?? { total: 0, acceptedAt: record.acceptedAt, origin: record.origin, mixed: false };
+          current.total += 1;
+          byCulto.set(key, current);
+        }
+        return [...byCulto.values()].sort((a, b) => b.total - a.total)[0] ?? null;
+      }
 
-    const picoDateKey = pico?.acceptedAt.slice(0, 10) ?? null;
-    const cultoDoPico = picoDateKey
+      const byDay = new Map<string, { total: number; acceptedAt: string; origins: Set<DecisionOrigin> }>();
+      for (const record of currentDecisionRecords) {
+        const dateKey = toLocalDateKey(record.acceptedAt);
+        if (!dateKey) continue;
+        const current = byDay.get(dateKey) ?? { total: 0, acceptedAt: record.acceptedAt, origins: new Set<DecisionOrigin>() };
+        current.total += 1;
+        if (record.origin) current.origins.add(record.origin);
+        byDay.set(dateKey, current);
+      }
+
+      const best = [...byDay.values()].sort((a, b) => b.total - a.total)[0] ?? null;
+      if (!best) return null;
+      const uniqueOrigins = [...best.origins];
+      return {
+        total: best.total,
+        acceptedAt: best.acceptedAt,
+        origin: uniqueOrigins.length === 1 ? uniqueOrigins[0] : null,
+        mixed: uniqueOrigins.length > 1
+      };
+    })();
+
+    const picoDateKey = pico ? toLocalDateKey(pico.acceptedAt) : null;
+    const picoOrigin = pico?.origin ?? null;
+    const cultoDoPico = hasCultosData && picoDateKey
       ? cultos.find((item) => {
-          const cultoDateKey = item.data.slice(0, 10);
+          const cultoDateKey = toLocalDateKey(item.data);
           if (cultoDateKey !== picoDateKey) return false;
           const tipoNormalizado = normalizeDecisionOrigin(item.tipo);
-          return pico?.origin ? tipoNormalizado === pico.origin : true;
+          return picoOrigin ? tipoNormalizado === picoOrigin : true;
         }) ?? null
+      : null;
+
+    const picoCultoLabel = pico
+      ? hasCultosData
+        ? formatCultoTypeLabel(cultoDoPico?.tipo ?? null, pico.origin)
+        : pico.mixed
+          ? "Múltiplos cultos"
+          : formatCultoTypeLabel(null, pico.origin)
       : null;
 
     return {
@@ -707,7 +746,7 @@ export default function DiscipuladoDashboardPage() {
         ? {
             total: pico.total,
             dateLabel: formatDecisionDateLabel(pico.acceptedAt),
-            cultoLabel: formatCultoTypeLabel(cultoDoPico?.tipo ?? null, pico.origin)
+            cultoLabel: picoCultoLabel ?? "Culto não informado"
           }
         : null
     };
