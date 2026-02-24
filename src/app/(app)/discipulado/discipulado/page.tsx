@@ -388,6 +388,7 @@ function TurmaPlanningForm({
 export default function DiscipuladoBoardPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [statusVariant, setStatusVariant] = useState<"error" | "success">("error");
   const [loading, setLoading] = useState(true);
   const [currentCongregationId, setCurrentCongregationId] = useState<string | null>(null);
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
@@ -431,7 +432,7 @@ export default function DiscipuladoBoardPage() {
       if (!active) return;
 
       if (errorMessage) {
-        setStatusMessage(errorMessage);
+        setErrorStatusMessage(errorMessage);
       }
 
       const discipuladoCases = (data ?? []).filter((item) => {
@@ -479,7 +480,7 @@ export default function DiscipuladoBoardPage() {
         const turmaPlanningResult = await turmaPlanningQuery;
         if (turmaPlanningResult.error) {
           if (!isMissingTurmaPlanningTableError(turmaPlanningResult.error.message, turmaPlanningResult.error.code)) {
-            setStatusMessage((prev) => prev || turmaPlanningResult.error?.message || "");
+            setErrorStatusMessage(turmaPlanningResult.error?.message || "");
           }
         } else {
           const nextPlanningDrafts = createEmptyTurmaPlanningByTurno();
@@ -504,7 +505,7 @@ export default function DiscipuladoBoardPage() {
 
         if (progressTurnosResult.error) {
           if (!isMissingProgressTurnoColumnError(progressTurnosResult.error.message, progressTurnosResult.error.code)) {
-            setStatusMessage((prev) => prev || progressTurnosResult.error?.message || "");
+            setErrorStatusMessage(progressTurnosResult.error?.message || "");
           }
         } else {
           const progressRows = (progressTurnosResult.data ?? []) as ProgressTurnoRow[];
@@ -529,6 +530,20 @@ export default function DiscipuladoBoardPage() {
   const orderedCases = useMemo(() => sortCases(cases), [cases]);
   const byTurno = useMemo(() => groupCasesByTurnos(orderedCases, caseTurnosByCaseId), [orderedCases, caseTurnosByCaseId]);
 
+  function clearStatusMessage() {
+    setStatusMessage("");
+  }
+
+  function setErrorStatusMessage(message: string) {
+    setStatusVariant("error");
+    setStatusMessage(message);
+  }
+
+  function setSuccessStatusMessage(message: string) {
+    setStatusVariant("success");
+    setStatusMessage(message);
+  }
+
   useEffect(() => {
     setTurnoStatusDrafts({
       MANHA: deriveTurnoStatus(byTurno.MANHA),
@@ -538,13 +553,21 @@ export default function DiscipuladoBoardPage() {
     });
   }, [byTurno]);
 
+  useEffect(() => {
+    if (!statusMessage || statusVariant !== "success") return;
+    const timeoutId = window.setTimeout(() => {
+      setStatusMessage("");
+    }, 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [statusMessage, statusVariant]);
+
   async function handleSaveTurmaStatus(turnoKey: TurnoOrigem) {
     if (!supabaseClient || savingTurnoStatusKey) return;
     const turmaCases = byTurno[turnoKey] ?? [];
     if (!turmaCases.length) return;
 
     setSavingTurnoStatusKey(turnoKey);
-    setStatusMessage("");
+    clearStatusMessage();
     const nextStatus = turnoStatusDrafts[turnoKey] ?? deriveTurnoStatus(turmaCases);
     const caseIds = turmaCases.map((item) => item.case_id);
 
@@ -557,7 +580,7 @@ export default function DiscipuladoBoardPage() {
       .in("id", caseIds);
 
     if (error) {
-      setStatusMessage(error.message);
+      setErrorStatusMessage(error.message);
       setSavingTurnoStatusKey(null);
       return;
     }
@@ -587,7 +610,7 @@ export default function DiscipuladoBoardPage() {
     }
 
     if (!targetCongregationId) {
-      setStatusMessage("Não foi possível identificar a congregação para salvar os dados da turma.");
+      setErrorStatusMessage("Não foi possível identificar a congregação para salvar os dados da turma.");
       return;
     }
     if (targetCongregationId !== currentCongregationId) {
@@ -595,7 +618,7 @@ export default function DiscipuladoBoardPage() {
     }
 
     setSavingTurmaPlanningKey(turnoKey);
-    setStatusMessage("");
+    clearStatusMessage();
 
     const draft = turmaPlanningDrafts[turnoKey] ?? { moduleId: "", startDate: "" };
     const { error } = await supabaseClient.from("discipleship_turma_settings").upsert(
@@ -612,17 +635,17 @@ export default function DiscipuladoBoardPage() {
 
     if (error) {
       if (isMissingTurmaPlanningTableError(error.message, error.code)) {
-        setStatusMessage(
+        setErrorStatusMessage(
           "Configuração da turma indisponível neste ambiente. Aplique a migração 0050_discipulado_turma_planejamento.sql."
         );
       } else {
-        setStatusMessage(error.message);
+        setErrorStatusMessage(error.message);
       }
       setSavingTurmaPlanningKey(null);
       return;
     }
 
-    setStatusMessage("Dados da turma salvos com sucesso.");
+    setSuccessStatusMessage("Dados da turma salvos com sucesso.");
     setSavingTurmaPlanningKey(null);
   }
 
@@ -639,7 +662,15 @@ export default function DiscipuladoBoardPage() {
       </div>
 
       {statusMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{statusMessage}</p>
+        <p
+          className={`rounded-lg border px-3 py-2 text-xs ${
+            statusVariant === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
+          {statusMessage}
+        </p>
       ) : null}
 
       {loading ? <div className="discipulado-panel p-4 text-sm text-slate-600">Carregando painel...</div> : null}
