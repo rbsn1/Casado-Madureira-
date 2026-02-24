@@ -42,6 +42,19 @@ function variationTone(value: number | null) {
   return "text-slate-500";
 }
 
+function buildTickIndexes(size: number, maxTicks = 6) {
+  if (size <= 0) return [] as number[];
+  if (size <= maxTicks) return Array.from({ length: size }, (_, index) => index);
+
+  const indexes = new Set<number>([0, size - 1]);
+  const step = (size - 1) / (maxTicks - 1);
+  for (let tick = 1; tick < maxTicks - 1; tick += 1) {
+    indexes.add(Math.round(tick * step));
+  }
+
+  return [...indexes].sort((a, b) => a - b);
+}
+
 export function DecisionsTrendChart({
   data,
   granularity,
@@ -89,6 +102,13 @@ export function DecisionsTrendChart({
   }, [points]);
 
   const activePoint = hoveredIndex === null ? null : points[hoveredIndex] ?? null;
+  const tooltipPoint = activePoint ?? peakPoint;
+  const tooltipLeft = tooltipPoint ? clamp(tooltipPoint.x, 12, 88) : 50;
+
+  const xAxisPoints = useMemo(() => {
+    const indexes = buildTickIndexes(points.length, 6);
+    return indexes.map((index) => points[index]).filter(Boolean);
+  }, [points]);
 
   if (!data.length || !hasData) {
     return (
@@ -181,23 +201,52 @@ export function DecisionsTrendChart({
             <path d={linePath} fill="none" stroke="rgba(2,132,199,0.2)" strokeWidth="1.35" />
             <path d={linePath} fill="none" stroke="#0284c7" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
 
-            {peakPoint ? (
-              <text
-                x={clamp(peakPoint.x, 8, 92)}
-                y={clamp(peakPoint.y - 1.4, PLOT_TOP + 1.4, PLOT_BOTTOM - 1)}
-                textAnchor="middle"
-                fontSize="1.8"
-                fill="rgba(3,105,161,0.9)"
-                fontWeight="600"
-              >
-                {`Pico · ${peakPoint.total}`}
-              </text>
-            ) : null}
+            {Array.from({ length: GRID_LINES }).map((_, idx) => {
+              const y = PLOT_TOP + (idx / (GRID_LINES - 1)) * PLOT_HEIGHT;
+              const value = Math.round(((GRID_LINES - 1 - idx) / (GRID_LINES - 1)) * maxValue);
+              return (
+                <text
+                  key={`y-label-${idx}`}
+                  x={99.2}
+                  y={y - 0.35}
+                  textAnchor="end"
+                  fontSize="1.6"
+                  fill="rgba(71,85,105,0.85)"
+                >
+                  {value}
+                </text>
+              );
+            })}
 
             {points.map((point, index) => {
               const active = hoveredIndex === index;
               return (
-                <circle key={point.key} cx={point.x} cy={point.y} r={active ? 1.1 : 0.65} fill="#0284c7" fillOpacity={active ? 0.95 : 0} />
+                <circle
+                  key={point.key}
+                  cx={point.x}
+                  cy={point.y}
+                  r={active ? 1.1 : 0.65}
+                  fill="#0284c7"
+                  fillOpacity={active ? 0.95 : 0.28}
+                />
+              );
+            })}
+
+            {xAxisPoints.map((point, index) => {
+              const lastIndex = xAxisPoints.length - 1;
+              const textAnchor = index === 0 ? "start" : index === lastIndex ? "end" : "middle";
+              return (
+                <text
+                  key={`x-label-${point.key}`}
+                  x={point.x}
+                  y={41.5}
+                  textAnchor={textAnchor}
+                  fontSize="1.7"
+                  fill="rgba(71,85,105,0.9)"
+                  fontWeight="500"
+                >
+                  {point.label}
+                </text>
               );
             })}
 
@@ -220,18 +269,21 @@ export function DecisionsTrendChart({
             })}
           </svg>
 
-          {activePoint ? (
+          {tooltipPoint ? (
             <div
               className="pointer-events-none absolute -top-2 rounded-xl border border-slate-200/95 bg-white/95 px-3 py-2 text-[10.5px] shadow-[0_12px_24px_rgba(15,23,42,0.12)]"
-              style={{ left: `${activePoint.x}%`, transform: "translateX(-50%)" }}
+              style={{ left: `${tooltipLeft}%`, transform: "translateX(-50%)" }}
             >
-              <p className="font-semibold text-slate-700">{activePoint.label}</p>
+              <p className="font-semibold text-slate-700">{tooltipPoint.label}</p>
               <p className="text-sky-700">
-                Total: <span className="font-semibold">{activePoint.total}</span>
+                Total: <span className="font-semibold">{tooltipPoint.total}</span>
               </p>
-              <p className={`${variationTone(activePoint.variationPct)}`}>
-                Variação: <span className="font-semibold">{variationText(activePoint)}</span>
+              <p className={`${variationTone(tooltipPoint.variationPct)}`}>
+                Variação: <span className="font-semibold">{variationText(tooltipPoint)}</span>
               </p>
+              {peakPoint && tooltipPoint.key === peakPoint.key ? (
+                <p className="font-semibold text-indigo-700">Pico do período</p>
+              ) : null}
             </div>
           ) : null}
         </div>
