@@ -18,8 +18,6 @@ type ChartPoint = NormalizedMonthEntry & {
   prevValue: number | null;
 };
 
-type VisibleChartPoint = ChartPoint & { y: number };
-
 const defaultMonthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 // Chart tuning constants
@@ -104,10 +102,6 @@ function variationForHover(current: number | null, previous: number | null) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
-}
-
-function isVisiblePoint(point: ChartPoint): point is VisibleChartPoint {
-  return point.y !== null;
 }
 
 export function MonthlyRegistrationsChart({
@@ -242,15 +236,13 @@ export function MonthlyRegistrationsChart({
   const averageY = useMemo(() => plotBottom - (average / maxValue) * plotHeight, [average, maxValue]);
 
   const peakPoint = useMemo(() => {
-    const visiblePoints = currentPoints.filter(isVisiblePoint);
+    const visiblePoints = currentPoints.filter((point) => point.y !== null);
     if (!visiblePoints.length) return null;
     return visiblePoints.reduce((best, item) => (item.value > best.value ? item : best), visiblePoints[0]);
   }, [currentPoints]);
 
   const lastNonZeroPoint = useMemo(() => {
-    const found =
-      [...currentPoints].reverse().find((point): point is VisibleChartPoint => point.value > 0 && point.y !== null) ??
-      null;
+    const found = [...currentPoints].reverse().find((point) => point.value > 0 && point.y !== null) ?? null;
     if (!found || !peakPoint) return found;
     const conflict = Math.abs(found.x - peakPoint.x) < 10 && Math.abs(found.y - peakPoint.y) < 6;
     return conflict ? null : found;
