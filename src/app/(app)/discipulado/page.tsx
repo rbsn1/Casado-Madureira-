@@ -195,6 +195,12 @@ function isMissingCultosTableError(error: { code?: string; message: string } | n
   );
 }
 
+function isInDiscipuladoBoard(item: DiscipleshipCaseSummaryItem) {
+  if (item.fase === "DISCIPULADO") return true;
+  if (item.fase === "POS_DISCIPULADO") return false;
+  return item.status === "em_discipulado" || item.status === "pausado" || item.status === "concluido";
+}
+
 export default function DiscipuladoDashboardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -770,7 +776,7 @@ export default function DiscipuladoDashboardPage() {
         (item) => item.fase === "ACOLHIMENTO" && item.status !== "concluido"
       ).length;
       const emDiscipulado = mergedCases.length
-        ? unconfirmedCases.filter((item) => item.fase === "DISCIPULADO").length
+        ? mergedCases.filter(isInDiscipuladoBoard).length
         : cards.em_discipulado;
       const concluidos = mergedCases.length
         ? mergedCases.filter((item) => item.status === "concluido").length
