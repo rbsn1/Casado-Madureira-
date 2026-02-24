@@ -45,28 +45,28 @@ function toTurmaStatusValue(value: DiscipleshipCaseSummaryItem["status"]): Turma
   return "em_discipulado";
 }
 
+function deriveTurnoStatus(cases: DiscipleshipCaseSummaryItem[]): TurmaStatusValue {
+  if (!cases.length) return "em_discipulado";
+  const normalized = cases.map((item) => toTurmaStatusValue(item.status));
+  const allConcluded = normalized.every((item) => item === "concluido");
+  if (allConcluded) return "concluido";
+  const allPaused = normalized.every((item) => item === "pausado");
+  if (allPaused) return "pausado";
+  return "em_discipulado";
+}
+
 function CaseCard({
   item,
-  moduleNameById,
-  savingStatusCaseId,
-  onSaveTurmaStatus
+  moduleNameById
 }: {
   item: DiscipleshipCaseSummaryItem;
   moduleNameById: ModuleLookup;
-  savingStatusCaseId: string | null;
-  onSaveTurmaStatus: (caseId: string, status: TurmaStatusValue) => Promise<void>;
 }) {
-  const isSavingStatus = savingStatusCaseId === item.case_id;
   const caseTurno = turnoLabel(normalizeTurnoOrigem(item.turno_origem));
   const caseStatus = statusLabel(item.status);
-  const [turmaStatus, setTurmaStatus] = useState<TurmaStatusValue>(toTurmaStatusValue(item.status));
   const moduloAtual = item.modulo_atual_id
     ? (moduleNameById[item.modulo_atual_id] ?? `#${item.modulo_atual_id.slice(0, 8)}`)
     : "Sem módulo";
-
-  useEffect(() => {
-    setTurmaStatus(toTurmaStatusValue(item.status));
-  }, [item.case_id, item.status]);
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -86,34 +86,6 @@ function CaseCard({
       <p className="mt-1 text-xs text-slate-700">
         Responsável: <strong>{item.discipulador_email ?? "A definir"}</strong>
       </p>
-
-      <div className="mt-3 grid gap-2">
-        <label className="space-y-1">
-          <span className="text-xs font-semibold text-slate-600">Status da turma</span>
-          <select
-            value={turmaStatus}
-            onChange={(event) => setTurmaStatus(event.target.value as TurmaStatusValue)}
-            disabled={isSavingStatus}
-            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-          >
-            {TURMA_STATUS_OPTIONS.map((statusOption) => (
-              <option key={statusOption.value} value={statusOption.value}>
-                {statusOption.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          onClick={() => {
-            void onSaveTurmaStatus(item.case_id, turmaStatus);
-          }}
-          disabled={isSavingStatus}
-          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-        >
-          {isSavingStatus ? "Salvando status..." : "Salvar status"}
-        </button>
-      </div>
     </article>
   );
 }
@@ -124,7 +96,13 @@ export default function DiscipuladoBoardPage() {
   const [loading, setLoading] = useState(true);
   const [cases, setCases] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [mobileTurno, setMobileTurno] = useState<TurnoOrigem>("MANHA");
-  const [savingStatusCaseId, setSavingStatusCaseId] = useState<string | null>(null);
+  const [savingTurnoStatusKey, setSavingTurnoStatusKey] = useState<TurnoOrigem | null>(null);
+  const [turnoStatusDrafts, setTurnoStatusDrafts] = useState<Record<TurnoOrigem, TurmaStatusValue>>({
+    MANHA: "em_discipulado",
+    TARDE: "em_discipulado",
+    NOITE: "em_discipulado",
+    NAO_INFORMADO: "em_discipulado"
+  });
   const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
 
   useEffect(() => {
@@ -189,39 +167,53 @@ export default function DiscipuladoBoardPage() {
   const orderedCases = useMemo(() => sortCases(cases), [cases]);
   const byTurno = useMemo(() => groupByTurno(orderedCases), [orderedCases]);
 
-  async function handleSaveTurmaStatus(caseId: string, status: TurmaStatusValue) {
-    if (!supabaseClient || savingStatusCaseId) return;
+  useEffect(() => {
+    setTurnoStatusDrafts({
+      MANHA: deriveTurnoStatus(byTurno.MANHA),
+      TARDE: deriveTurnoStatus(byTurno.TARDE),
+      NOITE: deriveTurnoStatus(byTurno.NOITE),
+      NAO_INFORMADO: deriveTurnoStatus(byTurno.NAO_INFORMADO)
+    });
+  }, [byTurno]);
 
-    setSavingStatusCaseId(caseId);
+  async function handleSaveTurmaStatus(turnoKey: TurnoOrigem) {
+    if (!supabaseClient || savingTurnoStatusKey) return;
+    const turmaCases = byTurno[turnoKey] ?? [];
+    if (!turmaCases.length) return;
+
+    setSavingTurnoStatusKey(turnoKey);
     setStatusMessage("");
+    const nextStatus = turnoStatusDrafts[turnoKey] ?? deriveTurnoStatus(turmaCases);
+    const caseIds = turmaCases.map((item) => item.case_id);
 
     const { error } = await supabaseClient
       .from("discipleship_cases")
       .update({
-        status,
+        status: nextStatus,
         fase: "DISCIPULADO"
       })
-      .eq("id", caseId);
+      .in("id", caseIds);
 
     if (error) {
       setStatusMessage(error.message);
-      setSavingStatusCaseId(null);
+      setSavingTurnoStatusKey(null);
       return;
     }
 
+    const caseIdSet = new Set(caseIds);
     setCases((prev) =>
       prev.map((item) =>
-        item.case_id === caseId
+        caseIdSet.has(item.case_id)
           ? {
               ...item,
-              status,
+              status: nextStatus,
               fase: "DISCIPULADO"
             }
           : item
       )
     );
 
-    setSavingStatusCaseId(null);
+    setSavingTurnoStatusKey(null);
   }
 
   if (!hasAccess) {
@@ -266,6 +258,40 @@ export default function DiscipuladoBoardPage() {
           <div className="space-y-4 md:hidden">
             <section className="discipulado-panel p-4">
               <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
+              {(byTurno[mobileTurno] ?? []).length ? (
+                <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">Status da turma</span>
+                    <select
+                      value={turnoStatusDrafts[mobileTurno]}
+                      onChange={(event) =>
+                        setTurnoStatusDrafts((prev) => ({
+                          ...prev,
+                          [mobileTurno]: event.target.value as TurmaStatusValue
+                        }))
+                      }
+                      disabled={savingTurnoStatusKey === mobileTurno}
+                      className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      {TURMA_STATUS_OPTIONS.map((statusOption) => (
+                        <option key={statusOption.value} value={statusOption.value}>
+                          {statusOption.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleSaveTurmaStatus(mobileTurno);
+                    }}
+                    disabled={savingTurnoStatusKey === mobileTurno}
+                    className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  >
+                    {savingTurnoStatusKey === mobileTurno ? "Salvando status..." : "Salvar status da turma"}
+                  </button>
+                </div>
+              ) : null}
               <div className="mt-3 space-y-2">
                 {!(byTurno[mobileTurno] ?? []).length ? (
                   <p className="text-xs text-slate-500">Sem cases neste turno.</p>
@@ -275,8 +301,6 @@ export default function DiscipuladoBoardPage() {
                       key={item.case_id}
                       item={item}
                       moduleNameById={moduleNameById}
-                      savingStatusCaseId={savingStatusCaseId}
-                      onSaveTurmaStatus={handleSaveTurmaStatus}
                     />
                   ))
                 )}
@@ -291,6 +315,40 @@ export default function DiscipuladoBoardPage() {
               return (
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
+                  {turnoCases.length ? (
+                    <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:max-w-sm">
+                      <label className="space-y-1">
+                        <span className="text-xs font-semibold text-slate-600">Status da turma</span>
+                        <select
+                          value={turnoStatusDrafts[turno.key]}
+                          onChange={(event) =>
+                            setTurnoStatusDrafts((prev) => ({
+                              ...prev,
+                              [turno.key]: event.target.value as TurmaStatusValue
+                            }))
+                          }
+                          disabled={savingTurnoStatusKey === turno.key}
+                          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                        >
+                          {TURMA_STATUS_OPTIONS.map((statusOption) => (
+                            <option key={statusOption.value} value={statusOption.value}>
+                              {statusOption.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleSaveTurmaStatus(turno.key);
+                        }}
+                        disabled={savingTurnoStatusKey === turno.key}
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                      >
+                        {savingTurnoStatusKey === turno.key ? "Salvando status..." : "Salvar status da turma"}
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     {!turnoCases.length ? (
                       <p className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
@@ -302,8 +360,6 @@ export default function DiscipuladoBoardPage() {
                           key={item.case_id}
                           item={item}
                           moduleNameById={moduleNameById}
-                          savingStatusCaseId={savingStatusCaseId}
-                          onSaveTurmaStatus={handleSaveTurmaStatus}
                         />
                       ))
                     )}
