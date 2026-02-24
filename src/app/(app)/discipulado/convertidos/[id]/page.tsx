@@ -40,7 +40,6 @@ type ProgressItem = {
   module_id: string;
   status: "nao_iniciado" | "em_andamento" | "concluido";
   turno: EnrollmentTurno | null;
-  start_date: string | null;
   completed_at: string | null;
   notes: string | null;
 };
@@ -103,6 +102,12 @@ type ContactAttemptItem = {
   channel: ContactAttemptChannel;
   notes: string | null;
   created_at: string;
+};
+
+type TurmaPlanningItem = {
+  turno: string | null;
+  module_id: string | null;
+  start_date: string | null;
 };
 
 type ToastState = {
@@ -203,12 +208,12 @@ function isMissingProgressTurnoColumnError(message: string, code?: string) {
   );
 }
 
-function isMissingProgressStartDateColumnError(message: string, code?: string) {
+function isMissingTurmaPlanningTableError(message: string, code?: string) {
   return (
-    code === "42703" ||
-    code === "PGRST204" ||
-    message.includes("'start_date' column of 'discipleship_progress'") ||
-    (message.includes("discipleship_progress") && message.includes("start_date"))
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("discipleship_turma_settings") ||
+    (message.includes("start_date") && message.includes("discipleship_turma_settings"))
   );
 }
 
@@ -254,6 +259,10 @@ function enrollmentTurnoLabel(value: EnrollmentTurno) {
   return "Tarde";
 }
 
+function turmaPlanningKey(moduleId: string, turno: EnrollmentTurno | null | undefined) {
+  return `${moduleId}::${turno ?? ""}`;
+}
+
 function caseStatusLabel(value: CaseItem["status"]) {
   if (value === "pendente_matricula") return "Pendente de matrícula";
   if (value === "em_discipulado") return "Em discipulado";
@@ -279,7 +288,7 @@ export default function DiscipulandoDetalhePage() {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [moduleStatusDrafts, setModuleStatusDrafts] = useState<Record<string, ProgressItem["status"]>>({});
   const [moduleTurnoDrafts, setModuleTurnoDrafts] = useState<Record<string, EnrollmentTurno>>({});
-  const [moduleStartDateDrafts, setModuleStartDateDrafts] = useState<Record<string, string>>({});
+  const [turmaStartDateByModuleTurno, setTurmaStartDateByModuleTurno] = useState<Record<string, string>>({});
   const [enrollmentModuleId, setEnrollmentModuleId] = useState("");
   const [enrollmentStatusDraft, setEnrollmentStatusDraft] = useState<ProgressItem["status"]>("nao_iniciado");
   const [enrollmentTurnoDraft, setEnrollmentTurnoDraft] = useState<EnrollmentTurno>("NOITE");
@@ -302,7 +311,7 @@ export default function DiscipulandoDetalhePage() {
   const [toast, setToast] = useState<ToastState>(null);
   const [hasCriticalityColumns, setHasCriticalityColumns] = useState(true);
   const [hasContactAttemptsSupport, setHasContactAttemptsSupport] = useState(true);
-  const [hasProgressStartDateSupport, setHasProgressStartDateSupport] = useState(true);
+  const [hasTurmaPlanningSupport, setHasTurmaPlanningSupport] = useState(true);
   const [baptismDate, setBaptismDate] = useState("");
   const [baptismLocation, setBaptismLocation] = useState("");
   const [baptismNotes, setBaptismNotes] = useState("");
@@ -368,40 +377,22 @@ export default function DiscipulandoDetalhePage() {
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
 
-    let hasStartDateColumn = true;
-    const progressWithTurnoAndStartDateResult = await supabaseClient
+    const progressWithTurnoResult = await supabaseClient
       .from("discipleship_progress")
-      .select("id, case_id, module_id, status, turno, start_date, completed_at, notes")
+      .select("id, case_id, module_id, status, turno, completed_at, notes")
       .eq("case_id", currentCase.id);
 
-    let progressData = progressWithTurnoAndStartDateResult.data as Array<
-      Partial<ProgressItem> & { turno?: string | null; start_date?: string | null }
-    > | null;
-    let progressLoadError = progressWithTurnoAndStartDateResult.error;
-
-    if (progressLoadError && isMissingProgressStartDateColumnError(progressLoadError.message, progressLoadError.code)) {
-      hasStartDateColumn = false;
-      const progressWithoutStartDateResult = await supabaseClient
-        .from("discipleship_progress")
-        .select("id, case_id, module_id, status, turno, completed_at, notes")
-        .eq("case_id", currentCase.id);
-
-      progressData = progressWithoutStartDateResult.data as Array<
-        Partial<ProgressItem> & { turno?: string | null; start_date?: string | null }
-      > | null;
-      progressLoadError = progressWithoutStartDateResult.error;
-    }
+    let progressData = progressWithTurnoResult.data as Array<Partial<ProgressItem> & { turno?: string | null }> | null;
+    let progressLoadError = progressWithTurnoResult.error;
 
     if (progressLoadError && isMissingProgressTurnoColumnError(progressLoadError.message, progressLoadError.code)) {
-      const progressWithoutTurnoAndStartDateResult = await supabaseClient
+      const progressWithoutTurnoResult = await supabaseClient
         .from("discipleship_progress")
         .select("id, case_id, module_id, status, completed_at, notes")
         .eq("case_id", currentCase.id);
 
-      progressData = progressWithoutTurnoAndStartDateResult.data as Array<
-        Partial<ProgressItem> & { turno?: string | null; start_date?: string | null }
-      > | null;
-      progressLoadError = progressWithoutTurnoAndStartDateResult.error;
+      progressData = progressWithoutTurnoResult.data as Array<Partial<ProgressItem> & { turno?: string | null }> | null;
+      progressLoadError = progressWithoutTurnoResult.error;
     }
 
     const { data: memberResult, error: memberError } = await supabaseClient
@@ -423,7 +414,8 @@ export default function DiscipulandoDetalhePage() {
       { data: departmentsResult, error: departmentsError },
       { data: linksResult, error: linksError },
       { data: baptismResult, error: baptismError },
-      { data: attemptsResult, error: attemptsError }
+      { data: attemptsResult, error: attemptsError },
+      { data: turmaPlanningResult, error: turmaPlanningError }
     ] = await Promise.all([
       supabaseClient
         .from("discipleship_modules")
@@ -454,7 +446,11 @@ export default function DiscipulandoDetalhePage() {
         .select("id, outcome, channel, notes, created_at")
         .eq("case_id", currentCase.id)
         .order("created_at", { ascending: false })
-        .limit(20)
+        .limit(20),
+      supabaseClient
+        .from("discipleship_turma_settings")
+        .select("turno, module_id, start_date")
+        .eq("congregation_id", currentCase.congregation_id)
     ]);
 
     if (moduleError) {
@@ -477,7 +473,6 @@ export default function DiscipulandoDetalhePage() {
       module_id: String(item.module_id ?? ""),
       status: (item.status ?? "nao_iniciado") as ProgressItem["status"],
       turno: parseEnrollmentTurno(item.turno) ?? null,
-      start_date: item.start_date ?? null,
       completed_at: item.completed_at ?? null,
       notes: item.notes ?? null
     }));
@@ -494,10 +489,30 @@ export default function DiscipulandoDetalhePage() {
       acc[item.id] = item.turno ?? turnoFromOrigin;
       return acc;
     }, {});
-    const startDateDrafts = progressRows.reduce<Record<string, string>>((acc, item) => {
-      acc[item.id] = item.start_date ? String(item.start_date).slice(0, 10) : "";
-      return acc;
-    }, {});
+
+    let turmaPlanningByModuleTurno: Record<string, string> = {};
+    if (turmaPlanningError) {
+      if (isMissingTurmaPlanningTableError(turmaPlanningError.message, turmaPlanningError.code)) {
+        setHasTurmaPlanningSupport(false);
+      } else {
+        setHasTurmaPlanningSupport(true);
+        setStatusMessage((prev) => prev || turmaPlanningError.message);
+      }
+    } else {
+      setHasTurmaPlanningSupport(true);
+      turmaPlanningByModuleTurno = ((turmaPlanningResult ?? []) as TurmaPlanningItem[]).reduce<Record<string, string>>(
+        (acc, row) => {
+          const moduleId = String(row.module_id ?? "");
+          const turno = parseEnrollmentTurno(row.turno);
+          const startDate = String(row.start_date ?? "");
+          if (!moduleId || !turno || !startDate) return acc;
+          acc[turmaPlanningKey(moduleId, turno)] = startDate;
+          return acc;
+        },
+        {}
+      );
+    }
+
     setMember(memberData);
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
@@ -512,8 +527,7 @@ export default function DiscipulandoDetalhePage() {
     setNoteDrafts(drafts);
     setModuleStatusDrafts(statusDrafts);
     setModuleTurnoDrafts(turnoDrafts);
-    setModuleStartDateDrafts(startDateDrafts);
-    setHasProgressStartDateSupport(hasStartDateColumn);
+    setTurmaStartDateByModuleTurno(turmaPlanningByModuleTurno);
     const integrationRows: unknown[] = Array.isArray(integrationResult) ? integrationResult : [];
     const integrationCandidate = integrationRows[0] as Partial<IntegrationItem> | undefined;
     const integrationRow: IntegrationItem | null =
@@ -826,29 +840,6 @@ export default function DiscipulandoDetalhePage() {
         setCaseModuloAtualId(item.module_id);
         setCaseTurnoDisplay(selectedTurno);
       }
-    }
-
-    await loadCase();
-  }
-
-  async function handleSaveModuleStartDate(item: ProgressItem) {
-    if (!supabaseClient) return;
-    setStatusMessage("");
-    const selectedStartDate = moduleStartDateDrafts[item.id] || null;
-
-    const { error } = await supabaseClient
-      .from("discipleship_progress")
-      .update({ start_date: selectedStartDate })
-      .eq("id", item.id);
-
-    if (error) {
-      if (isMissingProgressStartDateColumnError(error.message, error.code)) {
-        setHasProgressStartDateSupport(false);
-        setStatusMessage("Data de início por módulo indisponível. Aplique a migração 0051_discipulado_progress_start_date.sql.");
-        return;
-      }
-      setStatusMessage(error.message);
-      return;
     }
 
     await loadCase();
@@ -1561,6 +1552,9 @@ export default function DiscipulandoDetalhePage() {
           ) : null}
           {sortedProgress.map((item) => {
             const moduleItem = modules[item.module_id];
+            const currentModuleTurno = moduleTurnoDrafts[item.id] ?? caseTurnoDisplay;
+            const plannedStartDate =
+              turmaStartDateByModuleTurno[turmaPlanningKey(item.module_id, currentModuleTurno)] ?? null;
             return (
               <article key={item.id} className="rounded-xl border border-slate-100 bg-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1571,11 +1565,11 @@ export default function DiscipulandoDetalhePage() {
                   <StatusBadge value={progressBadgeValue(item.status)} />
                 </div>
                 <p className="mt-2 text-xs text-slate-700">
-                  Turno da turma: <strong>{enrollmentTurnoLabel(moduleTurnoDrafts[item.id] ?? caseTurnoDisplay)}</strong> • Status do case:{" "}
+                  Turno da turma: <strong>{enrollmentTurnoLabel(currentModuleTurno)}</strong> • Status do case:{" "}
                   <strong>{caseStatusLabel(caseData?.status ?? "pendente_matricula")}</strong>
                 </p>
                 <p className="text-xs text-slate-700">
-                  Início do módulo: <strong>{item.start_date ? formatDateBR(item.start_date) : "Não informado"}</strong>
+                  Início do módulo (painel Discipulado): <strong>{plannedStartDate ? formatDateBR(plannedStartDate) : "Não informado"}</strong>
                 </p>
 
                 <label className="mt-3 block space-y-1 text-sm">
@@ -1597,7 +1591,7 @@ export default function DiscipulandoDetalhePage() {
                   <label className="space-y-1 text-xs">
                     <span className="text-slate-600">Turno da turma</span>
                     <select
-                      value={moduleTurnoDrafts[item.id] ?? caseTurnoDisplay}
+                      value={currentModuleTurno}
                       onChange={(event) =>
                         setModuleTurnoDrafts((prev) => ({
                           ...prev,
@@ -1618,26 +1612,6 @@ export default function DiscipulandoDetalhePage() {
                     className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
                   >
                     Salvar turno
-                  </button>
-                  <label className="space-y-1 text-xs">
-                    <span className="text-slate-600">Data de início</span>
-                    <input
-                      type="date"
-                      value={moduleStartDateDrafts[item.id] ?? ""}
-                      onChange={(event) =>
-                        setModuleStartDateDrafts((prev) => ({
-                          ...prev,
-                          [item.id]: event.target.value
-                        }))
-                      }
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-sky-400 focus:outline-none"
-                    />
-                  </label>
-                  <button
-                    onClick={() => handleSaveModuleStartDate(item)}
-                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
-                  >
-                    Salvar início
                   </button>
                   <label className="space-y-1 text-xs">
                     <span className="text-slate-600">Status do módulo</span>
@@ -1674,9 +1648,9 @@ export default function DiscipulandoDetalhePage() {
                     </span>
                   ) : null}
                 </div>
-                {!hasProgressStartDateSupport ? (
+                {!hasTurmaPlanningSupport ? (
                   <p className="mt-2 text-xs text-amber-700">
-                    Data de início indisponível neste ambiente. Aplique a migração 0051_discipulado_progress_start_date.sql.
+                    Data de início indisponível neste ambiente. Aplique a migração 0050_discipulado_turma_planejamento.sql.
                   </p>
                 ) : null}
               </article>
