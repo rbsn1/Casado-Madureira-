@@ -765,9 +765,12 @@ export default function DiscipuladoDashboardPage() {
 
   const operationalCards = useMemo(
     () => {
-      const emAcolhimento = mergedCases.filter((item) => item.status === "pendente_matricula").length;
+      const unconfirmedCases = mergedCases.filter((item) => item.confraternizacao_confirmada !== true);
+      const emAcolhimento = unconfirmedCases.filter(
+        (item) => item.fase === "ACOLHIMENTO" && item.status !== "concluido"
+      ).length;
       const emDiscipulado = mergedCases.length
-        ? mergedCases.filter((item) => item.status === "em_discipulado").length
+        ? unconfirmedCases.filter((item) => item.fase === "DISCIPULADO").length
         : cards.em_discipulado;
       const concluidos = mergedCases.length
         ? mergedCases.filter((item) => item.status === "concluido").length
