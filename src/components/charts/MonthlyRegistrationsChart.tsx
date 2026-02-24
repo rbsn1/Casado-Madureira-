@@ -8,6 +8,22 @@ type ChartEntry = {
   value: number;
 };
 
+type NormalizedChartEntry = Omit<ChartEntry, "value"> & {
+  value: number | null;
+  isFuture: boolean;
+};
+
+type PreviousChartEntry = Omit<ChartEntry, "value"> & {
+  value: number;
+  isFuture: false;
+};
+
+type CurrentPoint = NormalizedChartEntry & {
+  x: number;
+  y: number | null;
+  prevValue: number | null;
+};
+
 const defaultMonthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 // Chart tuning constants
@@ -116,7 +132,7 @@ export function MonthlyRegistrationsChart({
         isFuture
       };
     });
-  }, [data, year]);
+  }, [data, year]) as NormalizedChartEntry[];
 
   const normalizedPreviousData = useMemo(() => {
     if (!previousYearData?.length) return null;
@@ -132,7 +148,7 @@ export function MonthlyRegistrationsChart({
         isFuture: false
       };
     });
-  }, [previousYearData]);
+  }, [previousYearData]) as PreviousChartEntry[] | null;
 
   const total = useMemo(
     () => normalizedData.reduce((acc, item) => acc + (item.value ?? 0), 0),
@@ -156,12 +172,7 @@ export function MonthlyRegistrationsChart({
   }, [normalizedData, normalizedPreviousData]);
 
   const currentPoints = useMemo(() => {
-    return normalizedData.map((entry, index): ChartEntry & {
-      x: number;
-      y: number | null;
-      prevValue: number | null;
-      isFuture?: boolean;
-    } => {
+    return normalizedData.map((entry, index): CurrentPoint => {
       const x = (index / (normalizedData.length - 1)) * 100;
       const y = entry.value === null ? null : plotBottom - ((entry.value ?? 0) / maxValue) * plotHeight;
       let prevValue: number | null = null;
@@ -225,7 +236,9 @@ export function MonthlyRegistrationsChart({
   const hoveredPoint = useMemo(
     () =>
       hoveredMonth
-        ? currentPoints.find((point) => point.month === hoveredMonth && point.value !== null) ?? null
+        ? currentPoints.find(
+            (point): point is CurrentPoint & { value: number } => point.month === hoveredMonth && point.value !== null
+          ) ?? null
         : null,
     [hoveredMonth, currentPoints]
   );
@@ -233,7 +246,9 @@ export function MonthlyRegistrationsChart({
   const selectedPoint = useMemo(
     () =>
       selectedMonth
-        ? currentPoints.find((point) => point.month === selectedMonth && point.value !== null) ?? null
+        ? currentPoints.find(
+            (point): point is CurrentPoint & { value: number } => point.month === selectedMonth && point.value !== null
+          ) ?? null
         : null,
     [selectedMonth, currentPoints]
   );
