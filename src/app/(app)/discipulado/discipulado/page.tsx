@@ -36,6 +36,12 @@ const TURMA_STATUS_OPTIONS: Array<{ value: TurmaStatusValue; label: string }> = 
   { value: "pausado", label: "Pausada" },
   { value: "concluido", label: "Finalizada" }
 ];
+const TURMA_STATUS_LABEL: Record<TurmaStatusValue, string> = {
+  pendente_matricula: "Não iniciada",
+  em_discipulado: "Iniciada",
+  pausado: "Pausada",
+  concluido: "Finalizada"
+};
 
 type ModuleLookup = Record<string, string>;
 type CaseTurnosByCaseId = Record<string, TurnoOrigem[]>;
@@ -46,12 +52,6 @@ type ProgressTurnoRow = {
   status: string | null;
   created_at: string | null;
 };
-type TurmaModuleSummaryItem = {
-  moduleId: string;
-  startedAt: string | null;
-  members: number;
-};
-type TurmaModuleSummaryByTurno = Record<TurnoOrigem, TurmaModuleSummaryItem[]>;
 type TurmaPlanningRow = {
   turno: string | null;
   module_id: string | null;
@@ -95,15 +95,6 @@ function isMissingTurmaPlanningTableError(message: string, code?: string) {
   );
 }
 
-function createEmptyTurmaModuleSummaryByTurno(): TurmaModuleSummaryByTurno {
-  return {
-    MANHA: [],
-    TARDE: [],
-    NOITE: [],
-    NAO_INFORMADO: []
-  };
-}
-
 function createEmptyTurmaPlanningByTurno(): TurmaPlanningByTurno {
   return {
     MANHA: { moduleId: "", startDate: "" },
@@ -139,6 +130,10 @@ async function resolveCongregationIdFromFirstCase(cases: DiscipleshipCaseSummary
 
 function formatDateBR(value: string | null) {
   if (!value) return "-";
+  const plainDateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (plainDateMatch) {
+    return `${plainDateMatch[3]}/${plainDateMatch[2]}/${plainDateMatch[1]}`;
+  }
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return "-";
   return parsed.toLocaleDateString("pt-BR", { timeZone: "America/Manaus" });
@@ -161,51 +156,6 @@ function buildCaseTurnosByCaseId(rows: ProgressTurnoRow[]): CaseTurnosByCaseId {
     asObject[caseId] = Array.from(values).sort((a, b) => TURNO_ORDER.indexOf(a) - TURNO_ORDER.indexOf(b));
   }
   return asObject;
-}
-
-function buildTurmaModuleSummaryByTurno(rows: ProgressTurnoRow[]): TurmaModuleSummaryByTurno {
-  const summary = createEmptyTurmaModuleSummaryByTurno();
-  const mapByTurno: Record<TurnoOrigem, Map<string, TurmaModuleSummaryItem>> = {
-    MANHA: new Map<string, TurmaModuleSummaryItem>(),
-    TARDE: new Map<string, TurmaModuleSummaryItem>(),
-    NOITE: new Map<string, TurmaModuleSummaryItem>(),
-    NAO_INFORMADO: new Map<string, TurmaModuleSummaryItem>()
-  };
-
-  for (const row of rows) {
-    if (row.status !== "em_andamento") continue;
-
-    const turno = normalizeTurnoOrigem(row.turno);
-    const moduleId = String(row.module_id ?? "");
-    if (!moduleId) continue;
-
-    const current = mapByTurno[turno].get(moduleId);
-    if (!current) {
-      mapByTurno[turno].set(moduleId, {
-        moduleId,
-        startedAt: row.created_at ?? null,
-        members: 1
-      });
-      continue;
-    }
-
-    current.members += 1;
-    if (row.created_at && (!current.startedAt || row.created_at < current.startedAt)) {
-      current.startedAt = row.created_at;
-    }
-  }
-
-  for (const turno of TURNO_ORDER) {
-    summary[turno] = Array.from(mapByTurno[turno].values()).sort((a, b) => {
-      const membersDiff = b.members - a.members;
-      if (membersDiff !== 0) return membersDiff;
-      const aStart = a.startedAt ?? "9999-12-31T23:59:59.999Z";
-      const bStart = b.startedAt ?? "9999-12-31T23:59:59.999Z";
-      return aStart.localeCompare(bStart);
-    });
-  }
-
-  return summary;
 }
 
 function deriveTurnoStatus(cases: DiscipleshipCaseSummaryItem[]): TurmaStatusValue {
@@ -287,38 +237,6 @@ function CaseCard({
   );
 }
 
-function TurmaModuleSummary({
-  turnoKey,
-  moduleNameById,
-  moduleSummaryByTurno
-}: {
-  turnoKey: TurnoOrigem;
-  moduleNameById: ModuleLookup;
-  moduleSummaryByTurno: TurmaModuleSummaryByTurno;
-}) {
-  const summaries = moduleSummaryByTurno[turnoKey] ?? [];
-  if (!summaries.length) {
-    return <p className="mt-2 text-xs text-slate-500">Sem módulo em andamento nesta turma.</p>;
-  }
-
-  return (
-    <div className="mt-2 rounded-lg border border-slate-200 bg-white p-3">
-      <p className="text-xs font-semibold text-slate-700">{summaries.length === 1 ? "Módulo ministrado" : "Módulos ministrados"}</p>
-      <div className="mt-1 space-y-1">
-        {summaries.map((summary) => {
-          const moduleName = moduleNameById[summary.moduleId] ?? `#${summary.moduleId.slice(0, 8)}`;
-          return (
-            <p key={summary.moduleId} className="text-xs text-slate-700">
-              <strong>{moduleName}</strong> • Início: <strong>{formatDateBR(summary.startedAt)}</strong> • Membros:{" "}
-              <strong>{summary.members}</strong>
-            </p>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function TurmaPlanningForm({
   turnoKey,
   draft,
@@ -395,6 +313,12 @@ export default function DiscipuladoBoardPage() {
   const [mobileTurno, setMobileTurno] = useState<TurnoOrigem>("MANHA");
   const [savingTurnoStatusKey, setSavingTurnoStatusKey] = useState<TurnoOrigem | null>(null);
   const [savingTurmaPlanningKey, setSavingTurmaPlanningKey] = useState<TurnoOrigem | null>(null);
+  const [expandedTurnoControls, setExpandedTurnoControls] = useState<Record<TurnoOrigem, boolean>>({
+    MANHA: false,
+    TARDE: false,
+    NOITE: false,
+    NAO_INFORMADO: false
+  });
   const [turnoStatusDrafts, setTurnoStatusDrafts] = useState<Record<TurnoOrigem, TurmaStatusValue>>({
     MANHA: "em_discipulado",
     TARDE: "em_discipulado",
@@ -405,9 +329,6 @@ export default function DiscipuladoBoardPage() {
   const [moduleNameById, setModuleNameById] = useState<ModuleLookup>({});
   const [moduleOptions, setModuleOptions] = useState<ModuleOption[]>([]);
   const [caseTurnosByCaseId, setCaseTurnosByCaseId] = useState<CaseTurnosByCaseId>({});
-  const [moduleSummaryByTurno, setModuleSummaryByTurno] = useState<TurmaModuleSummaryByTurno>(
-    createEmptyTurmaModuleSummaryByTurno()
-  );
 
   useEffect(() => {
     let active = true;
@@ -447,7 +368,6 @@ export default function DiscipuladoBoardPage() {
       setCurrentCongregationId(effectiveCongregationId);
       setCases(discipuladoCases);
       setCaseTurnosByCaseId({});
-      setModuleSummaryByTurno(createEmptyTurmaModuleSummaryByTurno());
       setTurmaPlanningDrafts(createEmptyTurmaPlanningByTurno());
 
       if (supabaseClient) {
@@ -510,10 +430,8 @@ export default function DiscipuladoBoardPage() {
         } else {
           const progressRows = (progressTurnosResult.data ?? []) as ProgressTurnoRow[];
           const turnosByCase = buildCaseTurnosByCaseId(progressRows);
-          const moduleSummary = buildTurmaModuleSummaryByTurno(progressRows);
           if (!active) return;
           setCaseTurnosByCaseId(turnosByCase);
-          setModuleSummaryByTurno(moduleSummary);
         }
       }
 
@@ -542,6 +460,13 @@ export default function DiscipuladoBoardPage() {
   function setSuccessStatusMessage(message: string) {
     setStatusVariant("success");
     setStatusMessage(message);
+  }
+
+  function toggleTurnoControls(turnoKey: TurnoOrigem) {
+    setExpandedTurnoControls((prev) => ({
+      ...prev,
+      [turnoKey]: !prev[turnoKey]
+    }));
   }
 
   useEffect(() => {
@@ -699,59 +624,85 @@ export default function DiscipuladoBoardPage() {
           <div className="space-y-4 md:hidden">
             <section className="discipulado-panel p-4">
               <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
-              <TurmaPlanningForm
-                turnoKey={mobileTurno}
-                draft={turmaPlanningDrafts[mobileTurno]}
-                moduleOptions={moduleOptions}
-                saving={savingTurmaPlanningKey === mobileTurno}
-                onChange={(next) =>
-                  setTurmaPlanningDrafts((prev) => ({
-                    ...prev,
-                    [mobileTurno]: next
-                  }))
-                }
-                onSave={(turnoKey) => {
-                  void handleSaveTurmaPlanning(turnoKey);
-                }}
-              />
-              <TurmaModuleSummary
-                turnoKey={mobileTurno}
-                moduleNameById={moduleNameById}
-                moduleSummaryByTurno={moduleSummaryByTurno}
-              />
-              {(byTurno[mobileTurno] ?? []).length ? (
-                <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-slate-600">Status da turma</span>
-                    <select
-                      value={turnoStatusDrafts[mobileTurno]}
-                      onChange={(event) =>
-                        setTurnoStatusDrafts((prev) => ({
-                          ...prev,
-                          [mobileTurno]: event.target.value as TurmaStatusValue
-                        }))
-                      }
-                      disabled={savingTurnoStatusKey === mobileTurno}
-                      className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-                    >
-                      {TURMA_STATUS_OPTIONS.map((statusOption) => (
-                        <option key={statusOption.value} value={statusOption.value}>
-                          {statusOption.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void handleSaveTurmaStatus(mobileTurno);
-                    }}
-                    disabled={savingTurnoStatusKey === mobileTurno}
-                    className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                  >
-                    {savingTurnoStatusKey === mobileTurno ? "Salvando status..." : "Salvar status da turma"}
-                  </button>
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                <div className="space-y-1 text-xs text-slate-700">
+                  <p>
+                    <span className="text-slate-500">Módulo planejado:</span>{" "}
+                    <strong>
+                      {turmaPlanningDrafts[mobileTurno]?.moduleId
+                        ? (moduleNameById[turmaPlanningDrafts[mobileTurno].moduleId] ??
+                          `#${turmaPlanningDrafts[mobileTurno].moduleId.slice(0, 8)}`)
+                        : "Não informado"}
+                    </strong>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Início:</span>{" "}
+                    <strong>{formatDateBR(turmaPlanningDrafts[mobileTurno]?.startDate || null)}</strong> •{" "}
+                    <span className="text-slate-500">Status:</span>{" "}
+                    <strong>{TURMA_STATUS_LABEL[turnoStatusDrafts[mobileTurno]]}</strong> •{" "}
+                    <span className="text-slate-500">Cases:</span> <strong>{(byTurno[mobileTurno] ?? []).length}</strong>
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => toggleTurnoControls(mobileTurno)}
+                  className="mt-2 inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
+                >
+                  {expandedTurnoControls[mobileTurno] ? "Ocultar edição da turma" : "Editar turma"}
+                </button>
+              </div>
+              {expandedTurnoControls[mobileTurno] ? (
+                <>
+                  <TurmaPlanningForm
+                    turnoKey={mobileTurno}
+                    draft={turmaPlanningDrafts[mobileTurno]}
+                    moduleOptions={moduleOptions}
+                    saving={savingTurmaPlanningKey === mobileTurno}
+                    onChange={(next) =>
+                      setTurmaPlanningDrafts((prev) => ({
+                        ...prev,
+                        [mobileTurno]: next
+                      }))
+                    }
+                    onSave={(turnoKey) => {
+                      void handleSaveTurmaPlanning(turnoKey);
+                    }}
+                  />
+                  {(byTurno[mobileTurno] ?? []).length ? (
+                    <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                      <label className="space-y-1">
+                        <span className="text-xs font-semibold text-slate-600">Status da turma</span>
+                        <select
+                          value={turnoStatusDrafts[mobileTurno]}
+                          onChange={(event) =>
+                            setTurnoStatusDrafts((prev) => ({
+                              ...prev,
+                              [mobileTurno]: event.target.value as TurmaStatusValue
+                            }))
+                          }
+                          disabled={savingTurnoStatusKey === mobileTurno}
+                          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                        >
+                          {TURMA_STATUS_OPTIONS.map((statusOption) => (
+                            <option key={statusOption.value} value={statusOption.value}>
+                              {statusOption.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleSaveTurmaStatus(mobileTurno);
+                        }}
+                        disabled={savingTurnoStatusKey === mobileTurno}
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                      >
+                        {savingTurnoStatusKey === mobileTurno ? "Salvando status..." : "Salvar status da turma"}
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
               <div className="mt-3 space-y-2">
                 {!(byTurno[mobileTurno] ?? []).length ? (
@@ -777,58 +728,87 @@ export default function DiscipuladoBoardPage() {
               return (
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
-                  <TurmaPlanningForm
-                    turnoKey={turno.key}
-                    draft={turmaPlanningDrafts[turno.key]}
-                    moduleOptions={moduleOptions}
-                    saving={savingTurmaPlanningKey === turno.key}
-                    onChange={(next) =>
-                      setTurmaPlanningDrafts((prev) => ({
-                        ...prev,
-                        [turno.key]: next
-                      }))
-                    }
-                    onSave={(turnoKey) => {
-                      void handleSaveTurmaPlanning(turnoKey);
-                    }}
-                  />
-                  <TurmaModuleSummary
-                    turnoKey={turno.key}
-                    moduleNameById={moduleNameById}
-                    moduleSummaryByTurno={moduleSummaryByTurno}
-                  />
-                  {turnoCases.length ? (
-                    <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 md:max-w-sm">
-                      <label className="space-y-1">
-                        <span className="text-xs font-semibold text-slate-600">Status da turma</span>
-                        <select
-                          value={turnoStatusDrafts[turno.key]}
-                          onChange={(event) =>
-                            setTurnoStatusDrafts((prev) => ({
-                              ...prev,
-                              [turno.key]: event.target.value as TurmaStatusValue
-                            }))
-                          }
-                          disabled={savingTurnoStatusKey === turno.key}
-                          className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
-                        >
-                          {TURMA_STATUS_OPTIONS.map((statusOption) => (
-                            <option key={statusOption.value} value={statusOption.value}>
-                              {statusOption.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleSaveTurmaStatus(turno.key);
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+                    <span>
+                      Módulo:{" "}
+                      <strong>
+                        {turmaPlanningDrafts[turno.key]?.moduleId
+                          ? (moduleNameById[turmaPlanningDrafts[turno.key].moduleId] ??
+                            `#${turmaPlanningDrafts[turno.key].moduleId.slice(0, 8)}`)
+                          : "Não informado"}
+                      </strong>
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span>
+                      Início: <strong>{formatDateBR(turmaPlanningDrafts[turno.key]?.startDate || null)}</strong>
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span>
+                      Status: <strong>{TURMA_STATUS_LABEL[turnoStatusDrafts[turno.key]]}</strong>
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span>
+                      Cases: <strong>{turnoCases.length}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleTurnoControls(turno.key)}
+                      className="ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
+                    >
+                      {expandedTurnoControls[turno.key] ? "Ocultar edição da turma" : "Editar turma"}
+                    </button>
+                  </div>
+                  {expandedTurnoControls[turno.key] ? (
+                    <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,420px)_minmax(0,320px)]">
+                      <TurmaPlanningForm
+                        turnoKey={turno.key}
+                        draft={turmaPlanningDrafts[turno.key]}
+                        moduleOptions={moduleOptions}
+                        saving={savingTurmaPlanningKey === turno.key}
+                        onChange={(next) =>
+                          setTurmaPlanningDrafts((prev) => ({
+                            ...prev,
+                            [turno.key]: next
+                          }))
+                        }
+                        onSave={(turnoKey) => {
+                          void handleSaveTurmaPlanning(turnoKey);
                         }}
-                        disabled={savingTurnoStatusKey === turno.key}
-                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
-                      >
-                        {savingTurnoStatusKey === turno.key ? "Salvando status..." : "Salvar status da turma"}
-                      </button>
+                      />
+                      {turnoCases.length ? (
+                        <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3 xl:mt-0">
+                          <label className="space-y-1">
+                            <span className="text-xs font-semibold text-slate-600">Status da turma</span>
+                            <select
+                              value={turnoStatusDrafts[turno.key]}
+                              onChange={(event) =>
+                                setTurnoStatusDrafts((prev) => ({
+                                  ...prev,
+                                  [turno.key]: event.target.value as TurmaStatusValue
+                                }))
+                              }
+                              disabled={savingTurnoStatusKey === turno.key}
+                              className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                            >
+                              {TURMA_STATUS_OPTIONS.map((statusOption) => (
+                                <option key={statusOption.value} value={statusOption.value}>
+                                  {statusOption.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleSaveTurmaStatus(turno.key);
+                            }}
+                            disabled={savingTurnoStatusKey === turno.key}
+                            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900 disabled:cursor-not-allowed disabled:bg-slate-100"
+                          >
+                            {savingTurnoStatusKey === turno.key ? "Salvando status..." : "Salvar status da turma"}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
