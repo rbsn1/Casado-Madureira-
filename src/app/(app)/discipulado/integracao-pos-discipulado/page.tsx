@@ -17,15 +17,15 @@ import { supabaseClient } from "@/lib/supabaseClient";
 const TURNO_FILTERS: Array<{ key: "TODOS" | TurnoOrigem; label: string }> = [
   { key: "TODOS", label: "Todos" },
   { key: "MANHA", label: "Manhã" },
+  { key: "TARDE", label: "Tarde" },
   { key: "NOITE", label: "Noite" },
-  { key: "EVENTO", label: "Evento" },
   { key: "NAO_INFORMADO", label: "Não informado" }
 ];
 
 function turnoLabel(key: TurnoOrigem) {
-  if (key === "MANHA") return "Culto da manhã";
-  if (key === "NOITE") return "Culto da noite";
-  if (key === "EVENTO") return "Evento";
+  if (key === "MANHA") return "Manhã";
+  if (key === "TARDE") return "Tarde";
+  if (key === "NOITE") return "Noite";
   return "Não informado";
 }
 
@@ -110,8 +110,8 @@ export default function IntegracaoPosDiscipuladoPage() {
     const grouped = groupByTurno(cases);
     return {
       MANHA: grouped.MANHA.length,
+      TARDE: grouped.TARDE.length,
       NOITE: grouped.NOITE.length,
-      EVENTO: grouped.EVENTO.length,
       NAO_INFORMADO: grouped.NAO_INFORMADO.length
     };
   }, [cases]);
@@ -160,8 +160,8 @@ export default function IntegracaoPosDiscipuladoPage() {
               <div className="flex min-w-max items-center gap-2 text-xs font-semibold">
                 <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-800">Total: {cases.length}</span>
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">Manhã: {countsByTurno.MANHA}</span>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">Tarde: {countsByTurno.TARDE}</span>
                 <span className="rounded-full bg-indigo-100 px-3 py-1 text-indigo-800">Noite: {countsByTurno.NOITE}</span>
-                <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">Evento: {countsByTurno.EVENTO}</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700">Não informado: {countsByTurno.NAO_INFORMADO}</span>
               </div>
             </div>

@@ -126,9 +126,9 @@ const INTEGRATION_STATUS_OPTIONS: IntegrationStatus[] = [
 ];
 
 const ENROLLMENT_TURNO_OPTIONS: Array<{ value: EnrollmentTurno; label: string }> = [
-  { value: "MANHA", label: "Culto da manhã" },
-  { value: "NOITE", label: "Culto da noite" },
-  { value: "EVENTO", label: "Evento" }
+  { value: "MANHA", label: "Manhã" },
+  { value: "EVENTO", label: "Tarde" },
+  { value: "NOITE", label: "Noite" }
 ];
 
 function normalizeOriginDraft(value: string | null | undefined) {
@@ -219,6 +219,7 @@ function mapOriginToEnrollmentTurno(value: string | null | undefined): Enrollmen
     .toUpperCase();
 
   if (normalized.includes("MANH")) return "MANHA";
+  if (normalized.includes("TARDE")) return "EVENTO";
   if (normalized.includes("NOITE") || normalized.includes("QUARTA")) return "NOITE";
   if (normalized.includes("EVENT") || normalized.includes("MJ")) return "EVENTO";
   return "NOITE";
@@ -232,14 +233,15 @@ function parseEnrollmentTurno(value: string | null | undefined): EnrollmentTurno
     .toUpperCase();
   if (normalized === "MANHA") return "MANHA";
   if (normalized === "NOITE") return "NOITE";
+  if (normalized === "TARDE") return "EVENTO";
   if (normalized === "EVENTO") return "EVENTO";
   return null;
 }
 
 function enrollmentTurnoLabel(value: EnrollmentTurno) {
-  if (value === "MANHA") return "Culto da manhã";
-  if (value === "NOITE") return "Culto da noite";
-  return "Evento";
+  if (value === "MANHA") return "Manhã";
+  if (value === "NOITE") return "Noite";
+  return "Tarde";
 }
 
 function caseStatusLabel(value: CaseItem["status"]) {
@@ -1443,7 +1445,7 @@ export default function DiscipulandoDetalhePage() {
                     </select>
                 </label>
                 <label className="space-y-1 text-sm">
-                  <span className="text-slate-700">Turno</span>
+                  <span className="text-slate-700">Turno da turma</span>
                   <select
                     value={enrollmentTurnoDraft}
                     onChange={(event) => setEnrollmentTurnoDraft(event.target.value as EnrollmentTurno)}
@@ -1505,7 +1507,7 @@ export default function DiscipulandoDetalhePage() {
                   <StatusBadge value={progressBadgeValue(item.status)} />
                 </div>
                 <p className="mt-2 text-xs text-slate-700">
-                  Turno: <strong>{enrollmentTurnoLabel(moduleTurnoDrafts[item.id] ?? caseTurnoDisplay)}</strong> • Status do case:{" "}
+                  Turno da turma: <strong>{enrollmentTurnoLabel(moduleTurnoDrafts[item.id] ?? caseTurnoDisplay)}</strong> • Status do case:{" "}
                   <strong>{caseStatusLabel(caseData?.status ?? "pendente_matricula")}</strong>
                 </p>
 
@@ -1526,7 +1528,7 @@ export default function DiscipulandoDetalhePage() {
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <label className="space-y-1 text-xs">
-                    <span className="text-slate-600">Turno do módulo</span>
+                    <span className="text-slate-600">Turno da turma</span>
                     <select
                       value={moduleTurnoDrafts[item.id] ?? caseTurnoDisplay}
                       onChange={(event) =>

@@ -1,6 +1,6 @@
 import { criticalityRank } from "@/lib/discipleshipCriticality";
 
-export type TurnoOrigem = "MANHA" | "NOITE" | "EVENTO" | "NAO_INFORMADO";
+export type TurnoOrigem = "MANHA" | "TARDE" | "NOITE" | "NAO_INFORMADO";
 
 export type ModuloOption = {
   id: string;
@@ -39,16 +39,17 @@ export function normalizeTurnoOrigem(value: string | null | undefined): TurnoOri
 
   if (!normalized) return "NAO_INFORMADO";
   if (normalized.includes("MANH")) return "MANHA";
+  if (normalized.includes("TARDE")) return "TARDE";
   if (normalized.includes("NOITE") || normalized.includes("QUARTA")) return "NOITE";
-  if (normalized.includes("EVENT") || normalized.includes("MJ")) return "EVENTO";
+  if (normalized.includes("EVENT") || normalized.includes("MJ")) return "TARDE";
   return "NAO_INFORMADO";
 }
 
 export function groupByTurno<T extends TurnoCase>(items: T[]) {
   const grouped: Record<TurnoOrigem, T[]> = {
     MANHA: [],
+    TARDE: [],
     NOITE: [],
-    EVENTO: [],
     NAO_INFORMADO: []
   };
 

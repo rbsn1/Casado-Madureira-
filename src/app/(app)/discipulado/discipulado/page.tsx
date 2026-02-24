@@ -12,9 +12,9 @@ import { criticalityLabel } from "@/lib/discipleshipCriticality";
 import { supabaseClient } from "@/lib/supabaseClient";
 
 const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
-  { key: "MANHA", label: "Culto da manhã" },
-  { key: "NOITE", label: "Culto da noite" },
-  { key: "EVENTO", label: "Evento" },
+  { key: "MANHA", label: "Manhã" },
+  { key: "TARDE", label: "Tarde" },
+  { key: "NOITE", label: "Noite" },
   { key: "NAO_INFORMADO", label: "Não informado" }
 ];
 
