@@ -356,35 +356,37 @@ export default function DiscipulandoDetalhePage() {
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
 
-    let progressResult = await supabaseClient
+    const progressWithTurnoResult = await supabaseClient
       .from("discipleship_progress")
       .select("id, case_id, module_id, status, turno, completed_at, notes")
       .eq("case_id", currentCase.id);
 
-    if (progressResult.error && isMissingProgressTurnoColumnError(progressResult.error.message, progressResult.error.code)) {
-      progressResult = await supabaseClient
+    let progressData = progressWithTurnoResult.data as Array<Partial<ProgressItem> & { turno?: string | null }> | null;
+    let progressLoadError = progressWithTurnoResult.error;
+
+    if (progressLoadError && isMissingProgressTurnoColumnError(progressLoadError.message, progressLoadError.code)) {
+      const progressWithoutTurnoResult = await supabaseClient
         .from("discipleship_progress")
         .select("id, case_id, module_id, status, completed_at, notes")
         .eq("case_id", currentCase.id);
+
+      progressData = progressWithoutTurnoResult.data as Array<Partial<ProgressItem> & { turno?: string | null }> | null;
+      progressLoadError = progressWithoutTurnoResult.error;
     }
 
-    const [{ data: memberResult, error: memberError }, { data: progressData, error: progressError }] =
-      await Promise.all([
-        supabaseClient
-          .from("pessoas")
-          .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, observacoes")
-          .eq("id", currentCase.member_id)
-          .single(),
-        Promise.resolve({ data: progressResult.data, error: progressResult.error })
-      ]);
+    const { data: memberResult, error: memberError } = await supabaseClient
+      .from("pessoas")
+      .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, observacoes")
+      .eq("id", currentCase.member_id)
+      .single();
 
-    if (memberError || progressError) {
-      setStatusMessage(memberError?.message ?? progressError?.message ?? "Falha ao carregar progresso.");
+    if (memberError || progressLoadError) {
+      setStatusMessage(memberError?.message ?? progressLoadError?.message ?? "Falha ao carregar progresso.");
       setLoading(false);
       return;
     }
 
-    const rawProgressRows = (progressData ?? []) as Array<Partial<ProgressItem> & { turno?: string | null }>;
+    const rawProgressRows = progressData ?? [];
     const [
       { data: moduleResult, error: moduleError },
       { data: integrationResult, error: integrationError },
