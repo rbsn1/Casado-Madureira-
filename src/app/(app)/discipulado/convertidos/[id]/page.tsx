@@ -39,6 +39,7 @@ type ProgressItem = {
   case_id: string;
   module_id: string;
   status: "nao_iniciado" | "em_andamento" | "concluido";
+  turno: EnrollmentTurno | null;
   completed_at: string | null;
   notes: string | null;
 };
@@ -192,6 +193,15 @@ function isMissingCaseFlowColumnsError(message: string, code?: string) {
   );
 }
 
+function isMissingProgressTurnoColumnError(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("'turno' column of 'discipleship_progress'") ||
+    message.includes("discipleship_progress") && message.includes("turno")
+  );
+}
+
 function formatOutcomeLabel(value: ContactAttemptOutcome) {
   if (value === "no_answer") return "Sem resposta";
   if (value === "wrong_number") return "Número inválido";
@@ -256,10 +266,12 @@ export default function DiscipulandoDetalhePage() {
   const [modules, setModules] = useState<Record<string, ModuleItem>>({});
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [moduleStatusDrafts, setModuleStatusDrafts] = useState<Record<string, ProgressItem["status"]>>({});
+  const [moduleTurnoDrafts, setModuleTurnoDrafts] = useState<Record<string, EnrollmentTurno>>({});
   const [enrollmentModuleId, setEnrollmentModuleId] = useState("");
   const [enrollmentStatusDraft, setEnrollmentStatusDraft] = useState<ProgressItem["status"]>("nao_iniciado");
   const [enrollmentTurnoDraft, setEnrollmentTurnoDraft] = useState<EnrollmentTurno>("NOITE");
   const [caseTurnoDisplay, setCaseTurnoDisplay] = useState<EnrollmentTurno>("NOITE");
+  const [caseModuloAtualId, setCaseModuloAtualId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [hasAccess, setHasAccess] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -342,17 +354,26 @@ export default function DiscipulandoDetalhePage() {
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
 
-    const [{ data: memberResult, error: memberError }, { data: progressResult, error: progressError }] =
+    let progressResult = await supabaseClient
+      .from("discipleship_progress")
+      .select("id, case_id, module_id, status, turno, completed_at, notes")
+      .eq("case_id", currentCase.id);
+
+    if (progressResult.error && isMissingProgressTurnoColumnError(progressResult.error.message, progressResult.error.code)) {
+      progressResult = await supabaseClient
+        .from("discipleship_progress")
+        .select("id, case_id, module_id, status, completed_at, notes")
+        .eq("case_id", currentCase.id);
+    }
+
+    const [{ data: memberResult, error: memberError }, { data: progressData, error: progressError }] =
       await Promise.all([
         supabaseClient
           .from("pessoas")
           .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, observacoes")
           .eq("id", currentCase.member_id)
           .single(),
-        supabaseClient
-          .from("discipleship_progress")
-          .select("id, case_id, module_id, status, completed_at, notes")
-          .eq("case_id", currentCase.id)
+        Promise.resolve({ data: progressResult.data, error: progressResult.error })
       ]);
 
     if (memberError || progressError) {
@@ -361,7 +382,7 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
-    const progressRows = (progressResult ?? []) as ProgressItem[];
+    const rawProgressRows = (progressData ?? []) as Array<Partial<ProgressItem> & { turno?: string | null }>;
     const [
       { data: moduleResult, error: moduleError },
       { data: integrationResult, error: integrationError },
@@ -413,6 +434,19 @@ export default function DiscipulandoDetalhePage() {
       return acc;
     }, {});
 
+    const memberData = memberResult as MemberItem;
+    const turnoFromOrigin = mapOriginToEnrollmentTurno(memberData.origem);
+
+    const progressRows = rawProgressRows.map((item) => ({
+      id: String(item.id ?? ""),
+      case_id: String(item.case_id ?? ""),
+      module_id: String(item.module_id ?? ""),
+      status: (item.status ?? "nao_iniciado") as ProgressItem["status"],
+      turno: parseEnrollmentTurno(item.turno) ?? null,
+      completed_at: item.completed_at ?? null,
+      notes: item.notes ?? null
+    }));
+
     const drafts = progressRows.reduce<Record<string, string>>((acc, item) => {
       acc[item.id] = item.notes ?? "";
       return acc;
@@ -421,9 +455,10 @@ export default function DiscipulandoDetalhePage() {
       acc[item.id] = item.status;
       return acc;
     }, {});
-
-    const memberData = memberResult as MemberItem;
-    const turnoFromOrigin = mapOriginToEnrollmentTurno(memberData.origem);
+    const turnoDrafts = progressRows.reduce<Record<string, EnrollmentTurno>>((acc, item) => {
+      acc[item.id] = item.turno ?? turnoFromOrigin;
+      return acc;
+    }, {});
     setMember(memberData);
     setMemberNameDraft(memberData.nome_completo ?? "");
     setMemberPhoneDraft(formatBrazilPhoneInput(memberData.telefone_whatsapp ?? ""));
@@ -437,6 +472,7 @@ export default function DiscipulandoDetalhePage() {
     setModules(moduleMap);
     setNoteDrafts(drafts);
     setModuleStatusDrafts(statusDrafts);
+    setModuleTurnoDrafts(turnoDrafts);
     const integrationRows: unknown[] = Array.isArray(integrationResult) ? integrationResult : [];
     const integrationCandidate = integrationRows[0] as Partial<IntegrationItem> | undefined;
     const integrationRow: IntegrationItem | null =
@@ -533,10 +569,11 @@ export default function DiscipulandoDetalhePage() {
 
     const { data: caseFlowData, error: caseFlowError } = await supabaseClient
       .from("discipleship_cases")
-      .select("turno_origem")
+      .select("turno_origem, modulo_atual_id")
       .eq("id", currentCase.id)
       .single();
     if (!caseFlowError) {
+      setCaseModuloAtualId((caseFlowData as { modulo_atual_id?: string | null })?.modulo_atual_id ?? null);
       const parsedTurno = parseEnrollmentTurno((caseFlowData as { turno_origem?: string | null })?.turno_origem);
       if (parsedTurno) {
         setCaseTurnoDisplay(parsedTurno);
@@ -646,6 +683,7 @@ export default function DiscipulandoDetalhePage() {
   async function handleSaveModuleStatus(item: ProgressItem) {
     if (!supabaseClient || !caseData) return;
     const nextStatus = moduleStatusDrafts[item.id] ?? item.status;
+    const nextTurno = moduleTurnoDrafts[item.id] ?? enrollmentTurnoDraft;
     setStatusMessage("");
 
     const completedAt = nextStatus === "concluido" ? new Date().toISOString() : null;
@@ -664,14 +702,86 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
-    if (caseData.status === "concluido" && nextStatus !== "concluido") {
+    const shouldPromoteCase = caseData.status === "concluido" && nextStatus !== "concluido";
+    const shouldSyncCurrentModulo = !caseModuloAtualId || caseModuloAtualId === item.module_id;
+    if (shouldPromoteCase || shouldSyncCurrentModulo) {
+      const payload: {
+        status?: CaseItem["status"];
+        modulo_atual_id?: string;
+        turno_origem?: EnrollmentTurno;
+      } = {};
+      if (shouldPromoteCase) payload.status = "em_discipulado";
+      if (shouldSyncCurrentModulo) {
+        payload.modulo_atual_id = item.module_id;
+        payload.turno_origem = nextTurno;
+      }
       const { error: caseError } = await supabaseClient
         .from("discipleship_cases")
-        .update({ status: "em_discipulado" })
+        .update(payload)
         .eq("id", caseData.id);
-      if (caseError) {
+      if (caseError && !isMissingCaseFlowColumnsError(caseError.message, caseError.code)) {
         setStatusMessage(caseError.message);
         return;
+      }
+      if (!caseError && shouldSyncCurrentModulo) {
+        setCaseModuloAtualId(item.module_id);
+        setCaseTurnoDisplay(nextTurno);
+      }
+      if (caseError && shouldPromoteCase) {
+        const { error: fallbackStatusError } = await supabaseClient
+          .from("discipleship_cases")
+          .update({ status: "em_discipulado" })
+          .eq("id", caseData.id);
+        if (fallbackStatusError) {
+          setStatusMessage(fallbackStatusError.message);
+          return;
+        }
+      }
+    }
+
+    await loadCase();
+  }
+
+  async function handleSaveModuleTurno(item: ProgressItem) {
+    if (!supabaseClient || !caseData) return;
+    const selectedTurno = moduleTurnoDrafts[item.id];
+    if (!selectedTurno) {
+      setStatusMessage("Selecione o turno do módulo.");
+      return;
+    }
+    setStatusMessage("");
+
+    const { error } = await supabaseClient
+      .from("discipleship_progress")
+      .update({ turno: selectedTurno })
+      .eq("id", item.id);
+
+    if (error) {
+      if (isMissingProgressTurnoColumnError(error.message, error.code)) {
+        setStatusMessage("Turno por módulo indisponível. Aplique a migração 0049_discipulado_progress_turno.sql.");
+        return;
+      }
+      setStatusMessage(error.message);
+      return;
+    }
+
+    if (!caseModuloAtualId || caseModuloAtualId === item.module_id) {
+      const { error: caseError } = await supabaseClient
+        .from("discipleship_cases")
+        .update({
+          modulo_atual_id: item.module_id,
+          turno_origem: selectedTurno
+        })
+        .eq("id", caseData.id);
+
+      if (caseError && !isMissingCaseFlowColumnsError(caseError.message, caseError.code)) {
+        setStatusMessage(caseError.message);
+        return;
+      }
+
+      if (!caseError) {
+        setCaseModuloAtualId(item.module_id);
+        setCaseTurnoDisplay(selectedTurno);
       }
     }
 
@@ -688,14 +798,33 @@ export default function DiscipulandoDetalhePage() {
     const completedAt = enrollmentStatusDraft === "concluido" ? new Date().toISOString() : null;
     const completedBy = enrollmentStatusDraft === "concluido" ? currentUserId : null;
 
-    const { error } = await supabaseClient.from("discipleship_progress").insert({
+    let { error } = await supabaseClient.from("discipleship_progress").insert({
       case_id: caseData.id,
       module_id: enrollmentModuleId,
       status: enrollmentStatusDraft,
+      turno: enrollmentTurnoDraft,
       completed_at: completedAt,
       completed_by: completedBy,
       notes: null
     });
+
+    if (error && isMissingProgressTurnoColumnError(error.message, error.code)) {
+      const fallbackInsert = await supabaseClient.from("discipleship_progress").insert({
+        case_id: caseData.id,
+        module_id: enrollmentModuleId,
+        status: enrollmentStatusDraft,
+        completed_at: completedAt,
+        completed_by: completedBy,
+        notes: null
+      });
+      error = fallbackInsert.error;
+      if (!error) {
+        setToast({
+          kind: "warning",
+          message: "Matrícula salva sem turno por módulo. Aplique a migração 0049_discipulado_progress_turno.sql."
+        });
+      }
+    }
 
     if (error) {
       if (error.code === "23505") {
@@ -1376,7 +1505,7 @@ export default function DiscipulandoDetalhePage() {
                   <StatusBadge value={progressBadgeValue(item.status)} />
                 </div>
                 <p className="mt-2 text-xs text-slate-700">
-                  Turno: <strong>{enrollmentTurnoLabel(caseTurnoDisplay)}</strong> • Status do case:{" "}
+                  Turno: <strong>{enrollmentTurnoLabel(moduleTurnoDrafts[item.id] ?? caseTurnoDisplay)}</strong> • Status do case:{" "}
                   <strong>{caseStatusLabel(caseData?.status ?? "pendente_matricula")}</strong>
                 </p>
 
@@ -1396,6 +1525,31 @@ export default function DiscipulandoDetalhePage() {
                 </label>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <label className="space-y-1 text-xs">
+                    <span className="text-slate-600">Turno do módulo</span>
+                    <select
+                      value={moduleTurnoDrafts[item.id] ?? caseTurnoDisplay}
+                      onChange={(event) =>
+                        setModuleTurnoDrafts((prev) => ({
+                          ...prev,
+                          [item.id]: event.target.value as EnrollmentTurno
+                        }))
+                      }
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs focus:border-sky-400 focus:outline-none"
+                    >
+                      {ENROLLMENT_TURNO_OPTIONS.map((turno) => (
+                        <option key={turno.value} value={turno.value}>
+                          {turno.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    onClick={() => handleSaveModuleTurno(item)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-sky-200 hover:text-sky-900"
+                  >
+                    Salvar turno
+                  </button>
                   <label className="space-y-1 text-xs">
                     <span className="text-slate-600">Status do módulo</span>
                     <select
