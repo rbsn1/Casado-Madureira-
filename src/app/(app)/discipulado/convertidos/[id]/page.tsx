@@ -706,7 +706,9 @@ export default function DiscipulandoDetalhePage() {
       return;
     }
 
-    const shouldPromoteCase = caseData.status === "concluido" && nextStatus !== "concluido";
+    const shouldPromoteCase =
+      (caseData.status === "concluido" && nextStatus !== "concluido") ||
+      (nextStatus === "em_andamento" && caseData.status !== "em_discipulado");
     const shouldSyncCurrentModulo = !caseModuloAtualId || caseModuloAtualId === item.module_id;
     if (shouldPromoteCase || shouldSyncCurrentModulo) {
       const payload: {
