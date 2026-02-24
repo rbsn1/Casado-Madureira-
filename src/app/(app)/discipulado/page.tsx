@@ -6,23 +6,14 @@ import {
   ByAcolhedorTable,
   DecisionsByOriginPanel,
   DecisionsTrendChart,
-  EntryVsProgressChart,
   EvangelisticImpactKpisSection,
-  ExecutiveKpiRow,
   OperationalStatusCards,
-  RecommendedActionsPanel,
-  RiskNowPanel,
   type ByAcolhedorRow,
   type DecisionsChartGranularity,
   type DecisionsTrendPoint,
-  type EntryVsProgressPoint,
   type EvangelisticImpactKpis,
   type EvangelisticImpactPeriod,
-  type ExecutiveKpiModel,
-  type ExecutiveKpiPeriod,
-  type OriginImpactRow,
-  type RecommendedActionItem,
-  type RiskNowItem
+  type OriginImpactRow
 } from "@/components/discipulado/dashboard";
 import { getAuthScope } from "@/lib/authScope";
 import { criticalityRank } from "@/lib/discipleshipCriticality";
@@ -69,12 +60,6 @@ type ContactAttemptRow = {
   created_at: string;
 };
 
-type ProgressEventRow = {
-  case_id: string;
-  status: "nao_iniciado" | "em_andamento" | "concluido";
-  updated_at: string;
-};
-
 type EvangelisticDecisionRow = {
   id: string;
   created_at: string | null;
@@ -98,9 +83,6 @@ type MergedCase = DiscipleshipCaseSummaryItem & {
 };
 
 const DAYS_WITHOUT_CONTACT_RISK = 7;
-const DAYS_OVERDUE_FALLBACK = 3;
-const DAYS_TO_DEADLINE_ALERT = 7;
-const CHART_WEEKS = 12;
 const IMPACT_ORIGIN_ORDER: DecisionOrigin[] = ["MANHA", "NOITE", "MJ", "QUARTA"];
 const IMPACT_ORIGIN_LABELS: Record<DecisionOrigin, string> = {
   MANHA: "Culto da manhã",
@@ -139,13 +121,6 @@ function startOfDay(input: Date) {
   return date;
 }
 
-function startOfWeek(input: Date) {
-  const date = startOfDay(input);
-  const offset = (date.getDay() + 6) % 7;
-  date.setDate(date.getDate() - offset);
-  return date;
-}
-
 function daysSince(timestamp: number, now: number) {
   return Math.max(0, Math.floor((now - timestamp) / 86400000));
 }
@@ -153,25 +128,6 @@ function daysSince(timestamp: number, now: number) {
 function inRange(timestamp: number | null, from: number, to: number) {
   if (timestamp === null) return false;
   return timestamp >= from && timestamp < to;
-}
-
-function formatDurationShort(durationMs: number | null) {
-  if (durationMs === null || !Number.isFinite(durationMs)) return null;
-  const hours = durationMs / 3600000;
-  if (hours < 24) {
-    const rounded = hours >= 10 ? Math.round(hours) : Number(hours.toFixed(1));
-    return `${rounded}h`;
-  }
-  const days = hours / 24;
-  const roundedDays = days >= 10 ? Math.round(days) : Number(days.toFixed(1));
-  return `${roundedDays}d`;
-}
-
-function formatWeekLabel(timestamp: number) {
-  const date = new Date(timestamp);
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}`;
 }
 
 function sanitizePhone(value: string | null) {
@@ -252,7 +208,6 @@ export default function DiscipuladoDashboardPage() {
   const [caseSummaries, setCaseSummaries] = useState<DiscipleshipCaseSummaryItem[]>([]);
   const [caseRows, setCaseRows] = useState<DiscipleshipCaseBaseRow[]>([]);
   const [contactAttempts, setContactAttempts] = useState<ContactAttemptRow[]>([]);
-  const [progressEvents, setProgressEvents] = useState<ProgressEventRow[]>([]);
 
   const [hasAccess, setHasAccess] = useState(false);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
@@ -262,7 +217,6 @@ export default function DiscipuladoDashboardPage() {
   const [congregations, setCongregations] = useState<Congregation[]>([]);
   const [congregationFilter, setCongregationFilter] = useState("");
 
-  const [kpiPeriod, setKpiPeriod] = useState<ExecutiveKpiPeriod>("7d");
   const [impactPeriod, setImpactPeriod] = useState<EvangelisticImpactPeriod>("30d");
   const [decisionsGranularity, setDecisionsGranularity] = useState<DecisionsChartGranularity>("day");
   const [impactLoading, setImpactLoading] = useState(true);
@@ -303,7 +257,6 @@ export default function DiscipuladoDashboardPage() {
       setCaseSummaries([]);
       setCaseRows([]);
       setContactAttempts([]);
-      setProgressEvents([]);
       setLoading(false);
       return;
     }
@@ -313,14 +266,13 @@ export default function DiscipuladoDashboardPage() {
     if (!summaries.length) {
       setCaseRows([]);
       setContactAttempts([]);
-      setProgressEvents([]);
       setLoading(false);
       return;
     }
 
     const caseIds = [...new Set(summaries.map((item) => item.case_id))];
 
-    const [casesBaseResult, attemptsResult, progressResult] = await Promise.all([
+    const [casesBaseResult, attemptsResult] = await Promise.all([
       supabaseClient
         .from("discipleship_cases")
         .select("id, member_id, assigned_to, status, created_at, updated_at, criticality, days_to_confra, negative_contact_count")
@@ -329,11 +281,7 @@ export default function DiscipuladoDashboardPage() {
         .from("contact_attempts")
         .select("case_id, outcome, created_at")
         .in("case_id", caseIds)
-        .order("created_at", { ascending: true }),
-      supabaseClient
-        .from("discipleship_progress")
-        .select("case_id, status, updated_at")
-        .in("case_id", caseIds)
+        .order("created_at", { ascending: true })
     ]);
 
     if (casesBaseResult.error) {
@@ -352,13 +300,6 @@ export default function DiscipuladoDashboardPage() {
       setContactAttempts([]);
     } else {
       setContactAttempts((attemptsResult.data ?? []) as ContactAttemptRow[]);
-    }
-
-    if (progressResult.error) {
-      setStatusMessage((prev) => prev || progressResult.error?.message || "Falha ao carregar progresso.");
-      setProgressEvents([]);
-    } else {
-      setProgressEvents((progressResult.data ?? []) as ProgressEventRow[]);
     }
 
     setLoading(false);
@@ -606,24 +547,6 @@ export default function DiscipuladoDashboardPage() {
     });
   }, [caseRows, caseSummaries, contactAttempts]);
 
-  const periodRange = useMemo(() => {
-    const now = new Date();
-    if (kpiPeriod === "today") {
-      const from = startOfDay(now).getTime();
-      const to = now.getTime();
-      const previousFrom = from - 86400000;
-      const previousTo = from;
-      return { from, to, previousFrom, previousTo };
-    }
-
-    const days = kpiPeriod === "7d" ? 7 : 30;
-    const to = now.getTime();
-    const from = to - days * 86400000;
-    const previousFrom = from - days * 86400000;
-    const previousTo = from;
-    return { from, to, previousFrom, previousTo };
-  }, [kpiPeriod]);
-
   const impactRange = useMemo(() => getImpactRange(impactPeriod), [impactPeriod]);
 
   const normalizedDecisionRecords = useMemo(
@@ -798,128 +721,6 @@ export default function DiscipuladoDashboardPage() {
     [mergedCases]
   );
 
-  const kpiMetrics = useMemo<ExecutiveKpiModel>(() => {
-    const novosNoPeriodo = mergedCases.filter((item) => inRange(parseTime(item.created_at), periodRange.from, periodRange.to));
-
-    const novosPeriodoAnterior = mergedCases.filter((item) =>
-      inRange(parseTime(item.created_at), periodRange.previousFrom, periodRange.previousTo)
-    );
-
-    const firstContactDurations = mergedCases
-      .filter((item) => {
-        const firstContact = parseTime(item.first_contact_at);
-        return inRange(firstContact, periodRange.from, periodRange.to);
-      })
-      .map((item) => {
-        const firstContact = parseTime(item.first_contact_at) ?? 0;
-        const createdAt = parseTime(item.created_at) ?? firstContact;
-        return Math.max(0, firstContact - createdAt);
-      });
-
-    const averageFirstContactMs =
-      firstContactDurations.length > 0
-        ? firstContactDurations.reduce((acc, value) => acc + value, 0) / firstContactDurations.length
-        : null;
-
-    const semContatoSeteDias = activeCases.filter((item) => item.days_since_last_contact >= DAYS_WITHOUT_CONTACT_RISK).length;
-
-    // Fallback determinístico para atraso quando não existe next_action_due_at: sem contato >= 3 dias.
-    const atrasados = activeCases.filter((item) => item.days_since_last_contact >= DAYS_OVERDUE_FALLBACK).length;
-
-    return {
-      novosConvertidos: novosNoPeriodo.length,
-      previousNovosConvertidos: novosPeriodoAnterior.length,
-      variationPct: computeVariationPct(novosNoPeriodo.length, novosPeriodoAnterior.length),
-      tempoMedioPrimeiroContato: formatDurationShort(averageFirstContactMs),
-      semContatoSeteDias,
-      atrasados
-    };
-  }, [activeCases, mergedCases, periodRange]);
-
-  const entryVsProgressSeries = useMemo<EntryVsProgressPoint[]>(() => {
-    const now = new Date();
-    const firstBucketDate = startOfWeek(new Date(now.getTime() - (CHART_WEEKS - 1) * 7 * 86400000));
-    const firstBucketMs = firstBucketDate.getTime();
-
-    const buckets: EntryVsProgressPoint[] = [];
-
-    for (let index = 0; index < CHART_WEEKS; index += 1) {
-      const from = firstBucketMs + index * 7 * 86400000;
-      const to = from + 7 * 86400000;
-
-      const novos = mergedCases.filter((item) => {
-        const createdAt = parseTime(item.created_at);
-        return inRange(createdAt, from, to);
-      }).length;
-
-      // Proxy para avanço de etapa sem trilha histórica dedicada:
-      // usa atualizações de progresso com status != nao_iniciado.
-      const avancaram = progressEvents.filter((event) => {
-        if (event.status === "nao_iniciado") return false;
-        return inRange(parseTime(event.updated_at), from, to);
-      }).length;
-
-      buckets.push({
-        key: `w-${index}`,
-        label: formatWeekLabel(from),
-        novos,
-        avancaram
-      });
-    }
-
-    return buckets;
-  }, [mergedCases, progressEvents]);
-
-  const riskItems = useMemo<RiskNowItem[]>(() => {
-    const semContatoRecente = activeCases.filter((item) => item.days_since_last_contact >= DAYS_WITHOUT_CONTACT_RISK).length;
-    const telefoneInvalido = activeCases.filter((item) => !item.phone_valid).length;
-    const atrasados = activeCases.filter((item) => item.days_since_last_contact >= DAYS_OVERDUE_FALLBACK).length;
-    const proximosLimite = activeCases.filter(
-      (item) => item.days_to_confra !== null && item.days_to_confra >= 0 && item.days_to_confra <= DAYS_TO_DEADLINE_ALERT
-    ).length;
-
-    const items: RiskNowItem[] = [
-      {
-        id: "sem-contato",
-        title: "Sem contato recente (7+ dias)",
-        subtitle: "Casos ativos sem interação registrada.",
-        count: semContatoRecente,
-        href: "/discipulado/fila",
-        cta: "Ver lista",
-        severity: semContatoRecente > 0 ? "high" : "low"
-      },
-      {
-        id: "telefone-invalido",
-        title: "Telefone inválido",
-        subtitle: "Cadastro sem número válido para contato.",
-        count: telefoneInvalido,
-        href: "/discipulado/convertidos",
-        cta: "Verificar cadastros",
-        severity: telefoneInvalido > 0 ? "high" : "low"
-      },
-      {
-        id: "atrasados",
-        title: "Atrasados",
-        subtitle: "Casos fora do prazo interno de acompanhamento.",
-        count: atrasados,
-        href: "/discipulado/fila",
-        cta: "Priorizar casos",
-        severity: atrasados > 0 ? "medium" : "low"
-      },
-      {
-        id: "proximos-limite",
-        title: "Próximos da data limite (0-7 dias)",
-        subtitle: "Confraternização próxima sem evolução suficiente.",
-        count: proximosLimite,
-        href: "/discipulado/fila",
-        cta: "Acompanhar agora",
-        severity: proximosLimite > 0 ? "medium" : "low"
-      }
-    ];
-
-    return items.sort((a, b) => b.count - a.count);
-  }, [activeCases]);
-
   const byAcolhedor = useMemo<ByAcolhedorRow[]>(() => {
     const grouped = new Map<string, ByAcolhedorRow>();
 
@@ -950,73 +751,6 @@ export default function DiscipuladoDashboardPage() {
     });
   }, [activeCases]);
 
-  const recommendedActions = useMemo<RecommendedActionItem[]>(() => {
-    const items: RecommendedActionItem[] = [];
-
-    const phoneInvalidCount = activeCases.filter((item) => !item.phone_valid).length;
-    const noContactCount = activeCases.filter((item) => item.days_since_last_contact >= DAYS_WITHOUT_CONTACT_RISK).length;
-    const overdueCount = activeCases.filter((item) => item.days_since_last_contact >= DAYS_OVERDUE_FALLBACK).length;
-
-    if (phoneInvalidCount > 0) {
-      items.push({
-        id: "fix-phones",
-        title: "Verificar cadastros sem telefone válido",
-        subtitle: "Padronizar WhatsApp para reduzir falha de contato.",
-        count: phoneInvalidCount,
-        href: "/discipulado/convertidos",
-        cta: "Ajustar contatos"
-      });
-    }
-
-    if (noContactCount > 0) {
-      items.push({
-        id: "prioritize-no-contact",
-        title: "Priorizar contato dos sem contato",
-        subtitle: "Organizar mutirão de retorno para casos estagnados.",
-        count: noContactCount,
-        href: "/discipulado/fila",
-        cta: "Ver casos críticos"
-      });
-    }
-
-    const totalCriticos = byAcolhedor.reduce((sum, row) => sum + row.criticos, 0);
-    const topAcolhedor = byAcolhedor[0];
-    if (topAcolhedor && totalCriticos > 0 && topAcolhedor.criticos / totalCriticos >= 0.45 && topAcolhedor.criticos >= 2) {
-      items.push({
-        id: "rebalance-owners",
-        title: "Reatribuir casos acumulados",
-        subtitle: `Concentração alta em ${topAcolhedor.name}.`,
-        count: topAcolhedor.criticos,
-        href: "/discipulado/admin",
-        cta: "Rebalancear equipe"
-      });
-    }
-
-    if (overdueCount > 0) {
-      items.push({
-        id: "resolve-overdue",
-        title: "Reduzir casos atrasados",
-        subtitle: "Atualizar próximo passo de cada acompanhamento.",
-        count: overdueCount,
-        href: "/discipulado/fila",
-        cta: "Executar plano"
-      });
-    }
-
-    const latestPoint = entryVsProgressSeries[entryVsProgressSeries.length - 1];
-    if (latestPoint && latestPoint.novos - latestPoint.avancaram > 0) {
-      items.push({
-        id: "entry-vs-progress-gap",
-        title: "Entrada maior que progresso",
-        subtitle: "A entrada da semana está acima do avanço de etapa.",
-        count: latestPoint.novos - latestPoint.avancaram,
-        href: "/discipulado/fila",
-        cta: "Acompanhar gargalo"
-      });
-    }
-
-    return items.slice(0, 4);
-  }, [activeCases, byAcolhedor, entryVsProgressSeries]);
 
   const stageConversion = useMemo(() => {
     if (!mergedCases.length) return [] as Array<{ label: string; value: number }>;
@@ -1107,16 +841,6 @@ export default function DiscipuladoDashboardPage() {
       <DecisionsByOriginPanel rows={originImpactRows} />
 
       <section className="space-y-4" aria-label="Gestão complementar">
-        <ExecutiveKpiRow period={kpiPeriod} onPeriodChange={setKpiPeriod} metrics={kpiMetrics} />
-
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,1fr)]">
-          <EntryVsProgressChart data={entryVsProgressSeries} />
-          <div className="space-y-4">
-            <RiskNowPanel items={riskItems} />
-            <RecommendedActionsPanel items={recommendedActions} />
-          </div>
-        </div>
-
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(280px,1fr)]">
           <ByAcolhedorTable rows={byAcolhedor} />
 
