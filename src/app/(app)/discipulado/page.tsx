@@ -229,6 +229,18 @@ function getImpactRange(period: EvangelisticImpactPeriod) {
   return { from, to, previousFrom, previousTo, days };
 }
 
+function isMissingCultosTableError(error: { code?: string; message: string } | null) {
+  if (!error) return false;
+  const code = String(error.code ?? "");
+  const message = error.message.toLowerCase();
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("public.cultos") ||
+    message.includes("could not find the table")
+  );
+}
+
 export default function DiscipuladoDashboardPage() {
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -465,10 +477,7 @@ export default function DiscipuladoDashboardPage() {
       }
 
       if (cultosResult.error) {
-        const code = cultosResult.error.code ?? "";
-        if (code === "42P01") {
-          impactErrors.push("Tabela de cultos não encontrada no banco.");
-        } else {
+        if (!isMissingCultosTableError(cultosResult.error)) {
           impactErrors.push(cultosResult.error.message);
         }
         setCultos([]);
