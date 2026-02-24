@@ -113,6 +113,30 @@ function createEmptyTurmaPlanningByTurno(): TurmaPlanningByTurno {
   };
 }
 
+async function resolveMyCongregationId() {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("get_my_congregation_id");
+  if (error) return null;
+  const congregationId = String(data ?? "");
+  return congregationId || null;
+}
+
+async function resolveCongregationIdFromFirstCase(cases: DiscipleshipCaseSummaryItem[]) {
+  if (!supabaseClient || !cases.length) return null;
+  const fallbackCaseId = cases[0]?.case_id;
+  if (!fallbackCaseId) return null;
+
+  const { data: fallbackCaseRow } = await supabaseClient
+    .from("discipleship_cases")
+    .select("congregation_id")
+    .eq("id", fallbackCaseId)
+    .single();
+  const fallbackCongregationId = String(
+    (fallbackCaseRow as { congregation_id?: string | null } | null)?.congregation_id ?? ""
+  );
+  return fallbackCongregationId || null;
+}
+
 function formatDateBR(value: string | null) {
   if (!value) return "-";
   const parsed = new Date(value);
@@ -396,7 +420,6 @@ export default function DiscipuladoBoardPage() {
         scope.roles.includes("DISCIPULADOR") ||
         scope.roles.includes("SM_DISCIPULADO") ||
         scope.roles.includes("SECRETARIA_DISCIPULADO");
-      setCurrentCongregationId(scope.congregationId ?? null);
 
       setHasAccess(allowed);
       if (!allowed) {
@@ -416,6 +439,11 @@ export default function DiscipuladoBoardPage() {
         if (item.fase === "POS_DISCIPULADO") return false;
         return item.status === "em_discipulado" || item.status === "pausado" || item.status === "concluido";
       });
+      let effectiveCongregationId = scope.congregationId ?? (await resolveMyCongregationId());
+      if (!effectiveCongregationId) {
+        effectiveCongregationId = await resolveCongregationIdFromFirstCase(discipuladoCases);
+      }
+      setCurrentCongregationId(effectiveCongregationId);
       setCases(discipuladoCases);
       setCaseTurnosByCaseId({});
       setModuleSummaryByTurno(createEmptyTurmaModuleSummaryByTurno());
@@ -445,8 +473,8 @@ export default function DiscipuladoBoardPage() {
         let turmaPlanningQuery = supabaseClient
           .from("discipleship_turma_settings")
           .select("turno, module_id, start_date");
-        if (scope.congregationId) {
-          turmaPlanningQuery = turmaPlanningQuery.eq("congregation_id", scope.congregationId);
+        if (effectiveCongregationId) {
+          turmaPlanningQuery = turmaPlanningQuery.eq("congregation_id", effectiveCongregationId);
         }
         const turmaPlanningResult = await turmaPlanningQuery;
         if (turmaPlanningResult.error) {
@@ -553,9 +581,17 @@ export default function DiscipuladoBoardPage() {
   async function handleSaveTurmaPlanning(turnoKey: TurnoOrigem) {
     if (!supabaseClient || savingTurmaPlanningKey) return;
 
-    if (!currentCongregationId) {
+    let targetCongregationId = currentCongregationId ?? (await resolveMyCongregationId());
+    if (!targetCongregationId) {
+      targetCongregationId = await resolveCongregationIdFromFirstCase(cases);
+    }
+
+    if (!targetCongregationId) {
       setStatusMessage("Não foi possível identificar a congregação para salvar os dados da turma.");
       return;
+    }
+    if (targetCongregationId !== currentCongregationId) {
+      setCurrentCongregationId(targetCongregationId);
     }
 
     setSavingTurmaPlanningKey(turnoKey);
@@ -564,7 +600,7 @@ export default function DiscipuladoBoardPage() {
     const draft = turmaPlanningDrafts[turnoKey] ?? { moduleId: "", startDate: "" };
     const { error } = await supabaseClient.from("discipleship_turma_settings").upsert(
       {
-        congregation_id: currentCongregationId,
+        congregation_id: targetCongregationId,
         turno: turnoKey,
         module_id: draft.moduleId || null,
         start_date: draft.startDate || null
@@ -586,6 +622,7 @@ export default function DiscipuladoBoardPage() {
       return;
     }
 
+    setStatusMessage("Dados da turma salvos com sucesso.");
     setSavingTurmaPlanningKey(null);
   }
 
