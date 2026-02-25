@@ -127,7 +127,11 @@ export function CadastrosComboChart({
   const peakPoint = useMemo(() => {
     const point = points.find((item) => item.month === peak.month);
     if (!point || point.y === null || point.value === null) return null;
-    return point;
+    return {
+      ...point,
+      value: point.value,
+      y: point.y
+    };
   }, [points, peak.month]);
 
   const averageY = useMemo(
