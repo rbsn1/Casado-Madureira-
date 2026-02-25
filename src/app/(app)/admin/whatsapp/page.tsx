@@ -62,6 +62,45 @@ function statusClass(status: MessageJob["status"]) {
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
+async function extractFunctionErrorMessage(error: unknown) {
+  const fallback =
+    error instanceof Error && error.message
+      ? error.message
+      : "Falha ao executar Edge Function.";
+
+  if (!error || typeof error !== "object") {
+    return fallback;
+  }
+
+  const context = (error as { context?: unknown }).context;
+  if (context instanceof Response) {
+    try {
+      const contentType = context.headers.get("content-type") ?? "";
+      if (contentType.includes("application/json")) {
+        const body = (await context.clone().json()) as
+          | { error?: unknown; message?: unknown; details?: unknown }
+          | null;
+        const message = body?.error ?? body?.message ?? body?.details;
+        if (typeof message === "string" && message.trim()) {
+          return message;
+        }
+        if (body) {
+          return JSON.stringify(body);
+        }
+      }
+
+      const text = await context.clone().text();
+      if (text.trim()) {
+        return text;
+      }
+    } catch {
+      return fallback;
+    }
+  }
+
+  return fallback;
+}
+
 export default function AdminWhatsAppPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [tenantId, setTenantId] = useState("");
@@ -287,13 +326,30 @@ export default function AdminWhatsAppPage() {
       test_phone_e164: dispatchMode === "TESTE" ? normalizeDigits(testPhoneE164) : undefined
     };
 
+    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    if (sessionError) {
+      setEnqueueStatus("error");
+      setPageMessage(sessionError.message);
+      return;
+    }
+
+    const accessToken = sessionData.session?.access_token ?? "";
+    if (!accessToken) {
+      setEnqueueStatus("error");
+      setPageMessage("Sessão expirada. Faça login novamente.");
+      return;
+    }
+
     const { data, error } = await supabaseClient.functions.invoke("bright-function", {
-      body: payload
+      body: payload,
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
     });
 
     if (error) {
       setEnqueueStatus("error");
-      setPageMessage(error.message);
+      setPageMessage(await extractFunctionErrorMessage(error));
       return;
     }
 
