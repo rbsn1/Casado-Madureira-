@@ -112,7 +112,11 @@ export function CadastrosComboChart({
     if (activeMonth === null) return null;
     const point = points.find((item) => item.month === activeMonth);
     if (!point || point.value === null || point.y === null) return null;
-    return point;
+    return {
+      ...point,
+      value: point.value,
+      y: point.y
+    };
   }, [activeMonth, points]);
 
   const activeChange = useMemo(() => {
