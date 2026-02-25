@@ -204,6 +204,12 @@ function CadastrosContent() {
       if (origemTipo) {
         if (origemTipo === "celula") {
           query = query.or("origem.ilike.%celula%,origem.ilike.%célula%");
+        } else if (origemTipo === "manha") {
+          query = query.ilike("origem", "%manh%");
+        } else if (origemTipo === "noite") {
+          query = query.ilike("origem", "%noit%");
+        } else if (origemTipo === "evento") {
+          query = query.ilike("origem", "%evento%");
         } else if (origemTipo === "outro") {
           // filtro adicional aplicado após o merge
         } else if (origemTipo !== "outro") {
