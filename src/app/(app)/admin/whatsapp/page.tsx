@@ -287,7 +287,7 @@ export default function AdminWhatsAppPage() {
       test_phone_e164: dispatchMode === "TESTE" ? normalizeDigits(testPhoneE164) : undefined
     };
 
-    const { data, error } = await supabaseClient.functions.invoke("enqueue-welcome", {
+    const { data, error } = await supabaseClient.functions.invoke("bright-function", {
       body: payload
     });
 
