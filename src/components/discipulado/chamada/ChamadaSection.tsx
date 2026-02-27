@@ -20,6 +20,7 @@ type ModuleOption = {
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+type GlobalSavingState = "idle" | "saving" | "saved";
 type DraftByAlunoId = Record<
   string,
   {
@@ -54,7 +55,7 @@ export function ChamadaSection() {
   const [alunos, setAlunos] = useState<ChamadaAluno[]>([]);
   const [draftByAlunoId, setDraftByAlunoId] = useState<DraftByAlunoId>({});
   const [saveStateByAlunoId, setSaveStateByAlunoId] = useState<Record<string, SaveState>>({});
-  const [globalSavingState, setGlobalSavingState] = useState<SaveState>("idle");
+  const [globalSavingState, setGlobalSavingState] = useState<GlobalSavingState>("idle");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const timersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -106,11 +107,13 @@ export function ChamadaSection() {
   }, []);
 
   useEffect(() => {
+    const timers = timersRef.current;
+    const savePulseTimer = savePulseTimerRef.current;
     return () => {
-      for (const timer of Object.values(timersRef.current)) {
+      for (const timer of Object.values(timers)) {
         clearTimeout(timer);
       }
-      if (savePulseTimerRef.current) clearTimeout(savePulseTimerRef.current);
+      if (savePulseTimer) clearTimeout(savePulseTimer);
     };
   }, []);
 
