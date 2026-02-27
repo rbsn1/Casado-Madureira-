@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChamadaSection } from "@/components/discipulado/chamada";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { getAuthScope } from "@/lib/authScope";
 import { normalizeTurnoOrigem, sortCases, TurnoOrigem } from "@/lib/discipuladoPanels";
@@ -833,6 +834,8 @@ export default function DiscipuladoBoardPage() {
               );
             })}
           </div>
+
+          <ChamadaSection />
         </>
       ) : null}
     </div>
