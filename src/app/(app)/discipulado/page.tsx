@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChamadaSection } from "@/components/discipulado/chamada";
 import {
   ByAcolhedorTable,
   DecisionsByOriginPanel,
@@ -924,6 +925,8 @@ export default function DiscipuladoDashboardPage() {
           </section>
         </div>
       </section>
+
+      <ChamadaSection />
     </div>
   );
 }
