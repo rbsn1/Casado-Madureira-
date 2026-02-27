@@ -25,6 +25,11 @@ export type DiscipleshipCaseSummaryItem = {
   fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO";
   modulo_atual_id: string | null;
   turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
+  attendance_total_classes: number;
+  attendance_present_count: number;
+  attendance_absent_count: number;
+  attendance_justified_count: number;
+  attendance_presence_rate: number;
 };
 
 type LoadDiscipleshipCaseSummariesOptions = {
@@ -44,6 +49,11 @@ type FallbackCaseRow = {
   criticality?: "BAIXA" | "MEDIA" | "ALTA" | "CRITICA" | null;
   negative_contact_count?: number | null;
   days_to_confra?: number | null;
+  attendance_total_classes?: number | null;
+  attendance_present_count?: number | null;
+  attendance_absent_count?: number | null;
+  attendance_justified_count?: number | null;
+  attendance_presence_rate?: number | null;
 };
 
 type ExtraCaseRow = {
@@ -56,6 +66,11 @@ type ExtraCaseRow = {
   fase: "ACOLHIMENTO" | "DISCIPULADO" | "POS_DISCIPULADO" | null;
   modulo_atual_id: string | null;
   turno_origem: "MANHA" | "NOITE" | "EVENTO" | null;
+  attendance_total_classes?: number | null;
+  attendance_present_count?: number | null;
+  attendance_absent_count?: number | null;
+  attendance_justified_count?: number | null;
+  attendance_presence_rate?: number | null;
 };
 
 function isMissingListCasesFunctionError(message: string, code?: string) {
@@ -72,6 +87,18 @@ function isMissingCriticalityColumnsError(message: string, code?: string) {
   );
 }
 
+function isMissingAttendanceColumnsError(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("attendance_total_classes") ||
+    message.includes("attendance_present_count") ||
+    message.includes("attendance_absent_count") ||
+    message.includes("attendance_justified_count") ||
+    message.includes("attendance_presence_rate")
+  );
+}
+
 function isMissingExtraColumnsError(message: string, code?: string) {
   return (
     code === "42703" ||
@@ -83,7 +110,12 @@ function isMissingExtraColumnsError(message: string, code?: string) {
     message.includes("confraternizacao_compareceu_em") ||
     message.includes("fase") ||
     message.includes("modulo_atual_id") ||
-    message.includes("turno_origem")
+    message.includes("turno_origem") ||
+    message.includes("attendance_total_classes") ||
+    message.includes("attendance_present_count") ||
+    message.includes("attendance_absent_count") ||
+    message.includes("attendance_justified_count") ||
+    message.includes("attendance_presence_rate")
   );
 }
 
@@ -94,7 +126,7 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
   const { data, error } = await supabaseClient
     .from("discipleship_cases")
     .select(
-      "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em, fase, modulo_atual_id, turno_origem"
+      "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em, fase, modulo_atual_id, turno_origem, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate"
     )
     .in("id", caseIds);
 
@@ -114,7 +146,12 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
         confraternizacao_compareceu_em: item.confraternizacao_compareceu_em ?? null,
         fase: item.fase ?? "ACOLHIMENTO",
         modulo_atual_id: item.modulo_atual_id ?? null,
-        turno_origem: item.turno_origem ?? null
+        turno_origem: item.turno_origem ?? null,
+        attendance_total_classes: Number(item.attendance_total_classes ?? 0),
+        attendance_present_count: Number(item.attendance_present_count ?? 0),
+        attendance_absent_count: Number(item.attendance_absent_count ?? 0),
+        attendance_justified_count: Number(item.attendance_justified_count ?? 0),
+        attendance_presence_rate: Number(item.attendance_presence_rate ?? 0)
       }
     ])
   );
@@ -137,7 +174,8 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
     return {
       data: [] as DiscipleshipCaseSummaryItem[],
       errorMessage: "Supabase não configurado.",
-      hasCriticalityColumns: false
+      hasCriticalityColumns: false,
+      hasAttendanceColumns: false
     };
   }
 
@@ -155,7 +193,12 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       "fase" in firstRow &&
       "confraternizacao_id" in firstRow &&
       "modulo_atual_id" in firstRow &&
-      "turno_origem" in firstRow;
+      "turno_origem" in firstRow &&
+      "attendance_total_classes" in firstRow &&
+      "attendance_present_count" in firstRow &&
+      "attendance_absent_count" in firstRow &&
+      "attendance_justified_count" in firstRow &&
+      "attendance_presence_rate" in firstRow;
 
     const normalized = rows.map((row) => {
       const item = row as Partial<DiscipleshipCaseSummaryItem>;
@@ -181,25 +224,36 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         confraternizacao_compareceu_em: item.confraternizacao_compareceu_em ?? null,
         fase: (item.fase ?? "ACOLHIMENTO") as DiscipleshipCaseSummaryItem["fase"],
         modulo_atual_id: item.modulo_atual_id ?? null,
-        turno_origem: (item.turno_origem ?? null) as DiscipleshipCaseSummaryItem["turno_origem"]
+        turno_origem: (item.turno_origem ?? null) as DiscipleshipCaseSummaryItem["turno_origem"],
+        attendance_total_classes: Number(item.attendance_total_classes ?? 0),
+        attendance_present_count: Number(item.attendance_present_count ?? 0),
+        attendance_absent_count: Number(item.attendance_absent_count ?? 0),
+        attendance_justified_count: Number(item.attendance_justified_count ?? 0),
+        attendance_presence_rate: Number(item.attendance_presence_rate ?? 0)
       } satisfies DiscipleshipCaseSummaryItem;
     });
 
     if (!includeExtraFields || rpcHasExtraFields) {
-      return { data: normalized, errorMessage: "", hasCriticalityColumns: true };
+      return { data: normalized, errorMessage: "", hasCriticalityColumns: true, hasAttendanceColumns: true };
     }
 
     const enriched = await withCaseExtraFields(normalized);
-    return { data: enriched, errorMessage: "", hasCriticalityColumns: true };
+    return { data: enriched, errorMessage: "", hasCriticalityColumns: true, hasAttendanceColumns: true };
   }
 
   if (!isMissingListCasesFunctionError(rpcError.message, rpcError.code)) {
-    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: rpcError.message, hasCriticalityColumns: false };
+    return {
+      data: [] as DiscipleshipCaseSummaryItem[],
+      errorMessage: rpcError.message,
+      hasCriticalityColumns: false,
+      hasAttendanceColumns: false
+    };
   }
 
   const baseSelect =
-    "id, member_id, assigned_to, status, notes, updated_at, criticality, negative_contact_count, days_to_confra";
+    "id, member_id, assigned_to, status, notes, updated_at, criticality, negative_contact_count, days_to_confra, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate";
   let hasCriticalityColumns = true;
+  let hasAttendanceColumns = true;
   let baseQuery = supabaseClient
     .from("discipleship_cases")
     .select(baseSelect)
@@ -218,8 +272,13 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
     error: { message: string; code?: string } | null;
   } = await baseQuery;
 
-  if (casesResult.error && isMissingCriticalityColumnsError(casesResult.error.message, casesResult.error.code)) {
+  if (
+    casesResult.error &&
+    (isMissingCriticalityColumnsError(casesResult.error.message, casesResult.error.code) ||
+      isMissingAttendanceColumnsError(casesResult.error.message, casesResult.error.code))
+  ) {
     hasCriticalityColumns = false;
+    hasAttendanceColumns = false;
     let fallbackQuery = supabaseClient
       .from("discipleship_cases")
       .select("id, member_id, assigned_to, status, notes, updated_at")
@@ -235,12 +294,17 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
   }
 
   if (casesResult.error) {
-    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: casesResult.error.message, hasCriticalityColumns };
+    return {
+      data: [] as DiscipleshipCaseSummaryItem[],
+      errorMessage: casesResult.error.message,
+      hasCriticalityColumns,
+      hasAttendanceColumns
+    };
   }
 
   const baseCases = (casesResult.data ?? []) as FallbackCaseRow[];
   if (!baseCases.length) {
-    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: "", hasCriticalityColumns };
+    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: "", hasCriticalityColumns, hasAttendanceColumns };
   }
 
   const memberIds = [...new Set(baseCases.map((item) => item.member_id))];
@@ -252,10 +316,20 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
   ]);
 
   if (membersError) {
-    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: membersError.message, hasCriticalityColumns };
+    return {
+      data: [] as DiscipleshipCaseSummaryItem[],
+      errorMessage: membersError.message,
+      hasCriticalityColumns,
+      hasAttendanceColumns
+    };
   }
   if (progressError) {
-    return { data: [] as DiscipleshipCaseSummaryItem[], errorMessage: progressError.message, hasCriticalityColumns };
+    return {
+      data: [] as DiscipleshipCaseSummaryItem[],
+      errorMessage: progressError.message,
+      hasCriticalityColumns,
+      hasAttendanceColumns
+    };
   }
 
   const memberMap = new Map(
@@ -301,14 +375,19 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       confraternizacao_compareceu_em: null,
       fase: "ACOLHIMENTO",
       modulo_atual_id: null,
-      turno_origem: null
+      turno_origem: null,
+      attendance_total_classes: item.attendance_total_classes ?? 0,
+      attendance_present_count: item.attendance_present_count ?? 0,
+      attendance_absent_count: item.attendance_absent_count ?? 0,
+      attendance_justified_count: item.attendance_justified_count ?? 0,
+      attendance_presence_rate: Number(item.attendance_presence_rate ?? 0)
     };
   });
 
   if (!includeExtraFields) {
-    return { data: summaries, errorMessage: "", hasCriticalityColumns };
+    return { data: summaries, errorMessage: "", hasCriticalityColumns, hasAttendanceColumns };
   }
 
   const enriched = await withCaseExtraFields(summaries);
-  return { data: enriched, errorMessage: "", hasCriticalityColumns };
+  return { data: enriched, errorMessage: "", hasCriticalityColumns, hasAttendanceColumns };
 }

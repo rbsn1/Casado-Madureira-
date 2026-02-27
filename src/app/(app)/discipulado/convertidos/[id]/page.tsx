@@ -29,6 +29,11 @@ type CaseItem = {
   negative_contact_count: number;
   days_to_confra: number | null;
   last_negative_contact_at: string | null;
+  attendance_total_classes: number;
+  attendance_present_count: number;
+  attendance_absent_count: number;
+  attendance_justified_count: number;
+  attendance_presence_rate: number;
 };
 
 type MemberItem = {
@@ -112,6 +117,14 @@ type ContactAttemptItem = {
   created_at: string;
 };
 
+type CaseEventItem = {
+  id: string;
+  event_type: string;
+  description: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
 type TurmaPlanningItem = {
   turno: string | null;
   module_id: string | null;
@@ -136,6 +149,7 @@ const ENROLLMENT_TURNO_OPTIONS: Array<{ value: EnrollmentTurno; label: string }>
   { value: "EVENTO", label: "Tarde" },
   { value: "NOITE", label: "Noite" }
 ];
+const MIN_ATTENDANCE_RATE_TO_GRADUATE = 75;
 
 function normalizeCultoDraft(value: string | null | undefined): CultoOrigemCode | "" {
   return parseCultoOrigemCode(value) ?? "";
@@ -161,7 +175,12 @@ function isMissingCriticalityCaseColumns(message: string, code?: string) {
     message.includes("criticality") ||
     message.includes("negative_contact_count") ||
     message.includes("days_to_confra") ||
-    message.includes("last_negative_contact_at")
+    message.includes("last_negative_contact_at") ||
+    message.includes("attendance_total_classes") ||
+    message.includes("attendance_present_count") ||
+    message.includes("attendance_absent_count") ||
+    message.includes("attendance_justified_count") ||
+    message.includes("attendance_presence_rate")
   );
 }
 
@@ -170,6 +189,15 @@ function isMissingContactAttemptsTable(message: string, code?: string) {
     code === "42P01" ||
     code === "PGRST205" ||
     message.includes("contact_attempts") ||
+    message.includes("relation")
+  );
+}
+
+function isMissingCaseEventsTable(message: string, code?: string) {
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("discipleship_case_events") ||
     message.includes("relation")
   );
 }
@@ -295,12 +323,15 @@ export default function DiscipulandoDetalhePage() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState("");
   const [departmentRoleDraft, setDepartmentRoleDraft] = useState("");
   const [contactAttempts, setContactAttempts] = useState<ContactAttemptItem[]>([]);
+  const [caseEvents, setCaseEvents] = useState<CaseEventItem[]>([]);
   const [contactOutcomeDraft, setContactOutcomeDraft] = useState<ContactAttemptOutcome>("contacted");
   const [contactChannelDraft, setContactChannelDraft] = useState<ContactAttemptChannel>("whatsapp");
   const [contactNotesDraft, setContactNotesDraft] = useState("");
   const [toast, setToast] = useState<ToastState>(null);
   const [hasCriticalityColumns, setHasCriticalityColumns] = useState(true);
+  const [hasAttendanceColumns, setHasAttendanceColumns] = useState(true);
   const [hasContactAttemptsSupport, setHasContactAttemptsSupport] = useState(true);
+  const [hasCaseEventsSupport, setHasCaseEventsSupport] = useState(true);
   const [hasTurmaPlanningSupport, setHasTurmaPlanningSupport] = useState(true);
   const [baptismDate, setBaptismDate] = useState("");
   const [baptismLocation, setBaptismLocation] = useState("");
@@ -319,16 +350,18 @@ export default function DiscipulandoDetalhePage() {
     setLoading(true);
     setStatusMessage("");
     let hasCaseCriticality = true;
+    let hasCaseAttendance = true;
     let caseResult = await supabaseClient
       .from("discipleship_cases")
       .select(
-        "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at"
+        "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate"
       )
       .eq("id", caseId)
       .single();
 
     if (caseResult.error && isMissingCriticalityCaseColumns(caseResult.error.message, caseResult.error.code)) {
       hasCaseCriticality = false;
+      hasCaseAttendance = false;
       caseResult = await supabaseClient
         .from("discipleship_cases")
         .select("id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at")
@@ -344,9 +377,15 @@ export default function DiscipulandoDetalhePage() {
     }
 
     setHasCriticalityColumns(hasCaseCriticality);
+    setHasAttendanceColumns(hasCaseAttendance);
     if (!hasCaseCriticality) {
       setStatusMessage(
         "Criticidade indisponível neste ambiente. Aplique a migração 0025_discipulado_criticidade_contatos_confra.sql."
+      );
+    }
+    if (!hasCaseAttendance) {
+      setStatusMessage((prev) =>
+        prev || "Frequência da chamada indisponível neste ambiente. Aplique a migração 0060_discipulado_frequencia_case_e_board.sql."
       );
     }
     const baseCase = caseResult.data as Partial<CaseItem>;
@@ -362,7 +401,12 @@ export default function DiscipulandoDetalhePage() {
       criticality: hasCaseCriticality ? (baseCase.criticality ?? "BAIXA") : "BAIXA",
       negative_contact_count: hasCaseCriticality ? Number(baseCase.negative_contact_count ?? 0) : 0,
       days_to_confra: hasCaseCriticality ? (baseCase.days_to_confra ?? null) : null,
-      last_negative_contact_at: hasCaseCriticality ? (baseCase.last_negative_contact_at ?? null) : null
+      last_negative_contact_at: hasCaseCriticality ? (baseCase.last_negative_contact_at ?? null) : null,
+      attendance_total_classes: hasCaseAttendance ? Number(baseCase.attendance_total_classes ?? 0) : 0,
+      attendance_present_count: hasCaseAttendance ? Number(baseCase.attendance_present_count ?? 0) : 0,
+      attendance_absent_count: hasCaseAttendance ? Number(baseCase.attendance_absent_count ?? 0) : 0,
+      attendance_justified_count: hasCaseAttendance ? Number(baseCase.attendance_justified_count ?? 0) : 0,
+      attendance_presence_rate: hasCaseAttendance ? Number(baseCase.attendance_presence_rate ?? 0) : 0
     };
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
@@ -405,7 +449,8 @@ export default function DiscipulandoDetalhePage() {
       { data: linksResult, error: linksError },
       { data: baptismResult, error: baptismError },
       { data: attemptsResult, error: attemptsError },
-      { data: turmaPlanningResult, error: turmaPlanningError }
+      { data: turmaPlanningResult, error: turmaPlanningError },
+      { data: caseEventsResult, error: caseEventsError }
     ] = await Promise.all([
       supabaseClient
         .from("discipleship_modules")
@@ -440,7 +485,13 @@ export default function DiscipulandoDetalhePage() {
       supabaseClient
         .from("discipleship_turma_settings")
         .select("turno, module_id, start_date")
-        .eq("congregation_id", currentCase.congregation_id)
+        .eq("congregation_id", currentCase.congregation_id),
+      supabaseClient
+        .from("discipleship_case_events")
+        .select("id, event_type, description, metadata, created_at")
+        .eq("case_id", currentCase.id)
+        .order("created_at", { ascending: false })
+        .limit(25)
     ]);
 
     if (moduleError) {
@@ -602,11 +653,43 @@ export default function DiscipulandoDetalhePage() {
       setContactAttempts(attemptRows);
     }
 
+    if (caseEventsError && isMissingCaseEventsTable(caseEventsError.message, caseEventsError.code)) {
+      setHasCaseEventsSupport(false);
+      setCaseEvents([]);
+    } else if (caseEventsError) {
+      setHasCaseEventsSupport(true);
+      setStatusMessage((prev) => prev || caseEventsError.message);
+      setCaseEvents([]);
+    } else {
+      setHasCaseEventsSupport(true);
+      const eventRows = (Array.isArray(caseEventsResult) ? caseEventsResult : [])
+        .map((row) => {
+          const item = row as Partial<CaseEventItem>;
+          if (!item.id || !item.event_type || !item.description || !item.created_at) return null;
+          return {
+            id: String(item.id),
+            event_type: String(item.event_type),
+            description: String(item.description),
+            metadata:
+              item.metadata && typeof item.metadata === "object" ? (item.metadata as Record<string, unknown>) : null,
+            created_at: String(item.created_at)
+          } as CaseEventItem;
+        })
+        .filter((item): item is CaseEventItem => item !== null);
+      setCaseEvents(eventRows);
+    }
+
+    const caseEventsSecondaryError =
+      caseEventsError && !isMissingCaseEventsTable(caseEventsError.message, caseEventsError.code)
+        ? caseEventsError.message
+        : "";
+
     const secondaryError =
       integrationError?.message ??
       departmentsError?.message ??
       linksError?.message ??
       baptismError?.message ??
+      caseEventsSecondaryError ??
       "";
     if (secondaryError) {
       setStatusMessage(secondaryError);
@@ -721,6 +804,20 @@ export default function DiscipulandoDetalhePage() {
     if (doneModules !== totalModules) {
       setStatusMessage("Para concluir o discipulado, finalize todos os módulos.");
       return;
+    }
+    if (hasAttendanceColumns) {
+      if ((caseData?.attendance_total_classes ?? 0) < 1) {
+        setStatusMessage("Para concluir o discipulado, registre ao menos 1 chamada com presença.");
+        return;
+      }
+      if (Number(caseData?.attendance_presence_rate ?? 0) < MIN_ATTENDANCE_RATE_TO_GRADUATE) {
+        setStatusMessage(
+          `Para concluir o discipulado, a frequência mínima é ${MIN_ATTENDANCE_RATE_TO_GRADUATE}%. Atual: ${Number(
+            caseData?.attendance_presence_rate ?? 0
+          ).toFixed(1)}%.`
+        );
+        return;
+      }
     }
     await handleCaseStatus("concluido");
   }
@@ -1386,7 +1483,34 @@ export default function DiscipulandoDetalhePage() {
             <p className="text-xs text-slate-500">Dias até a confra</p>
             <p className="text-lg font-semibold text-slate-900">{caseData?.days_to_confra ?? "-"}</p>
           </article>
+          <article className="rounded-lg border border-slate-100 bg-white px-3 py-3">
+            <p className="text-xs text-slate-500">Frequência (chamada)</p>
+            <p className="text-lg font-semibold text-slate-900">
+              {caseData?.attendance_present_count ?? 0}/{caseData?.attendance_total_classes ?? 0} (
+              {Number(caseData?.attendance_presence_rate ?? 0).toFixed(1)}%)
+            </p>
+            <p className="text-xs text-slate-500">
+              Faltas: {caseData?.attendance_absent_count ?? 0} • Justificadas:{" "}
+              {caseData?.attendance_justified_count ?? 0}
+            </p>
+          </article>
         </div>
+
+        {!hasAttendanceColumns ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Frequência indisponível neste ambiente. Aplique a migração
+            {" "}
+            <code>0060_discipulado_frequencia_case_e_board.sql</code>.
+          </p>
+        ) : Number(caseData?.attendance_presence_rate ?? 0) < MIN_ATTENDANCE_RATE_TO_GRADUATE ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Critério de formação: frequência mínima de {MIN_ATTENDANCE_RATE_TO_GRADUATE}%.
+          </p>
+        ) : (
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            Critério de formação atendido: frequência mínima alcançada.
+          </p>
+        )}
 
         {caseData?.criticality === "CRITICA" ? (
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3">
@@ -1664,6 +1788,31 @@ export default function DiscipulandoDetalhePage() {
         </div>
 
         <div className="mt-4 grid gap-5 lg:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+            <h4 className="text-sm font-semibold text-slate-900">Histórico do case</h4>
+            {!hasCaseEventsSupport ? (
+              <p className="mt-3 text-xs text-amber-700">
+                Histórico do case indisponível neste ambiente. Aplique a migração
+                {" "}
+                <code>0059_discipulado_case_events_chamada.sql</code>.
+              </p>
+            ) : caseEvents.length ? (
+              <ul className="mt-3 space-y-2 text-xs text-slate-600">
+                {caseEvents.slice(0, 8).map((eventItem) => (
+                  <li key={eventItem.id} className="rounded-lg border border-slate-100 bg-slate-50 p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{formatDateBR(eventItem.created_at)}</span>
+                      <StatusBadge value={eventItem.event_type} />
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-800">{eventItem.description}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-xs text-slate-500">Sem eventos registrados para este case.</p>
+            )}
+          </article>
+
           <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
             <h4 className="text-sm font-semibold text-slate-900">Tentativas de contato</h4>
             <label className="mt-3 block space-y-1 text-sm">

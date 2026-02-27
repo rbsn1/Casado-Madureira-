@@ -19,6 +19,7 @@ const TURNOS: Array<{ key: TurnoOrigem; label: string }> = [
   { key: "NAO_INFORMADO", label: "Não informado" }
 ];
 const TURNO_ORDER: TurnoOrigem[] = ["MANHA", "TARDE", "NOITE", "NAO_INFORMADO"];
+const MIN_ATTENDANCE_RATE_TO_GRADUATE = 75;
 
 type TurmaStatusValue = "pendente_matricula" | "em_discipulado" | "pausado" | "concluido";
 type TurmaPlanningDraft = {
@@ -68,6 +69,10 @@ function statusLabel(value: DiscipleshipCaseSummaryItem["status"]) {
 
 function turnoLabel(key: TurnoOrigem) {
   return TURNOS.find((item) => item.key === key)?.label ?? "Não informado";
+}
+
+function formatPercentage(value: number) {
+  return Number(value ?? 0).toFixed(1).replace(".", ",");
 }
 
 function toTurmaStatusValue(value: DiscipleshipCaseSummaryItem["status"]): TurmaStatusValue {
@@ -211,6 +216,9 @@ function CaseCard({
   const enrolledTurnos = caseTurnosByCaseId[item.case_id] ?? [];
   const enrolledTurnosLabel = enrolledTurnos.length ? enrolledTurnos.map(turnoLabel).join(" • ") : caseTurno;
   const hasMultiTurno = enrolledTurnos.length > 1;
+  const hasAttendanceData = item.attendance_total_classes > 0;
+  const attendanceReady =
+    item.attendance_total_classes > 0 && item.attendance_presence_rate >= MIN_ATTENDANCE_RATE_TO_GRADUATE;
 
   return (
     <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -230,6 +238,22 @@ function CaseCard({
       <p className="text-xs text-slate-700">
         Turnos nos módulos: <strong>{enrolledTurnosLabel}</strong>
         {hasMultiTurno ? <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700">MULTITURNO</span> : null}
+      </p>
+      <p className="text-xs text-slate-700">
+        Presença:{" "}
+        <strong>
+          {item.attendance_present_count}/{item.attendance_total_classes}
+        </strong>{" "}
+        ({formatPercentage(item.attendance_presence_rate)}%)
+        {hasAttendanceData ? (
+          <span
+            className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              attendanceReady ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {attendanceReady ? "APTO FORMAÇÃO" : "EM ACOMPANHAMENTO"}
+          </span>
+        ) : null}
       </p>
       <p className="mt-1 text-xs text-slate-700">
         Responsável: <strong>{item.discipulador_email ?? "A definir"}</strong>
@@ -497,6 +521,23 @@ export default function DiscipuladoBoardPage() {
     setSavingTurnoStatusKey(turnoKey);
     clearStatusMessage();
     const nextStatus = turnoStatusDrafts[turnoKey] ?? deriveTurnoStatus(turmaCases);
+    if (nextStatus === "concluido") {
+      const blocked = turmaCases.filter(
+        (item) =>
+          item.attendance_total_classes < 1 || Number(item.attendance_presence_rate) < MIN_ATTENDANCE_RATE_TO_GRADUATE
+      );
+      if (blocked.length) {
+        const preview = blocked
+          .slice(0, 3)
+          .map((item) => item.member_name)
+          .join(", ");
+        setErrorStatusMessage(
+          `Não foi possível finalizar a turma: ${blocked.length} case(s) sem frequência mínima de ${MIN_ATTENDANCE_RATE_TO_GRADUATE}% (ex.: ${preview}).`
+        );
+        setSavingTurnoStatusKey(null);
+        return;
+      }
+    }
     const caseIds = turmaCases.map((item) => item.case_id);
 
     const { error } = await supabaseClient
@@ -586,7 +627,10 @@ export default function DiscipuladoBoardPage() {
       <div>
         <p className="text-sm text-sky-700">Discipulado</p>
         <h2 className="text-xl font-semibold text-sky-950">Em Discipulado</h2>
-        <p className="mt-1 text-xs text-slate-600">Painel focado na gestão do status da turma por case.</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Painel focado na gestão do status da turma por case. Critério de formação: frequência mínima de{" "}
+          {MIN_ATTENDANCE_RATE_TO_GRADUATE}%.
+        </p>
       </div>
 
       {statusMessage ? (
@@ -628,6 +672,24 @@ export default function DiscipuladoBoardPage() {
             <section className="discipulado-panel p-4">
               <h3 className="text-sm font-semibold text-sky-900">{turnoLabel(mobileTurno)}</h3>
               <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3">
+                {(() => {
+                  const aggregate = (byTurno[mobileTurno] ?? []).reduce(
+                    (acc, item) => {
+                      acc.present += item.attendance_present_count;
+                      acc.total += item.attendance_total_classes;
+                      return acc;
+                    },
+                    { present: 0, total: 0 }
+                  );
+                  return (
+                    <p className="mb-1 text-xs text-slate-700">
+                      <span className="text-slate-500">Presenças:</span>{" "}
+                      <strong>
+                        {aggregate.present}/{aggregate.total}
+                      </strong>
+                    </p>
+                  );
+                })()}
                 <div className="space-y-1 text-xs text-slate-700">
                   <p>
                     <span className="text-slate-500">Módulo planejado:</span>{" "}
@@ -732,6 +794,27 @@ export default function DiscipuladoBoardPage() {
                 <section key={turno.key} className="discipulado-panel p-4">
                   <h3 className="text-sm font-semibold text-sky-900">{turno.label}</h3>
                   <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+                    {(() => {
+                      const aggregate = turnoCases.reduce(
+                        (acc, item) => {
+                          acc.present += item.attendance_present_count;
+                          acc.total += item.attendance_total_classes;
+                          return acc;
+                        },
+                        { present: 0, total: 0 }
+                      );
+                      return (
+                        <>
+                          <span>
+                            Presenças:{" "}
+                            <strong>
+                              {aggregate.present}/{aggregate.total}
+                            </strong>
+                          </span>
+                          <span className="text-slate-400">•</span>
+                        </>
+                      );
+                    })()}
                     <span>
                       Módulo:{" "}
                       <strong>

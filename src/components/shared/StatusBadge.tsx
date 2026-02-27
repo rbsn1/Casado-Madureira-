@@ -9,6 +9,7 @@ const variants: Record<string, string> = {
   NAO_INICIADO: "bg-slate-100 text-slate-700",
   ENCAMINHADO: "bg-accent-100 text-accent-600",
   CONTATO: "bg-brand-100 text-brand-900",
+  CHAMADA: "bg-info-100 text-info-600",
   CONCLUIDO: "bg-success-100 text-success-600",
   INTEGRADO: "bg-success-100 text-success-600",
   BATIZADO: "bg-accent-100 text-accent-600",
