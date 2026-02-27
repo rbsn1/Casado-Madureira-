@@ -5,6 +5,8 @@ export type OperationalStatusCardsModel = {
   vidas_acolhidas: number;
 };
 
+export type OperationalCardsPeriod = "day" | "month" | "year";
+
 export type ExecutiveKpiPeriod = "today" | "7d" | "30d";
 
 export type ExecutiveKpiModel = {

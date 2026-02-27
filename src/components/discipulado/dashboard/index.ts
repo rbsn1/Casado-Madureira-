@@ -8,6 +8,7 @@ export { RiskNowPanel } from "./RiskNowPanel";
 export { RecommendedActionsPanel } from "./RecommendedActionsPanel";
 export { ByAcolhedorTable } from "./ByAcolhedorTable";
 export type {
+  OperationalCardsPeriod,
   OperationalStatusCardsModel,
   ExecutiveKpiModel,
   ExecutiveKpiPeriod,

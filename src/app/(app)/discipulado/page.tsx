@@ -13,6 +13,7 @@ import {
   type DecisionsTrendPoint,
   type EvangelisticImpactKpis,
   type EvangelisticImpactPeriod,
+  type OperationalCardsPeriod,
   type OriginImpactRow
 } from "@/components/discipulado/dashboard";
 import { getAuthScope } from "@/lib/authScope";
@@ -183,6 +184,23 @@ function getImpactRange(period: EvangelisticImpactPeriod) {
   return { from, to, previousFrom, previousTo, days };
 }
 
+function getOperationalRange(period: OperationalCardsPeriod) {
+  const now = new Date();
+  const fromDate = new Date(now);
+
+  if (period === "day") {
+    fromDate.setHours(0, 0, 0, 0);
+  } else if (period === "month") {
+    fromDate.setDate(1);
+    fromDate.setHours(0, 0, 0, 0);
+  } else {
+    fromDate.setMonth(0, 1);
+    fromDate.setHours(0, 0, 0, 0);
+  }
+
+  return { from: fromDate.getTime(), to: now.getTime() + 1 };
+}
+
 function isMissingCultosTableError(error: { code?: string; message: string } | null) {
   if (!error) return false;
   const code = String(error.code ?? "");
@@ -218,6 +236,7 @@ export default function DiscipuladoDashboardPage() {
   const [congregationFilter, setCongregationFilter] = useState("");
 
   const [impactPeriod, setImpactPeriod] = useState<EvangelisticImpactPeriod>("30d");
+  const [operationalPeriod, setOperationalPeriod] = useState<OperationalCardsPeriod>("month");
   const [decisionsGranularity, setDecisionsGranularity] = useState<DecisionsChartGranularity>("day");
   const [impactLoading, setImpactLoading] = useState(true);
   const [impactStatusMessage, setImpactStatusMessage] = useState("");
@@ -771,25 +790,29 @@ export default function DiscipuladoDashboardPage() {
 
   const operationalCards = useMemo(
     () => {
-      const unconfirmedCases = mergedCases.filter((item) => item.confraternizacao_confirmada !== true);
+      const range = getOperationalRange(operationalPeriod);
+      const periodCases = mergedCases.filter((item) =>
+        inRange(parseTime(item.created_at), range.from, range.to)
+      );
+      const unconfirmedCases = periodCases.filter((item) => item.confraternizacao_confirmada !== true);
       const emAcolhimento = unconfirmedCases.filter(
         (item) => item.fase === "ACOLHIMENTO" && item.status !== "concluido"
       ).length;
       const emDiscipulado = mergedCases.length
-        ? mergedCases.filter(isInDiscipuladoBoard).length
+        ? periodCases.filter(isInDiscipuladoBoard).length
         : cards.em_discipulado;
       const concluidos = mergedCases.length
-        ? mergedCases.filter((item) => item.status === "concluido").length
+        ? periodCases.filter((item) => item.status === "concluido").length
         : cards.concluidos;
 
       return {
         em_discipulado: emDiscipulado,
         concluidos,
         em_acolhimento: emAcolhimento,
-        vidas_acolhidas: mergedCases.length || emDiscipulado + concluidos + emAcolhimento
+        vidas_acolhidas: mergedCases.length ? periodCases.length : emDiscipulado + concluidos + emAcolhimento
       };
     },
-    [cards.concluidos, cards.em_discipulado, mergedCases]
+    [cards.concluidos, cards.em_discipulado, mergedCases, operationalPeriod]
   );
 
   if (!hasAccess) {
@@ -845,7 +868,11 @@ export default function DiscipuladoDashboardPage() {
 
       {loading ? <div className="discipulado-panel p-5 text-sm text-slate-600">Carregando indicadores...</div> : null}
 
-      <OperationalStatusCards cards={operationalCards} />
+      <OperationalStatusCards
+        cards={operationalCards}
+        period={operationalPeriod}
+        onPeriodChange={setOperationalPeriod}
+      />
 
       {impactLoading ? <div className="discipulado-panel p-5 text-sm text-slate-600">Carregando impacto evangelístico...</div> : null}
 
