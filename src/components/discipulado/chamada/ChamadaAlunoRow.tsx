@@ -12,12 +12,13 @@ type ChamadaAlunoRowProps = {
   status: ChamadaStatus | null;
   observacao: string;
   saveState: "idle" | "saving" | "saved" | "error";
+  readOnly?: boolean;
   onStatusChange: (value: ChamadaStatus) => void;
   onObservacaoChange: (value: string) => void;
 };
 
 export function ChamadaAlunoRow(props: ChamadaAlunoRowProps) {
-  const { nome, status, observacao, saveState, onStatusChange, onObservacaoChange } = props;
+  const { nome, status, observacao, saveState, readOnly = false, onStatusChange, onObservacaoChange } = props;
   const [obsOpen, setObsOpen] = useState(Boolean(observacao));
 
   return (
@@ -39,11 +40,12 @@ export function ChamadaAlunoRow(props: ChamadaAlunoRowProps) {
             key={option.value}
             type="button"
             onClick={() => onStatusChange(option.value)}
+            disabled={readOnly}
             className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
               status === option.value
                 ? "border-sky-700 bg-sky-700 text-white"
                 : "border-slate-200 bg-white text-slate-700 hover:border-sky-300 hover:text-sky-900"
-            }`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             {option.label}
           </button>
@@ -54,10 +56,14 @@ export function ChamadaAlunoRow(props: ChamadaAlunoRowProps) {
         <div className="mt-3">
           <textarea
             value={observacao}
-            onChange={(event) => onObservacaoChange(event.target.value)}
+            onChange={(event) => {
+              if (readOnly) return;
+              onObservacaoChange(event.target.value);
+            }}
+            disabled={readOnly}
             rows={2}
             placeholder="Observação opcional"
-            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none"
+            className="min-h-11 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-400 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
           />
         </div>
       ) : null}

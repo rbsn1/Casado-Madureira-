@@ -16,6 +16,10 @@ export type AulaRecord = {
   data: string;
   tema: string | null;
   modulo_id: string | null;
+  fechada: boolean;
+  fechada_em: string | null;
+  fechada_por: string | null;
+  supportsFechamento: boolean;
 };
 
 export type ChamadaAluno = {
@@ -31,6 +35,42 @@ export type ChamadaItemRecord = {
   marcado_em: string | null;
   marcado_por: string | null;
 };
+
+function isMissingAulaFechamentoColumns(message: string, code?: string) {
+  return (
+    code === "42703" ||
+    code === "PGRST204" ||
+    message.includes("fechada") ||
+    message.includes("fechada_em") ||
+    message.includes("fechada_por")
+  );
+}
+
+function mapAulaRecord(
+  row: {
+    id: string;
+    turma_id: string;
+    data: string;
+    tema: string | null;
+    modulo_id: string | null;
+    fechada?: boolean | null;
+    fechada_em?: string | null;
+    fechada_por?: string | null;
+  },
+  supportsFechamento: boolean
+): AulaRecord {
+  return {
+    id: String(row.id),
+    turma_id: String(row.turma_id),
+    data: String(row.data),
+    tema: row.tema ?? null,
+    modulo_id: row.modulo_id ?? null,
+    fechada: supportsFechamento ? Boolean(row.fechada) : false,
+    fechada_em: supportsFechamento ? row.fechada_em ?? null : null,
+    fechada_por: supportsFechamento ? row.fechada_por ?? null : null,
+    supportsFechamento
+  };
+}
 
 function sanitizeFileNamePart(value: string) {
   return value
@@ -134,17 +174,64 @@ export async function getOrCreateAula(args: {
   const { data, error } = await supabaseClient
     .from("discipleship_aulas")
     .upsert(payload, { onConflict: "turma_id,data" })
-    .select("id, turma_id, data, tema, modulo_id")
+    .select("id, turma_id, data, tema, modulo_id, fechada, fechada_em, fechada_por")
     .single();
 
-  if (error) {
-    return { data: null as AulaRecord | null, errorMessage: error.message };
+  if (error && isMissingAulaFechamentoColumns(error.message, error.code)) {
+    const fallback = await supabaseClient
+      .from("discipleship_aulas")
+      .upsert(payload, { onConflict: "turma_id,data" })
+      .select("id, turma_id, data, tema, modulo_id")
+      .single();
+
+    if (fallback.error) {
+      return { data: null as AulaRecord | null, errorMessage: fallback.error.message };
+    }
+
+    return {
+      data: mapAulaRecord(fallback.data as any, false),
+      errorMessage: ""
+    };
+  }
+
+  if (error || !data) {
+    return { data: null as AulaRecord | null, errorMessage: error?.message ?? "Falha ao abrir chamada." };
   }
 
   return {
-    data: data as AulaRecord,
+    data: mapAulaRecord(data as any, true),
     errorMessage: ""
   };
+}
+
+export async function closeAula(args: {
+  aulaId: string;
+  fechadoPor?: string | null;
+}) {
+  if (!supabaseClient) {
+    return { errorMessage: "Supabase não configurado." };
+  }
+
+  const { error } = await supabaseClient
+    .from("discipleship_aulas")
+    .update({
+      fechada: true,
+      fechada_em: new Date().toISOString(),
+      fechada_por: args.fechadoPor ?? null
+    })
+    .eq("id", args.aulaId);
+
+  if (error) {
+    if (isMissingAulaFechamentoColumns(error.message, error.code)) {
+      return {
+        errorMessage:
+          "Fechamento de chamada indisponível neste ambiente. Aplique a migration 0063_discipulado_chamada_fechamento.sql."
+      };
+    }
+    return { errorMessage: error.message };
+  }
+
+  return { errorMessage: "" };
 }
 
 export async function loadChamadaItens(aulaId: string) {

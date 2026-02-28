@@ -3,6 +3,7 @@ import {
   ChamadaAluno,
   ChamadaStatus,
   exportChamadaCSV,
+  closeAula,
   getOrCreateAula,
   loadChamadaItens,
   loadTurmaAlunos,
@@ -52,6 +53,8 @@ export function ChamadaSection() {
   const [tema, setTema] = useState("");
   const [moduloId, setModuloId] = useState("");
   const [activeAulaId, setActiveAulaId] = useState<string | null>(null);
+  const [activeAulaFechada, setActiveAulaFechada] = useState(false);
+  const [activeAulaSupportsFechamento, setActiveAulaSupportsFechamento] = useState(true);
   const [alunos, setAlunos] = useState<ChamadaAluno[]>([]);
   const [draftByAlunoId, setDraftByAlunoId] = useState<DraftByAlunoId>({});
   const [saveStateByAlunoId, setSaveStateByAlunoId] = useState<Record<string, SaveState>>({});
@@ -132,7 +135,7 @@ export function ChamadaSection() {
 
   const persistAlunoDraft = useCallback(
     async (alunoId: string, draft: { status: ChamadaStatus | null; observacao: string }) => {
-      if (!activeAulaId) return;
+      if (!activeAulaId || activeAulaFechada) return;
       setSaveStateByAlunoId((prev) => ({ ...prev, [alunoId]: "saving" }));
       setGlobalSavingState("saving");
 
@@ -157,7 +160,7 @@ export function ChamadaSection() {
         setSaveStateByAlunoId((prev) => ({ ...prev, [alunoId]: "idle" }));
       }, 1200);
     },
-    [activeAulaId, currentUserId, setSavedPulse]
+    [activeAulaFechada, activeAulaId, currentUserId, setSavedPulse]
   );
 
   const queueAlunoSave = useCallback(
@@ -226,15 +229,24 @@ export function ChamadaSection() {
     }
 
     setActiveAulaId(aula.id);
+    setActiveAulaFechada(aula.fechada);
+    setActiveAulaSupportsFechamento(aula.supportsFechamento);
     setAlunos(alunosData);
     setDraftByAlunoId(nextDraft);
     setSaveStateByAlunoId(nextSaveState);
     setGlobalSavingState("idle");
+    if (!aula.supportsFechamento) {
+      setStatusMessage("Fechamento de chamada indisponível neste ambiente. Aplique a migration 0063_discipulado_chamada_fechamento.sql.");
+    }
     setOpeningAula(false);
   }, [currentUserId, moduloId, selectedDate, selectedTurmaId, tema]);
 
   const handleStatusChange = useCallback(
     (alunoId: string, value: ChamadaStatus) => {
+      if (activeAulaFechada) {
+        setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
+        return;
+      }
       setDraftByAlunoId((prev) => {
         const nextDraft = {
           ...prev,
@@ -247,11 +259,15 @@ export function ChamadaSection() {
         return nextDraft;
       });
     },
-    [queueAlunoSave]
+    [activeAulaFechada, queueAlunoSave]
   );
 
   const handleObservacaoChange = useCallback(
     (alunoId: string, value: string) => {
+      if (activeAulaFechada) {
+        setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
+        return;
+      }
       setDraftByAlunoId((prev) => {
         const nextDraft = {
           ...prev,
@@ -264,11 +280,14 @@ export function ChamadaSection() {
         return nextDraft;
       });
     },
-    [queueAlunoSave]
+    [activeAulaFechada, queueAlunoSave]
   );
 
   const handleMarkAllPresent = useCallback(() => {
-    if (!activeAulaId) return;
+    if (!activeAulaId || activeAulaFechada) {
+      if (activeAulaFechada) setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
+      return;
+    }
     setDraftByAlunoId((prev) => {
       const next = { ...prev };
       for (const aluno of alunos) {
@@ -281,10 +300,13 @@ export function ChamadaSection() {
       }
       return next;
     });
-  }, [activeAulaId, alunos, queueAlunoSave]);
+  }, [activeAulaFechada, activeAulaId, alunos, queueAlunoSave]);
 
   const handleClear = useCallback(() => {
-    if (!activeAulaId) return;
+    if (!activeAulaId || activeAulaFechada) {
+      if (activeAulaFechada) setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
+      return;
+    }
     setDraftByAlunoId((prev) => {
       const next = { ...prev };
       for (const aluno of alunos) {
@@ -298,7 +320,7 @@ export function ChamadaSection() {
       }
       return next;
     });
-  }, [activeAulaId, alunos, queueAlunoSave]);
+  }, [activeAulaFechada, activeAulaId, alunos, queueAlunoSave]);
 
   const handleExport = useCallback(() => {
     if (!selectedTurma || !activeAulaId) {
@@ -320,6 +342,35 @@ export function ChamadaSection() {
       })
     });
   }, [activeAulaId, alunos, draftByAlunoId, selectedDate, selectedTurma, tema]);
+
+  const handleCloseAula = useCallback(async () => {
+    if (!activeAulaId) return;
+    if (activeAulaFechada) {
+      setStatusMessage("Esta chamada já está fechada.");
+      return;
+    }
+    if (!activeAulaSupportsFechamento) {
+      setStatusMessage("Fechamento de chamada indisponível neste ambiente. Aplique a migration 0063_discipulado_chamada_fechamento.sql.");
+      return;
+    }
+    if (globalSavingState === "saving") {
+      setStatusMessage("Aguarde o término do salvamento antes de fechar a chamada.");
+      return;
+    }
+
+    const { errorMessage } = await closeAula({
+      aulaId: activeAulaId,
+      fechadoPor: currentUserId
+    });
+
+    if (errorMessage) {
+      setStatusMessage(errorMessage);
+      return;
+    }
+
+    setActiveAulaFechada(true);
+    setStatusMessage("Chamada fechada com sucesso.");
+  }, [activeAulaFechada, activeAulaId, activeAulaSupportsFechamento, currentUserId, globalSavingState]);
 
   return (
     <section className="space-y-4" aria-label="Chamada">
@@ -349,6 +400,8 @@ export function ChamadaSection() {
           turmaNome={selectedTurma?.nome ?? "Turma"}
           date={selectedDate}
           tema={tema}
+          isAulaFechada={activeAulaFechada}
+          supportsFechamento={activeAulaSupportsFechamento}
           alunos={alunos}
           draftByAlunoId={draftByAlunoId}
           saveStateByAlunoId={saveStateByAlunoId}
@@ -358,6 +411,9 @@ export function ChamadaSection() {
           onMarkAllPresent={handleMarkAllPresent}
           onClear={handleClear}
           onExport={handleExport}
+          onCloseAula={() => {
+            void handleCloseAula();
+          }}
         />
       ) : (
         <div className="discipulado-panel p-4 text-sm text-slate-600">Selecione turma e data para abrir a chamada.</div>

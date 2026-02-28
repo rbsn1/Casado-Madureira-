@@ -13,6 +13,8 @@ type ChamadaListProps = {
   turmaNome: string;
   date: string;
   tema: string;
+  isAulaFechada: boolean;
+  supportsFechamento: boolean;
   alunos: ChamadaAluno[];
   draftByAlunoId: ChamadaDraftByAlunoId;
   saveStateByAlunoId: Record<string, "idle" | "saving" | "saved" | "error">;
@@ -22,6 +24,7 @@ type ChamadaListProps = {
   onMarkAllPresent: () => void;
   onClear: () => void;
   onExport: () => void;
+  onCloseAula: () => void;
 };
 
 export function ChamadaList(props: ChamadaListProps) {
@@ -29,6 +32,8 @@ export function ChamadaList(props: ChamadaListProps) {
     turmaNome,
     date,
     tema,
+    isAulaFechada,
+    supportsFechamento,
     alunos,
     draftByAlunoId,
     saveStateByAlunoId,
@@ -37,7 +42,8 @@ export function ChamadaList(props: ChamadaListProps) {
     onObservacaoChange,
     onMarkAllPresent,
     onClear,
-    onExport
+    onExport,
+    onCloseAula
   } = props;
 
   return (
@@ -58,6 +64,7 @@ export function ChamadaList(props: ChamadaListProps) {
         <button
           type="button"
           onClick={onMarkAllPresent}
+          disabled={isAulaFechada}
           className="min-h-11 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
         >
           Marcar todos como Presente
@@ -65,6 +72,7 @@ export function ChamadaList(props: ChamadaListProps) {
         <button
           type="button"
           onClick={onClear}
+          disabled={isAulaFechada}
           className="min-h-11 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
         >
           Limpar marcações
@@ -76,6 +84,16 @@ export function ChamadaList(props: ChamadaListProps) {
         >
           Exportar
         </button>
+        {supportsFechamento ? (
+          <button
+            type="button"
+            onClick={onCloseAula}
+            disabled={isAulaFechada || globalSavingState === "saving"}
+            className="min-h-11 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isAulaFechada ? "Chamada fechada" : "Fechar chamada"}
+          </button>
+        ) : null}
       </div>
 
       <div className="mt-4 grid gap-2">
@@ -93,6 +111,7 @@ export function ChamadaList(props: ChamadaListProps) {
                 status={draft.status}
                 observacao={draft.observacao}
                 saveState={saveStateByAlunoId[aluno.alunoId] ?? "idle"}
+                readOnly={isAulaFechada}
                 onStatusChange={(value) => onStatusChange(aluno.alunoId, value)}
                 onObservacaoChange={(value) => onObservacaoChange(aluno.alunoId, value)}
               />
