@@ -610,9 +610,7 @@ export default function LoginPage() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
                 Gálatas 4:19
               </p>
-              <p className="text-sm font-semibold text-emerald-900 sm:text-base">
-                Meus filhinhos, por quem de novo sinto as dores de parto, até ser Cristo formado em vós.
-              </p>
+              <p className="text-sm font-semibold text-emerald-900 sm:text-base">...até ser Cristo formado em vós.</p>
               <p className="text-xs text-slate-600/90">
                 Texto base do nosso projeto de acolhimento.
               </p>
