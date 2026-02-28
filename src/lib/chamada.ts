@@ -312,6 +312,44 @@ export async function upsertChamadaItem(args: {
   return { data: data as ChamadaItemRecord, errorMessage: "" };
 }
 
+export async function upsertChamadaItemsBatch(args: {
+  aulaId: string;
+  items: Array<{
+    alunoId: string;
+    status: ChamadaStatus | null;
+    observacao?: string | null;
+  }>;
+  marcadoPor?: string | null;
+}) {
+  if (!supabaseClient) {
+    return { errorMessage: "Supabase não configurado." };
+  }
+
+  if (!args.items.length) {
+    return { errorMessage: "" };
+  }
+
+  const nowIso = new Date().toISOString();
+  const payload = args.items.map((item) => ({
+    aula_id: args.aulaId,
+    aluno_id: item.alunoId,
+    status: item.status,
+    observacao: item.observacao?.trim() ? item.observacao.trim() : null,
+    marcado_em: nowIso,
+    marcado_por: args.marcadoPor ?? null
+  }));
+
+  const { error } = await supabaseClient.from("discipleship_chamada_itens").upsert(payload, {
+    onConflict: "aula_id,aluno_id"
+  });
+
+  if (error) {
+    return { errorMessage: error.message };
+  }
+
+  return { errorMessage: "" };
+}
+
 export function exportChamadaCSV(args: {
   turmaNome: string;
   data: string;

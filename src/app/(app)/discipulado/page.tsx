@@ -40,18 +40,6 @@ type Congregation = {
   name: string;
 };
 
-type DiscipleshipCaseBaseRow = {
-  id: string;
-  member_id: string;
-  assigned_to: string | null;
-  status: "pendente_matricula" | "em_discipulado" | "concluido" | "pausado";
-  created_at: string;
-  updated_at: string;
-  criticality: "BAIXA" | "MEDIA" | "ALTA" | "CRITICA";
-  days_to_confra: number | null;
-  negative_contact_count: number;
-};
-
 type ContactAttemptRow = {
   case_id: string;
   outcome: string;
@@ -224,7 +212,6 @@ export default function DiscipuladoDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<DashboardCards>(emptyCards);
   const [caseSummaries, setCaseSummaries] = useState<DiscipleshipCaseSummaryItem[]>([]);
-  const [caseRows, setCaseRows] = useState<DiscipleshipCaseBaseRow[]>([]);
   const [contactAttempts, setContactAttempts] = useState<ContactAttemptRow[]>([]);
 
   const [hasAccess, setHasAccess] = useState(false);
@@ -274,7 +261,6 @@ export default function DiscipuladoDashboardPage() {
     if (summariesResult.errorMessage) {
       setStatusMessage((prev) => prev || summariesResult.errorMessage);
       setCaseSummaries([]);
-      setCaseRows([]);
       setContactAttempts([]);
       setLoading(false);
       return;
@@ -283,7 +269,6 @@ export default function DiscipuladoDashboardPage() {
     const summaries = summariesResult.data ?? [];
     setCaseSummaries(summaries);
     if (!summaries.length) {
-      setCaseRows([]);
       setContactAttempts([]);
       setLoading(false);
       return;
@@ -291,25 +276,11 @@ export default function DiscipuladoDashboardPage() {
 
     const caseIds = [...new Set(summaries.map((item) => item.case_id))];
 
-    const [casesBaseResult, attemptsResult] = await Promise.all([
-      supabaseClient
-        .from("discipleship_cases")
-        .select("id, member_id, assigned_to, status, created_at, updated_at, criticality, days_to_confra, negative_contact_count")
-        .in("id", caseIds),
-      supabaseClient
-        .from("contact_attempts")
-        .select("case_id, outcome, created_at")
-        .in("case_id", caseIds)
-        .order("created_at", { ascending: true })
-    ]);
-
-    if (casesBaseResult.error) {
-      setStatusMessage((prev) => prev || casesBaseResult.error?.message || "Falha ao carregar casos.");
-      setCaseRows([]);
-    } else {
-      const baseRows = (casesBaseResult.data ?? []) as DiscipleshipCaseBaseRow[];
-      setCaseRows(baseRows);
-    }
+    const attemptsResult = await supabaseClient
+      .from("contact_attempts")
+      .select("case_id, outcome, created_at")
+      .in("case_id", caseIds)
+      .order("created_at", { ascending: true });
 
     if (attemptsResult.error) {
       const message = String(attemptsResult.error.message ?? "");
@@ -373,41 +344,22 @@ export default function DiscipuladoDashboardPage() {
         error: initialCultosResult.error
       };
 
-      if (decisionsResult.error && adminMaster && targetCongregation && decisionsResult.error.code === "42703") {
-        const fallbackResult = await supabaseClient
-          .from("pessoas")
-          .select("id, created_at, origem")
-          .gte("created_at", startIso)
-          .lt("created_at", endIso);
-        decisionsResult = {
-          data: (fallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
-          error: fallbackResult.error
-        };
-      }
-
       if (decisionsResult.error && decisionsResult.error.code === "42703") {
-        const fallbackResult = await supabaseClient
+        let fallbackQuery = supabaseClient
           .from("pessoas")
           .select("id, created_at, origem")
           .gte("created_at", startIso)
           .lt("created_at", endIso);
+
+        if (adminMaster && targetCongregation) {
+          fallbackQuery = fallbackQuery.eq("congregation_id", targetCongregation);
+        }
+
+        const fallbackResult = await fallbackQuery;
         decisionsResult = {
           data: (fallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
           error: fallbackResult.error
         };
-
-        if (adminMaster && targetCongregation && !decisionsResult.error) {
-          const scopedFallbackResult = await supabaseClient
-            .from("pessoas")
-            .select("id, created_at, origem")
-            .eq("congregation_id", targetCongregation)
-            .gte("created_at", startIso)
-            .lt("created_at", endIso);
-          decisionsResult = {
-            data: (scopedFallbackResult.data ?? null) as EvangelisticDecisionRow[] | null,
-            error: scopedFallbackResult.error
-          };
-        }
       }
 
       if (cultosResult.error && adminMaster && targetCongregation && cultosResult.error.code === "42703") {
@@ -539,11 +491,8 @@ export default function DiscipuladoDashboardPage() {
       attemptsByCase.set(attempt.case_id, current);
     }
 
-    const baseByCaseId = new Map(caseRows.map((row) => [row.id, row]));
-
     return caseSummaries.map((summary) => {
-      const base = baseByCaseId.get(summary.case_id);
-      const createdAt = base?.created_at ?? summary.updated_at;
+      const createdAt = summary.created_at ?? summary.updated_at;
       const fallbackCreated = parseTime(createdAt) ?? now;
       const contactStats = attemptsByCase.get(summary.case_id);
       const firstContact = contactStats?.first ?? null;
@@ -552,11 +501,6 @@ export default function DiscipuladoDashboardPage() {
 
       return {
         ...summary,
-        status: base?.status ?? summary.status,
-        assigned_to: base?.assigned_to ?? summary.assigned_to,
-        criticality: base?.criticality ?? summary.criticality,
-        days_to_confra: base?.days_to_confra ?? summary.days_to_confra,
-        negative_contact_count: base?.negative_contact_count ?? summary.negative_contact_count,
         created_at: createdAt,
         first_contact_at: firstContact ? new Date(firstContact).toISOString() : null,
         last_contact_at: lastContact ? new Date(lastContact).toISOString() : null,
@@ -564,7 +508,7 @@ export default function DiscipuladoDashboardPage() {
         phone_valid: isPhoneValid(summary.member_phone)
       } satisfies MergedCase;
     });
-  }, [caseRows, caseSummaries, contactAttempts]);
+  }, [caseSummaries, contactAttempts]);
 
   const impactRange = useMemo(() => getImpactRange(impactPeriod), [impactPeriod]);
 

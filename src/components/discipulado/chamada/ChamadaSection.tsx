@@ -10,7 +10,8 @@ import {
   loadTurmaAlunos,
   loadTurmas,
   TurmaOption,
-  upsertChamadaItem
+  upsertChamadaItem,
+  upsertChamadaItemsBatch
 } from "@/lib/chamada";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { AulaHeaderForm } from "./AulaHeaderForm";
@@ -176,6 +177,66 @@ export function ChamadaSection() {
     [persistAlunoDraft]
   );
 
+  const persistBatchDraft = useCallback(
+    async (nextDraftByAlunoId: DraftByAlunoId, alunoIds: string[]) => {
+      if (!activeAulaId || activeAulaFechada || !alunoIds.length) return;
+
+      for (const alunoId of alunoIds) {
+        const timer = timersRef.current[alunoId];
+        if (timer) {
+          clearTimeout(timer);
+          delete timersRef.current[alunoId];
+        }
+      }
+
+      setSaveStateByAlunoId((prev) => {
+        const next = { ...prev };
+        for (const alunoId of alunoIds) next[alunoId] = "saving";
+        return next;
+      });
+      setGlobalSavingState("saving");
+
+      const { errorMessage } = await upsertChamadaItemsBatch({
+        aulaId: activeAulaId,
+        marcadoPor: currentUserId,
+        items: alunoIds.map((alunoId) => ({
+          alunoId,
+          status: nextDraftByAlunoId[alunoId]?.status ?? null,
+          observacao: nextDraftByAlunoId[alunoId]?.observacao ?? ""
+        }))
+      });
+
+      if (errorMessage) {
+        setSaveStateByAlunoId((prev) => {
+          const next = { ...prev };
+          for (const alunoId of alunoIds) next[alunoId] = "error";
+          return next;
+        });
+        setStatusMessage(errorMessage);
+        setGlobalSavingState("idle");
+        return;
+      }
+
+      setSaveStateByAlunoId((prev) => {
+        const next = { ...prev };
+        for (const alunoId of alunoIds) next[alunoId] = "saved";
+        return next;
+      });
+      setSavedPulse();
+
+      setTimeout(() => {
+        setSaveStateByAlunoId((prev) => {
+          const next = { ...prev };
+          for (const alunoId of alunoIds) {
+            if (next[alunoId] === "saved") next[alunoId] = "idle";
+          }
+          return next;
+        });
+      }, 1200);
+    },
+    [activeAulaFechada, activeAulaId, currentUserId, setSavedPulse]
+  );
+
   const handleOpenAula = useCallback(async () => {
     if (!selectedTurmaId || !selectedDate) {
       setStatusMessage("Selecione turma e data para abrir a chamada.");
@@ -291,39 +352,35 @@ export function ChamadaSection() {
       if (activeAulaFechada) setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
       return;
     }
-    setDraftByAlunoId((prev) => {
-      const next = { ...prev };
-      for (const aluno of alunos) {
-        const draft = {
-          ...(next[aluno.alunoId] ?? { status: null, observacao: "" }),
-          status: "PRESENTE" as ChamadaStatus
-        };
-        next[aluno.alunoId] = draft;
-        queueAlunoSave(aluno.alunoId, draft);
-      }
-      return next;
-    });
-  }, [activeAulaFechada, activeAulaId, alunos, queueAlunoSave]);
+    const alunoIds = alunos.map((aluno) => aluno.alunoId);
+    const nextDraft = { ...draftByAlunoId };
+    for (const aluno of alunos) {
+      nextDraft[aluno.alunoId] = {
+        ...(nextDraft[aluno.alunoId] ?? { status: null, observacao: "" }),
+        status: "PRESENTE"
+      };
+    }
+    setDraftByAlunoId(nextDraft);
+    void persistBatchDraft(nextDraft, alunoIds);
+  }, [activeAulaFechada, activeAulaId, alunos, draftByAlunoId, persistBatchDraft]);
 
   const handleClear = useCallback(() => {
     if (!activeAulaId || activeAulaFechada) {
       if (activeAulaFechada) setStatusMessage("A chamada está fechada e não pode mais ser alterada.");
       return;
     }
-    setDraftByAlunoId((prev) => {
-      const next = { ...prev };
-      for (const aluno of alunos) {
-        const draft = {
-          ...(next[aluno.alunoId] ?? { status: null, observacao: "" }),
-          status: null,
-          observacao: ""
-        };
-        next[aluno.alunoId] = draft;
-        queueAlunoSave(aluno.alunoId, draft);
-      }
-      return next;
-    });
-  }, [activeAulaFechada, activeAulaId, alunos, queueAlunoSave]);
+    const alunoIds = alunos.map((aluno) => aluno.alunoId);
+    const nextDraft = { ...draftByAlunoId };
+    for (const aluno of alunos) {
+      nextDraft[aluno.alunoId] = {
+        ...(nextDraft[aluno.alunoId] ?? { status: null, observacao: "" }),
+        status: null,
+        observacao: ""
+      };
+    }
+    setDraftByAlunoId(nextDraft);
+    void persistBatchDraft(nextDraft, alunoIds);
+  }, [activeAulaFechada, activeAulaId, alunos, draftByAlunoId, persistBatchDraft]);
 
   const handleExport = useCallback(() => {
     if (!selectedTurma || !activeAulaId) {

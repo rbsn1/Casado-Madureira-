@@ -11,6 +11,7 @@ export type DiscipleshipCaseSummaryItem = {
   discipulador_email: string | null;
   status: DiscipleshipCaseStatus;
   notes: string | null;
+  created_at: string;
   updated_at: string;
   done_modules: number;
   total_modules: number;
@@ -45,6 +46,7 @@ type FallbackCaseRow = {
   assigned_to: string | null;
   status: DiscipleshipCaseStatus;
   notes: string | null;
+  created_at: string;
   updated_at: string;
   criticality?: "BAIXA" | "MEDIA" | "ALTA" | "CRITICA" | null;
   negative_contact_count?: number | null;
@@ -211,6 +213,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
         discipulador_email: item.discipulador_email ?? null,
         status: (item.status ?? "pendente_matricula") as DiscipleshipCaseStatus,
         notes: item.notes ?? null,
+        created_at: String(item.created_at ?? item.updated_at ?? new Date().toISOString()),
         updated_at: String(item.updated_at ?? new Date().toISOString()),
         done_modules: Number(item.done_modules ?? 0),
         total_modules: Number(item.total_modules ?? 0),
@@ -251,7 +254,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
   }
 
   const baseSelect =
-    "id, member_id, assigned_to, status, notes, updated_at, criticality, negative_contact_count, days_to_confra, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate";
+    "id, member_id, assigned_to, status, notes, created_at, updated_at, criticality, negative_contact_count, days_to_confra, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate";
   let hasCriticalityColumns = true;
   let hasAttendanceColumns = true;
   let baseQuery = supabaseClient
@@ -281,7 +284,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
     hasAttendanceColumns = false;
     let fallbackQuery = supabaseClient
       .from("discipleship_cases")
-      .select("id, member_id, assigned_to, status, notes, updated_at")
+      .select("id, member_id, assigned_to, status, notes, created_at, updated_at")
       .order("updated_at", { ascending: false })
       .limit(rowsLimit);
     if (targetCongregationId) {
@@ -362,6 +365,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
       discipulador_email: item.assigned_to ? `ID ${item.assigned_to.slice(0, 8)}` : null,
       status: item.status,
       notes: item.notes,
+      created_at: item.created_at ?? item.updated_at,
       updated_at: item.updated_at,
       done_modules: progress.done,
       total_modules: progress.total,
