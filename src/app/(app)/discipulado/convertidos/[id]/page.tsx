@@ -1904,50 +1904,52 @@ export default function DiscipulandoDetalhePage() {
             )}
           </article>
 
-          <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
-            <h4 className="text-sm font-semibold text-slate-900">Vincular ao departamento</h4>
-            <label className="mt-3 block space-y-1 text-sm">
-              <span className="text-slate-700">Departamento</span>
-              <select
-                value={selectedDepartmentId}
-                onChange={(event) => setSelectedDepartmentId(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+          {caseData?.status === "concluido" ? (
+            <article className="rounded-xl border border-slate-100 bg-white p-4 lg:col-span-1">
+              <h4 className="text-sm font-semibold text-slate-900">Vincular ao departamento</h4>
+              <label className="mt-3 block space-y-1 text-sm">
+                <span className="text-slate-700">Departamento</span>
+                <select
+                  value={selectedDepartmentId}
+                  onChange={(event) => setSelectedDepartmentId(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                >
+                  <option value="">Selecione</option>
+                  {departments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-3 block space-y-1 text-sm">
+                <span className="text-slate-700">Função (opcional)</span>
+                <input
+                  value={departmentRoleDraft}
+                  onChange={(event) => setDepartmentRoleDraft(event.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleLinkDepartment}
+                className="mt-3 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-800"
               >
-                <option value="">Selecione</option>
-                {departments.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="mt-3 block space-y-1 text-sm">
-              <span className="text-slate-700">Função (opcional)</span>
-              <input
-                value={departmentRoleDraft}
-                onChange={(event) => setDepartmentRoleDraft(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={handleLinkDepartment}
-              className="mt-3 rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-800"
-            >
-              Vincular departamento
-            </button>
-            {departmentLinks.length ? (
-              <ul className="mt-3 space-y-1 text-xs text-slate-600">
-                {departmentLinks.slice(0, 5).map((item) => (
-                  <li key={item.id}>
-                    {departmentNameById[item.departamento_id] ?? "Departamento"} • {item.funcao ?? "Sem função"}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-3 text-xs text-slate-500">Sem vínculo em departamento.</p>
-            )}
-          </article>
+                Vincular departamento
+              </button>
+              {departmentLinks.length ? (
+                <ul className="mt-3 space-y-1 text-xs text-slate-600">
+                  {departmentLinks.slice(0, 5).map((item) => (
+                    <li key={item.id}>
+                      {departmentNameById[item.departamento_id] ?? "Departamento"} • {item.funcao ?? "Sem função"}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">Sem vínculo em departamento.</p>
+              )}
+            </article>
+          ) : null}
         </div>
       </section>
     </div>
