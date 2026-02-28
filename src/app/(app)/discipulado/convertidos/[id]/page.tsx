@@ -34,6 +34,8 @@ type CaseItem = {
   attendance_absent_count: number;
   attendance_justified_count: number;
   attendance_presence_rate: number;
+  confraternizacao_confirmada: boolean;
+  confraternizacao_compareceu: boolean;
 };
 
 type MemberItem = {
@@ -180,7 +182,9 @@ function isMissingCriticalityCaseColumns(message: string, code?: string) {
     message.includes("attendance_present_count") ||
     message.includes("attendance_absent_count") ||
     message.includes("attendance_justified_count") ||
-    message.includes("attendance_presence_rate")
+    message.includes("attendance_presence_rate") ||
+    message.includes("confraternizacao_confirmada") ||
+    message.includes("confraternizacao_compareceu")
   );
 }
 
@@ -354,7 +358,7 @@ export default function DiscipulandoDetalhePage() {
     let caseResult = await supabaseClient
       .from("discipleship_cases")
       .select(
-        "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate"
+        "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate, confraternizacao_confirmada, confraternizacao_compareceu"
       )
       .eq("id", caseId)
       .single();
@@ -406,7 +410,9 @@ export default function DiscipulandoDetalhePage() {
       attendance_present_count: hasCaseAttendance ? Number(baseCase.attendance_present_count ?? 0) : 0,
       attendance_absent_count: hasCaseAttendance ? Number(baseCase.attendance_absent_count ?? 0) : 0,
       attendance_justified_count: hasCaseAttendance ? Number(baseCase.attendance_justified_count ?? 0) : 0,
-      attendance_presence_rate: hasCaseAttendance ? Number(baseCase.attendance_presence_rate ?? 0) : 0
+      attendance_presence_rate: hasCaseAttendance ? Number(baseCase.attendance_presence_rate ?? 0) : 0,
+      confraternizacao_confirmada: Boolean((baseCase as any).confraternizacao_confirmada),
+      confraternizacao_compareceu: Boolean((baseCase as any).confraternizacao_compareceu)
     };
     setCaseData(currentCase);
     setCurrentUserId(userData.user?.id ?? null);
@@ -935,6 +941,10 @@ export default function DiscipulandoDetalhePage() {
   async function handleEnrollInModule() {
     if (!supabaseClient || !caseData || !enrollmentModuleId) return;
     setStatusMessage("");
+    if (!caseData.confraternizacao_compareceu) {
+      setStatusMessage("Matrícula liberada apenas para quem confirmou presença na lista da confraternização.");
+      return;
+    }
     if (!enrollmentTurnoDraft) {
       setStatusMessage("Selecione o turno para a matrícula.");
       return;
@@ -1593,73 +1603,79 @@ export default function DiscipulandoDetalhePage() {
           <div className="h-2 rounded-full bg-sky-600" style={{ width: `${progressPercent}%` }} />
         </div>
 
-        <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
-          <h4 className="text-sm font-semibold text-slate-900">Matrícula em módulos</h4>
-          <p className="mt-1 text-xs text-slate-600">
-            O mesmo membro pode ser matriculado em vários módulos. Na primeira matrícula o case muda
-            automaticamente para Em discipulado.
-          </p>
-          {availableModulesForEnrollment.length ? (
-            <>
-              <div className="mt-3 grid gap-2 md:grid-cols-4">
-                <label className="space-y-1 text-sm md:col-span-2">
-                  <span className="text-slate-700">Módulo disponível</span>
-                  <select
-                    value={enrollmentModuleId}
-                    onChange={(event) => setEnrollmentModuleId(event.target.value)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    {availableModulesForEnrollment.map((moduleItem) => (
-                      <option key={moduleItem.id} value={moduleItem.id}>
-                        {moduleItem.title}
-                      </option>
-                    ))}
-                    </select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  <span className="text-slate-700">Turno da turma</span>
-                  <select
-                    value={enrollmentTurnoDraft}
-                    onChange={(event) => setEnrollmentTurnoDraft(event.target.value as EnrollmentTurno)}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    {ENROLLMENT_TURNO_OPTIONS.map((turno) => (
-                      <option key={turno.value} value={turno.value}>
-                        {turno.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  <span className="text-slate-700">Status inicial</span>
-                  <select
-                    value={enrollmentStatusDraft}
-                    onChange={(event) => setEnrollmentStatusDraft(event.target.value as ProgressItem["status"])}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
-                  >
-                    <option value="nao_iniciado">Não iniciado</option>
-                    <option value="em_andamento">Em andamento</option>
-                    <option value="concluido">Concluído</option>
-                  </select>
-                </label>
-              </div>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={handleEnrollInModule}
-                  disabled={!enrollmentModuleId}
-                  className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  Matricular em módulo
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-              Todos os módulos ativos desta congregação já estão matriculados neste case.
+        {caseData?.confraternizacao_compareceu ? (
+          <div className="mt-4 rounded-xl border border-slate-100 bg-white p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Matrícula em módulos</h4>
+            <p className="mt-1 text-xs text-slate-600">
+              O mesmo membro pode ser matriculado em vários módulos. Na primeira matrícula o case muda
+              automaticamente para Em discipulado.
             </p>
-          )}
-        </div>
+            {availableModulesForEnrollment.length ? (
+              <>
+                <div className="mt-3 grid gap-2 md:grid-cols-4">
+                  <label className="space-y-1 text-sm md:col-span-2">
+                    <span className="text-slate-700">Módulo disponível</span>
+                    <select
+                      value={enrollmentModuleId}
+                      onChange={(event) => setEnrollmentModuleId(event.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                    >
+                      {availableModulesForEnrollment.map((moduleItem) => (
+                        <option key={moduleItem.id} value={moduleItem.id}>
+                          {moduleItem.title}
+                        </option>
+                      ))}
+                      </select>
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="text-slate-700">Turno da turma</span>
+                    <select
+                      value={enrollmentTurnoDraft}
+                      onChange={(event) => setEnrollmentTurnoDraft(event.target.value as EnrollmentTurno)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                    >
+                      {ENROLLMENT_TURNO_OPTIONS.map((turno) => (
+                        <option key={turno.value} value={turno.value}>
+                          {turno.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="space-y-1 text-sm">
+                    <span className="text-slate-700">Status inicial</span>
+                    <select
+                      value={enrollmentStatusDraft}
+                      onChange={(event) => setEnrollmentStatusDraft(event.target.value as ProgressItem["status"])}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-sky-400 focus:outline-none"
+                    >
+                      <option value="nao_iniciado">Não iniciado</option>
+                      <option value="em_andamento">Em andamento</option>
+                      <option value="concluido">Concluído</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={handleEnrollInModule}
+                    disabled={!enrollmentModuleId}
+                    className="rounded-lg bg-sky-700 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    Matricular em módulo
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Todos os módulos ativos desta congregação já estão matriculados neste case.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            Matrícula em módulos liberada somente após confirmação de presença na lista da confraternização.
+          </p>
+        )}
 
         <div className="mt-4 space-y-3">
           {!sortedProgress.length ? (
