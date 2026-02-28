@@ -234,6 +234,33 @@ export async function closeAula(args: {
   return { errorMessage: "" };
 }
 
+export async function reopenAula(aulaId: string) {
+  if (!supabaseClient) {
+    return { errorMessage: "Supabase não configurado." };
+  }
+
+  const { error } = await supabaseClient
+    .from("discipleship_aulas")
+    .update({
+      fechada: false,
+      fechada_em: null,
+      fechada_por: null
+    })
+    .eq("id", aulaId);
+
+  if (error) {
+    if (isMissingAulaFechamentoColumns(error.message, error.code)) {
+      return {
+        errorMessage:
+          "Edição de chamada fechada indisponível neste ambiente. Aplique a migration 0063_discipulado_chamada_fechamento.sql."
+      };
+    }
+    return { errorMessage: error.message };
+  }
+
+  return { errorMessage: "" };
+}
+
 export async function loadChamadaItens(aulaId: string) {
   if (!supabaseClient) {
     return { data: [] as ChamadaItemRecord[], errorMessage: "Supabase não configurado." };

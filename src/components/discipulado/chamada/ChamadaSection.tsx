@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChamadaAluno,
   ChamadaStatus,
+  reopenAula,
   exportChamadaCSV,
   closeAula,
   getOrCreateAula,
@@ -55,6 +56,7 @@ export function ChamadaSection() {
   const [activeAulaId, setActiveAulaId] = useState<string | null>(null);
   const [activeAulaFechada, setActiveAulaFechada] = useState(false);
   const [activeAulaSupportsFechamento, setActiveAulaSupportsFechamento] = useState(true);
+  const [activeAulaCollapsed, setActiveAulaCollapsed] = useState(false);
   const [alunos, setAlunos] = useState<ChamadaAluno[]>([]);
   const [draftByAlunoId, setDraftByAlunoId] = useState<DraftByAlunoId>({});
   const [saveStateByAlunoId, setSaveStateByAlunoId] = useState<Record<string, SaveState>>({});
@@ -231,6 +233,7 @@ export function ChamadaSection() {
     setActiveAulaId(aula.id);
     setActiveAulaFechada(aula.fechada);
     setActiveAulaSupportsFechamento(aula.supportsFechamento);
+    setActiveAulaCollapsed(Boolean(aula.fechada));
     setAlunos(alunosData);
     setDraftByAlunoId(nextDraft);
     setSaveStateByAlunoId(nextSaveState);
@@ -369,8 +372,27 @@ export function ChamadaSection() {
     }
 
     setActiveAulaFechada(true);
+    setActiveAulaCollapsed(true);
     setStatusMessage("Chamada fechada com sucesso.");
   }, [activeAulaFechada, activeAulaId, activeAulaSupportsFechamento, currentUserId, globalSavingState]);
+
+  const handleReopenAula = useCallback(async () => {
+    if (!activeAulaId) return;
+    if (!activeAulaSupportsFechamento) {
+      setStatusMessage("Edição de chamada fechada indisponível neste ambiente. Aplique a migration 0063_discipulado_chamada_fechamento.sql.");
+      return;
+    }
+
+    const { errorMessage } = await reopenAula(activeAulaId);
+    if (errorMessage) {
+      setStatusMessage(errorMessage);
+      return;
+    }
+
+    setActiveAulaFechada(false);
+    setActiveAulaCollapsed(false);
+    setStatusMessage("Chamada reaberta para edição.");
+  }, [activeAulaId, activeAulaSupportsFechamento]);
 
   return (
     <section className="space-y-4" aria-label="Chamada">
@@ -402,6 +424,7 @@ export function ChamadaSection() {
           tema={tema}
           isAulaFechada={activeAulaFechada}
           supportsFechamento={activeAulaSupportsFechamento}
+          isCollapsed={activeAulaCollapsed}
           alunos={alunos}
           draftByAlunoId={draftByAlunoId}
           saveStateByAlunoId={saveStateByAlunoId}
@@ -414,6 +437,10 @@ export function ChamadaSection() {
           onCloseAula={() => {
             void handleCloseAula();
           }}
+          onReopenAula={() => {
+            void handleReopenAula();
+          }}
+          onToggleCollapsed={() => setActiveAulaCollapsed((prev) => !prev)}
         />
       ) : (
         <div className="discipulado-panel p-4 text-sm text-slate-600">Selecione turma e data para abrir a chamada.</div>
