@@ -62,45 +62,6 @@ function statusClass(status: MessageJob["status"]) {
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
-async function extractFunctionErrorMessage(error: unknown) {
-  const fallback =
-    error instanceof Error && error.message
-      ? error.message
-      : "Falha ao executar Edge Function.";
-
-  if (!error || typeof error !== "object") {
-    return fallback;
-  }
-
-  const context = (error as { context?: unknown }).context;
-  if (context instanceof Response) {
-    try {
-      const contentType = context.headers.get("content-type") ?? "";
-      if (contentType.includes("application/json")) {
-        const body = (await context.clone().json()) as
-          | { error?: unknown; message?: unknown; details?: unknown }
-          | null;
-        const message = body?.error ?? body?.message ?? body?.details;
-        if (typeof message === "string" && message.trim()) {
-          return message;
-        }
-        if (body) {
-          return JSON.stringify(body);
-        }
-      }
-
-      const text = await context.clone().text();
-      if (text.trim()) {
-        return text;
-      }
-    } catch {
-      return fallback;
-    }
-  }
-
-  return fallback;
-}
-
 function isInvalidJwtErrorMessage(message: string) {
   return message.trim().toLowerCase().includes("invalid jwt");
 }
@@ -345,38 +306,54 @@ export default function AdminWhatsAppPage() {
       return;
     }
 
-    const invokeWithToken = async (token: string) =>
-      client.functions.invoke("bright-function", {
-        body: payload,
-        headers: {
-          Authorization: `Bearer ${token}`
+    const enqueueWithToken = async (token: string) => {
+      try {
+        const response = await fetch("/api/admin/whatsapp/enqueue", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const body = (await response.json().catch(() => null)) as { error?: unknown; queued?: unknown } | null;
+        if (!response.ok) {
+          const message =
+            typeof body?.error === "string" && body.error.trim()
+              ? body.error
+              : `Falha ao enfileirar (HTTP ${response.status}).`;
+          return { data: null as { queued?: unknown } | null, error: message };
         }
-      });
 
-    let { data, error } = await invokeWithToken(accessToken);
+        return { data: body, error: "" };
+      } catch (error) {
+        return {
+          data: null as { queued?: unknown } | null,
+          error: error instanceof Error ? error.message : "Falha ao enfileirar boas-vindas."
+        };
+      }
+    };
 
-    if (error) {
-      const message = await extractFunctionErrorMessage(error);
-      if (isInvalidJwtErrorMessage(message)) {
-        const { data: refreshedData, error: refreshError } = await client.auth.refreshSession();
-        const refreshedToken = refreshedData.session?.access_token ?? "";
+    let result = await enqueueWithToken(accessToken);
 
-        if (!refreshError && refreshedToken) {
-          const retried = await invokeWithToken(refreshedToken);
-          data = retried.data;
-          error = retried.error;
-        }
+    if (result.error && isInvalidJwtErrorMessage(result.error)) {
+      const { data: refreshedData, error: refreshError } = await client.auth.refreshSession();
+      const refreshedToken = refreshedData.session?.access_token ?? "";
+
+      if (!refreshError && refreshedToken) {
+        result = await enqueueWithToken(refreshedToken);
       }
     }
 
-    if (error) {
+    if (result.error) {
       setEnqueueStatus("error");
-      setPageMessage(await extractFunctionErrorMessage(error));
+      setPageMessage(result.error);
       return;
     }
 
     setEnqueueStatus("success");
-    const queued = Number((data as { queued?: number })?.queued ?? 0);
+    const queued = Number(result.data?.queued ?? 0);
     setPageMessage(`${queued} mensagem(ns) enfileirada(s).`);
     await loadJobs(tenantId);
   }
