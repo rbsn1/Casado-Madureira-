@@ -223,7 +223,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ queued: 0, skipped_invalid_phone: skippedInvalidPhone, tenant_id: scopedTenantId });
   }
 
-  const { error: insertError } = await supabaseAdmin.from("message_jobs").insert(jobs);
+  const { error: insertError } = await (supabaseAdmin as any)
+    .from("message_jobs")
+    .insert(jobs as any[]);
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 400 });
   }
