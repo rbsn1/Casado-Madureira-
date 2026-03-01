@@ -101,6 +101,10 @@ async function extractFunctionErrorMessage(error: unknown) {
   return fallback;
 }
 
+function isInvalidJwtErrorMessage(message: string) {
+  return message.trim().toLowerCase().includes("invalid jwt");
+}
+
 export default function AdminWhatsAppPage() {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [tenantId, setTenantId] = useState("");
@@ -340,12 +344,29 @@ export default function AdminWhatsAppPage() {
       return;
     }
 
-    const { data, error } = await supabaseClient.functions.invoke("bright-function", {
-      body: payload,
-      headers: {
-        Authorization: `Bearer ${accessToken}`
+    const invokeWithToken = async (token: string) =>
+      supabaseClient.functions.invoke("bright-function", {
+        body: payload,
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+    let { data, error } = await invokeWithToken(accessToken);
+
+    if (error) {
+      const message = await extractFunctionErrorMessage(error);
+      if (isInvalidJwtErrorMessage(message)) {
+        const { data: refreshedData, error: refreshError } = await supabaseClient.auth.refreshSession();
+        const refreshedToken = refreshedData.session?.access_token ?? "";
+
+        if (!refreshError && refreshedToken) {
+          const retried = await invokeWithToken(refreshedToken);
+          data = retried.data;
+          error = retried.error;
+        }
       }
-    });
+    }
 
     if (error) {
       setEnqueueStatus("error");
