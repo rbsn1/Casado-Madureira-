@@ -15,7 +15,9 @@ const GRID_LINES = 5;
 
 const BAR_WIDTH = 4.4;
 const BAR_RADIUS = 1.2;
-const LINE_COLOR = "#059669";
+const BAR_COLOR = "#0369A1";
+const LINE_COLOR = "#4338CA";
+const LINE_DARK_COLOR = "#3730A3";
 
 const GRANULARITY_OPTIONS: Array<{ value: DecisionsChartGranularity; label: string }> = [
   { value: "day", label: "Dia" },
@@ -285,7 +287,7 @@ export function DecisionsTrendChart({
                 <path
                   key={point.key}
                   d={barPath}
-                  fill={LINE_COLOR}
+                  fill={BAR_COLOR}
                   fillOpacity={isActive ? 0.9 : 0.26}
                 />
               );
@@ -328,7 +330,7 @@ export function DecisionsTrendChart({
             {peakPoint ? (
               <>
                 <circle cx={peakPoint.x} cy={peakPoint.y} r={1.8} fill={LINE_COLOR} fillOpacity="0.18" />
-                <circle cx={peakPoint.x} cy={peakPoint.y} r={1} fill="#047857" />
+                <circle cx={peakPoint.x} cy={peakPoint.y} r={1} fill={LINE_DARK_COLOR} />
               </>
             ) : null}
 
