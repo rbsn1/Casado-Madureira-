@@ -317,6 +317,7 @@ export default function AdminWhatsAppPage() {
   async function handleEnqueue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabaseClient || !tenantId) return;
+    const client = supabaseClient;
 
     setEnqueueStatus("loading");
     setPageMessage("");
@@ -330,7 +331,7 @@ export default function AdminWhatsAppPage() {
       test_phone_e164: dispatchMode === "TESTE" ? normalizeDigits(testPhoneE164) : undefined
     };
 
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+    const { data: sessionData, error: sessionError } = await client.auth.getSession();
     if (sessionError) {
       setEnqueueStatus("error");
       setPageMessage(sessionError.message);
@@ -345,7 +346,7 @@ export default function AdminWhatsAppPage() {
     }
 
     const invokeWithToken = async (token: string) =>
-      supabaseClient.functions.invoke("bright-function", {
+      client.functions.invoke("bright-function", {
         body: payload,
         headers: {
           Authorization: `Bearer ${token}`
@@ -357,7 +358,7 @@ export default function AdminWhatsAppPage() {
     if (error) {
       const message = await extractFunctionErrorMessage(error);
       if (isInvalidJwtErrorMessage(message)) {
-        const { data: refreshedData, error: refreshError } = await supabaseClient.auth.refreshSession();
+        const { data: refreshedData, error: refreshError } = await client.auth.refreshSession();
         const refreshedToken = refreshedData.session?.access_token ?? "";
 
         if (!refreshError && refreshedToken) {
