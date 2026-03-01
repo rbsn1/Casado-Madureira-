@@ -212,38 +212,21 @@ export default function DiscipuladoAdminPage() {
     setUsersLoading(true);
     setUserStatusMessage("");
     try {
-      const responses = await Promise.all(
-        DISCIPULADO_USER_ROLES.map(async (role) => {
-          const query = new URLSearchParams({
-            role,
-            page: "1",
-            perPage: "200"
-          });
-          if (targetCongregation) {
-            query.set("congregationId", targetCongregation);
-          }
-          return apiFetch(`/api/admin/users?${query.toString()}`);
-        })
-      );
-
-      const usersById = new Map<string, UserItem>();
-      responses.forEach((response) => {
-        const roleUsers = (response.users ?? []) as UserItem[];
-        roleUsers.forEach((user) => {
-          const existing = usersById.get(user.id);
-          if (!existing) {
-            usersById.set(user.id, user);
-            return;
-          }
-          const roleMap = new Map<string, UserRole>();
-          [...existing.roles, ...user.roles].forEach((role) => {
-            roleMap.set(`${role.role}:${role.congregation_id ?? ""}`, role);
-          });
-          usersById.set(user.id, { ...existing, roles: Array.from(roleMap.values()) });
-        });
+      const query = new URLSearchParams({
+        page: "1",
+        perPage: "200"
       });
+      if (targetCongregation) {
+        query.set("congregationId", targetCongregation);
+      }
 
-      const users = Array.from(usersById.values()).sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
+      const response = await apiFetch(`/api/admin/users?${query.toString()}`);
+      const roleUsers = (response.users ?? []) as UserItem[];
+      const users = roleUsers
+        .filter((user) =>
+          user.roles.some((role) => DISCIPULADO_USER_ROLES.includes(role.role as DiscipuladoUserRole))
+        )
+        .sort((a, b) => (a.email ?? "").localeCompare(b.email ?? ""));
       setDiscipleshipUsers(users);
     } catch (error) {
       setUserStatusMessage((error as Error).message);
