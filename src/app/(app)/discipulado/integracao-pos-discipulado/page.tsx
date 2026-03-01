@@ -73,7 +73,7 @@ export default function IntegracaoPosDiscipuladoPage() {
         setStatusMessage(casesResult.errorMessage);
       }
 
-      setCases((casesResult.data ?? []).filter((item) => item.fase === "POS_DISCIPULADO"));
+      setCases((casesResult.data ?? []).filter((item) => item.status === "concluido"));
 
       if (modulesResult && !modulesResult.error) {
         const mappedModules = (modulesResult.data ?? []).map((item) => ({
@@ -127,7 +127,7 @@ export default function IntegracaoPosDiscipuladoPage() {
       <div>
         <p className="text-sm text-sky-700">Discipulado</p>
         <h2 className="text-xl font-semibold text-sky-950">Integração pós-discipulado</h2>
-        <p className="mt-1 text-xs text-slate-600">Cases na fase POS_DISCIPULADO prontos para integração.</p>
+        <p className="mt-1 text-xs text-slate-600">Cases com discipulado concluído prontos para integração.</p>
       </div>
 
       {statusMessage ? (
