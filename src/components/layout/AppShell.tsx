@@ -48,7 +48,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Discipulado",
     items: [
-      { href: "/discipulado", label: "Dashboard", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
+      {
+        href: "/discipulado",
+        label: "Dashboard",
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
+      },
       {
         href: "/discipulado/fila",
         label: "Em Acolhimento",
@@ -77,7 +81,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       {
         href: "/discipulado/convertidos",
         label: "Vidas Acolhidas",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"]
+        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
       },
       {
         href: "/discipulado/confraternizacao",
@@ -392,15 +396,14 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
 
   return (
     <div className={clsx("app-shell", isDiscipuladoConsole && "discipulado-console-shell")}>
-      {!isCadastradorOnly ? (
-        <aside
-          className={clsx(
-            "hidden lg:block border-r text-white",
-            isDiscipuladoConsole
-              ? "border-slate-900 bg-slate-950"
-              : "border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]"
-          )}
-        >
+      <aside
+        className={clsx(
+          "hidden lg:block border-r text-white",
+          isDiscipuladoConsole
+            ? "border-slate-900 bg-slate-950"
+            : "border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]"
+        )}
+      >
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
             <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
               {isDiscipuladoConsole ? (
@@ -540,12 +543,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               </p>
             </div>
           </div>
-        </aside>
-      ) : null}
+      </aside>
       <main
         className={clsx(
           "min-h-screen",
-          !isCadastradorOnly && "pb-24 lg:pb-0",
+          "pb-24 lg:pb-0",
           isDiscipuladoConsole ? "bg-gradient-to-b from-slate-50 via-sky-50/35 to-white" : "bg-white"
         )}
       >
@@ -581,20 +583,18 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {!isCadastradorOnly ? (
-                <button
-                  type="button"
-                  onClick={() => setShowMobileNav(true)}
-                  className={clsx(
-                    "inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden",
-                    isDiscipuladoConsole
-                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
-                      : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
-                  )}
-                >
-                  Menu
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowMobileNav(true)}
+                className={clsx(
+                  "inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden",
+                  isDiscipuladoConsole
+                    ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
+                    : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                )}
+              >
+                Menu
+              </button>
               <div
                 className={clsx(
                   "max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-3 py-2 text-xs font-medium sm:max-w-[22rem] sm:px-4 sm:text-sm",
@@ -603,24 +603,22 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               >
                 <span className="truncate">{userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}</span>
               </div>
-              {!isCadastradorOnly ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowPasswordModal(true);
-                    setPasswordStatus("idle");
-                    setPasswordMessage("");
-                  }}
-                  className={clsx(
-                    "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
-                    isDiscipuladoConsole
-                      ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
-                      : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
-                  )}
-                >
-                  Alterar senha
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasswordModal(true);
+                  setPasswordStatus("idle");
+                  setPasswordMessage("");
+                }}
+                className={clsx(
+                  "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
+                  isDiscipuladoConsole
+                    ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
+                    : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                )}
+              >
+                Alterar senha
+              </button>
               <button
                 type="button"
                 onClick={handleLogout}
@@ -781,13 +779,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           </div>
         </div>
       ) : null}
-      {!isCadastradorOnly ? (
-        <div
-          className={clsx(
-            "fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden",
-            isDiscipuladoConsole ? "border-sky-100" : "border-brand-100"
-          )}
-        >
+      <div
+        className={clsx(
+          "fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden",
+          isDiscipuladoConsole ? "border-sky-100" : "border-brand-100"
+        )}
+      >
           <nav
             className="mx-auto grid max-w-md grid-cols-5 gap-1 px-2 pt-2"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.45rem)" }}
@@ -849,8 +846,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <span>Menu</span>
             </button>
           </nav>
-        </div>
-      ) : null}
+      </div>
       {showPasswordModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
