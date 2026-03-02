@@ -38,6 +38,21 @@ function normalizePhone(value: unknown) {
   return value.replace(/\D+/g, "");
 }
 
+function normalizeBrazilE164(value: unknown) {
+  const digits = normalizePhone(value);
+  if (!digits) return "";
+
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `55${digits}`;
+  }
+
+  return digits;
+}
+
 function isIsoDate(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -142,7 +157,7 @@ export async function POST(request: Request) {
   }
 
   const dispatchMode = body.dispatch_mode === "TESTE" ? "TESTE" : "PRODUCAO";
-  const testPhone = normalizePhone(body.test_phone_e164 ?? "");
+  const testPhone = normalizeBrazilE164(body.test_phone_e164 ?? "");
   if (dispatchMode === "TESTE" && !testPhone) {
     return NextResponse.json({ error: "No modo TESTE, informe test_phone_e164" }, { status: 400 });
   }
@@ -192,7 +207,7 @@ export async function POST(request: Request) {
 
   const jobs = contacts
     .map((contact) => {
-      const to = normalizePhone(contact.phone_e164);
+      const to = normalizeBrazilE164(contact.phone_e164);
       if (!to) return null;
 
       const safeName = String(contact.name ?? "").trim() || "Irmão(ã)";
