@@ -53,8 +53,41 @@ function normalizeBrazilE164(value: unknown) {
   return digits;
 }
 
-function isIsoDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+function toTwoDigits(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function normalizeInputDate(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const slash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slash) {
+    const first = Number(slash[1]);
+    const second = Number(slash[2]);
+    const year = Number(slash[3]);
+    if (!first || !second || !year) return null;
+
+    // Accept both MM/DD/YYYY and DD/MM/YYYY.
+    let month = first;
+    let day = second;
+    if (first > 12 && second <= 12) {
+      day = first;
+      month = second;
+    } else if (second > 12 && first <= 12) {
+      month = first;
+      day = second;
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+  }
+
+  return null;
 }
 
 function getBearerToken(request: Request) {
@@ -133,10 +166,10 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as EnqueueBody;
   const tenantId = body.tenant_id?.trim() ?? "";
-  const dateFrom = body.date_from?.trim() ?? "";
-  const dateTo = body.date_to?.trim() ?? "";
+  const dateFrom = normalizeInputDate(body.date_from?.trim() ?? "");
+  const dateTo = normalizeInputDate(body.date_to?.trim() ?? "");
 
-  if (!isIsoDate(dateFrom) || !isIsoDate(dateTo)) {
+  if (!dateFrom || !dateTo) {
     return NextResponse.json(
       { error: "date_from/date_to devem estar no formato YYYY-MM-DD" },
       { status: 400 }
