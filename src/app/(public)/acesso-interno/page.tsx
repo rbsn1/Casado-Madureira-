@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
+import { getAuthScope, isDiscipuladoScopedAccount } from "@/lib/authScope";
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -48,7 +48,12 @@ export default function AcessoInternoPage() {
     const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
 
     if (isDiscipuladoAccount) {
-      router.push(getDiscipuladoHomePath(roles));
+      await supabaseClient.auth.signOut();
+      setStatus("error");
+      setMessage(
+        "Seu perfil é de discipulado e não pode acessar o CCM. Use o login em /discipulado/login."
+      );
+      router.push("/discipulado/login");
       return;
     }
 
