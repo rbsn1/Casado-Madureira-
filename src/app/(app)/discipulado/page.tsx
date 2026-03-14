@@ -129,8 +129,14 @@ function computeVariationPct(currentValue: number, previousValue: number) {
 
 function normalizeDecisionOrigin(value: string | null | undefined): DecisionOrigin | null {
   const normalized = parseCultoOrigemCode(value);
-  if (!normalized || normalized === "OUTROS") return null;
-  return normalized;
+  if (!normalized) return null;
+  if (normalized === "DOMINGO_MANHA") return "MANHA";
+  if (normalized === "DOMINGO_NOITE" || normalized === "QUARTA") return "NOITE";
+  if (normalized === "SEXTA") return "MJ";
+  if (normalized === "EVENTO_ESPECIAL" || normalized === "CONGRESSO" || normalized === "OUTRO") {
+    return "QUARTA";
+  }
+  return null;
 }
 
 function formatDateToYmd(date: Date) {

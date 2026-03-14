@@ -249,9 +249,16 @@ function formatOutcomeLabel(value: ContactAttemptOutcome) {
 
 function mapOriginToEnrollmentTurno(value: string | null | undefined): EnrollmentTurno {
   const normalized = parseCultoOrigemCode(value);
-  if (normalized === "MANHA") return "MANHA";
-  if (normalized === "NOITE" || normalized === "QUARTA") return "NOITE";
-  if (normalized === "MJ" || normalized === "OUTROS") return "EVENTO";
+  if (normalized === "DOMINGO_MANHA") return "MANHA";
+  if (normalized === "DOMINGO_NOITE" || normalized === "QUARTA") return "NOITE";
+  if (
+    normalized === "SEXTA" ||
+    normalized === "EVENTO_ESPECIAL" ||
+    normalized === "CONGRESSO" ||
+    normalized === "OUTRO"
+  ) {
+    return "EVENTO";
+  }
   return "NOITE";
 }
 
