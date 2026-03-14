@@ -51,6 +51,16 @@ type PessoasQueryResult = {
   error: QueryFallbackError | null;
 };
 
+const fieldLabelClass = "text-slate-700";
+const fieldClass =
+  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
+const primaryButtonClass =
+  "w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto";
+const secondaryButtonClass =
+  "w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900 sm:w-auto";
+const toolbarButtonClass = "w-full rounded-xl px-3 py-3 text-sm font-semibold sm:w-auto";
+const feedbackClass = "rounded-xl px-4 py-3 text-sm";
+
 function currentLocalDateInputValue() {
   const now = new Date();
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
@@ -640,25 +650,25 @@ function CadastrosContent() {
         <div className="grid gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={openCreate}
-            className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto"
+            className={`${toolbarButtonClass} bg-emerald-600 text-white hover:bg-emerald-700`}
           >
             Novo cadastro rápido (Cadastrador)
           </button>
           <button
             onClick={handleExport}
-            className="w-full rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
+            className={`${toolbarButtonClass} border border-emerald-300 text-emerald-900 hover:bg-emerald-50`}
           >
             Exportar CSV
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full rounded-lg border border-dashed border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
+            className={`${toolbarButtonClass} border border-dashed border-emerald-300 text-emerald-900 hover:bg-emerald-50`}
           >
             Importar CSV/XLSX
           </button>
           <Link
             href="/cadastros_import_modelo.csv"
-            className="block w-full rounded-lg border border-emerald-200 px-3 py-2 text-center text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
+            className={`${toolbarButtonClass} block text-center border border-emerald-200 text-emerald-900 hover:bg-emerald-50`}
           >
             Baixar modelo CSV
           </Link>
@@ -686,58 +696,58 @@ function CadastrosContent() {
       {showCreate ? (
         <form className="card grid gap-4 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
           {!hasCultoColumn ? (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:col-span-2">
+            <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
               A coluna `culto_origem` ainda não existe neste ambiente. Aplique a migração `0067_ccm_culto_rapido.sql`.
             </p>
           ) : null}
           {!hasCompletionStatusColumn ? (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:col-span-2">
+            <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
               O status de complementação ainda não existe neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
             </p>
           ) : null}
 
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Nome</span>
+            <span className={fieldLabelClass}>Nome</span>
             <input
               required
               value={nome}
               onChange={(event) => setNome(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              className={fieldClass}
               placeholder="Digite o nome da pessoa"
             />
           </label>
 
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Contato</span>
+            <span className={fieldLabelClass}>Contato</span>
             <input
               required
               value={telefone}
               onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              className={fieldClass}
               placeholder="(92) 99227-0057"
             />
           </label>
 
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data</span>
+          <label className="min-w-0 space-y-1 text-sm">
+            <span className={fieldLabelClass}>Data</span>
             <input
               required
               type="date"
               value={dataCadastro}
               onChange={(event) => setDataCadastro(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              className={fieldClass}
             />
           </label>
 
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Culto</span>
+            <span className={fieldLabelClass}>Culto</span>
             <select
               value={cultoOrigem}
               onChange={(event) => {
                 const parsed = parseCultoOrigemCode(event.target.value);
                 if (parsed) setCultoOrigem(parsed);
               }}
-              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              className={fieldClass}
             >
               {CULTO_ORIGEM_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -752,7 +762,7 @@ function CadastrosContent() {
           </div>
 
           <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <button className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto">
+            <button className={primaryButtonClass}>
               {editingPessoa ? "Salvar alterações" : "Salvar rápido"}
             </button>
             <button
@@ -762,7 +772,7 @@ function CadastrosContent() {
                 setEditingPessoa(null);
                 resetForm();
               }}
-              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900 sm:w-auto"
+              className={secondaryButtonClass}
             >
               Cancelar
             </button>
@@ -777,12 +787,12 @@ function CadastrosContent() {
             placeholder="Buscar por nome, contato ou culto"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none sm:max-w-sm"
+            className={`${fieldClass} sm:max-w-sm`}
           />
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as "TODOS" | CadastroCompletoStatus)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none sm:w-auto"
+            className={`${fieldClass} sm:w-auto`}
           >
             <option value="TODOS">Todos os status</option>
             <option value="pendente">Pendente de complementação</option>
@@ -791,7 +801,7 @@ function CadastrosContent() {
           </select>
           <button
             onClick={loadPessoas}
-            className="w-full rounded-lg bg-emerald-100 px-3 py-2.5 text-sm font-semibold text-emerald-900 sm:w-auto"
+            className={`${toolbarButtonClass} bg-emerald-100 text-emerald-900`}
           >
             Atualizar
           </button>
@@ -799,7 +809,7 @@ function CadastrosContent() {
 
         {statusMessage ? (
           <p
-            className={`mt-3 rounded-lg px-3 py-2 text-xs ${
+            className={`mt-3 ${feedbackClass} ${
               feedbackTone === "error"
                 ? "border border-rose-200 bg-rose-50 text-rose-700"
                 : feedbackTone === "success"
@@ -857,14 +867,14 @@ function CadastrosContent() {
                   <div className="mt-4 grid gap-2">
                     <Link
                       href={`/pessoas/${pessoa.id}`}
-                      className="rounded-lg bg-emerald-600 px-3 py-2.5 text-center text-xs font-semibold text-white hover:bg-emerald-700"
+                      className="rounded-xl bg-emerald-600 px-3 py-3 text-center text-xs font-semibold text-white hover:bg-emerald-700"
                     >
                       Abrir
                     </Link>
                     <button
                       type="button"
                       onClick={() => openEdit(pessoa)}
-                      className="rounded-lg border border-emerald-200 px-3 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                      className="rounded-xl border border-emerald-200 px-3 py-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                     >
                       Editar
                     </button>
@@ -876,7 +886,7 @@ function CadastrosContent() {
                           generatingLinkForId === pessoa.id ||
                           pessoa.cadastro_completo_status === "concluido"
                         }
-                        className="rounded-lg border border-sky-200 px-3 py-2.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="rounded-xl border border-sky-200 px-3 py-3 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {pessoa.cadastro_completo_status === "concluido"
                           ? "Cadastro completo"
@@ -889,7 +899,7 @@ function CadastrosContent() {
                       type="button"
                       onClick={() => handleDelete(pessoa)}
                       disabled={deletingId === pessoa.id}
-                      className="rounded-lg border border-rose-200 px-3 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="rounded-xl border border-rose-200 px-3 py-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       Excluir
                     </button>

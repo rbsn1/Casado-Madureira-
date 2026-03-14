@@ -20,6 +20,13 @@ function isMissingColumnError(message: string, code: string | undefined, column:
   return code === "PGRST204" && message.includes(column);
 }
 
+const fieldLabelClass = "text-slate-700";
+const fieldClass =
+  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
+const primaryButtonClass =
+  "w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto";
+const feedbackClass = "rounded-xl px-4 py-3 text-sm";
+
 export default function CadastroInternoPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -145,46 +152,46 @@ export default function CadastroInternoPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-slate-700">Nome</span>
+              <span className={fieldLabelClass}>Nome</span>
               <input
                 required
                 name="nome_completo"
                 value={nome}
                 onChange={(event) => setNome(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+                className={fieldClass}
                 placeholder="Digite o nome da pessoa"
                 autoComplete="name"
               />
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Contato</span>
+              <span className={fieldLabelClass}>Contato</span>
               <input
                 required
                 name="telefone_whatsapp"
                 value={telefone}
                 onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+                className={fieldClass}
                 placeholder="(92) 99227-0057"
                 inputMode="tel"
                 autoComplete="tel"
               />
             </label>
 
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Data</span>
+            <label className="min-w-0 space-y-1 text-sm">
+              <span className={fieldLabelClass}>Data</span>
               <input
                 required
                 name="data"
                 type="date"
                 value={dataCadastro}
                 onChange={(event) => setDataCadastro(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+                className={fieldClass}
               />
             </label>
 
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-slate-700">Culto</span>
+              <span className={fieldLabelClass}>Culto</span>
               <select
                 name="culto_origem"
                 value={cultoOrigem}
@@ -192,7 +199,7 @@ export default function CadastroInternoPage() {
                   const parsed = parseCultoOrigemCode(event.target.value);
                   if (parsed) setCultoOrigem(parsed);
                 }}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+                className={fieldClass}
               >
                 {CULTO_ORIGEM_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -205,7 +212,7 @@ export default function CadastroInternoPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <button
-              className="w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+              className={primaryButtonClass}
               disabled={status === "loading"}
             >
               {status === "loading" ? "Salvando..." : "Salvar rápido"}
@@ -214,13 +221,13 @@ export default function CadastroInternoPage() {
           </div>
 
           {status === "success" ? (
-            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <p className={`${feedbackClass} border border-emerald-200 bg-emerald-50 text-emerald-700`}>
               {message}
             </p>
           ) : null}
 
           {status === "error" ? (
-            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <p className={`${feedbackClass} border border-rose-200 bg-rose-50 text-rose-700`}>
               {message || "Não foi possível salvar o cadastro rápido."}
             </p>
           ) : null}
