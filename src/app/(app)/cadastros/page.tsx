@@ -41,6 +41,16 @@ type PessoaQueryRow = {
   cadastro_completo_at?: string | null;
 };
 
+type QueryFallbackError = {
+  message: string;
+  code?: string;
+};
+
+type PessoasQueryResult = {
+  data: unknown[] | null;
+  error: QueryFallbackError | null;
+};
+
 function currentLocalDateInputValue() {
   const now = new Date();
   const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
@@ -171,19 +181,33 @@ function CadastrosContent() {
     let usingLegacyCulto = false;
     let usingLegacyCompletion = false;
 
-    let pessoasResult = await client
-      .from("pessoas")
-      .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at, cadastro_completo_status, cadastro_completo_at")
-      .eq("cadastro_origem", "ccm")
-      .order("created_at", { ascending: false });
+    const loadPessoasQuery = async (columns: string): Promise<PessoasQueryResult> => {
+      const result = await client
+        .from("pessoas")
+        .select(columns)
+        .eq("cadastro_origem", "ccm")
+        .order("created_at", { ascending: false });
+
+      return {
+        data: Array.isArray(result.data) ? (result.data as unknown[]) : null,
+        error: result.error
+          ? {
+              message: result.error.message,
+              code: result.error.code
+            }
+          : null
+      };
+    };
+
+    let pessoasResult = await loadPessoasQuery(
+      "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at, cadastro_completo_status, cadastro_completo_at"
+    );
 
     if (pessoasResult.error && isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "culto_origem")) {
       usingLegacyCulto = true;
-      pessoasResult = await client
-        .from("pessoas")
-        .select("id, nome_completo, telefone_whatsapp, origem, data, created_at, cadastro_completo_status, cadastro_completo_at")
-        .eq("cadastro_origem", "ccm")
-        .order("created_at", { ascending: false });
+      pessoasResult = await loadPessoasQuery(
+        "id, nome_completo, telefone_whatsapp, origem, data, created_at, cadastro_completo_status, cadastro_completo_at"
+      );
     }
 
     if (
@@ -191,13 +215,11 @@ function CadastrosContent() {
       isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "cadastro_completo_status")
     ) {
       usingLegacyCompletion = true;
-      pessoasResult = await client
-        .from("pessoas")
-        .select(usingLegacyCulto
+      pessoasResult = await loadPessoasQuery(
+        usingLegacyCulto
           ? "id, nome_completo, telefone_whatsapp, origem, data, created_at"
-          : "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at")
-        .eq("cadastro_origem", "ccm")
-        .order("created_at", { ascending: false });
+          : "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at"
+      );
     }
 
     if (pessoasResult.error) {
