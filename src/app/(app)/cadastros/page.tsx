@@ -2,59 +2,57 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { StatusBadge } from "@/components/shared/StatusBadge";
-import { supabaseClient } from "@/lib/supabaseClient";
-import { downloadCsv, parseCsv } from "@/lib/csv";
 import * as XLSX from "xlsx";
-import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
+import { downloadCsv, parseCsv } from "@/lib/csv";
 import { formatDateBR } from "@/lib/date";
-import { formatCpfInput, parseCpf } from "@/lib/cpf";
+import { supabaseClient } from "@/lib/supabaseClient";
+import {
+  CULTO_ORIGEM_OPTIONS,
+  CultoOrigemCode,
+  cultoOrigemLabelFromValue,
+  cultoOrigemToLegacyOrigem,
+  parseCultoOrigemCode
+} from "@/lib/cultoOrigem";
+import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
+
+type CadastroCompletoStatus = "pendente" | "link_enviado" | "concluido";
 
 type PessoaItem = {
   id: string;
   nome_completo: string;
   telefone_whatsapp: string | null;
-  cpf?: string | null;
-  foto_url?: string | null;
   origem: string | null;
-  igreja_origem?: string | null;
-  bairro?: string | null;
-  data?: string | null;
-  observacoes?: string | null;
+  culto_origem: string | null;
+  data: string | null;
   created_at: string;
-  status?: string;
-  responsavel_id?: string | null;
-  updated_at?: string | null;
-  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
-  cadastro_completo_at?: string | null;
-};
-
-type IntegracaoItem = {
-  pessoa_id: string;
-  status?: string | null;
-  responsavel_id?: string | null;
-  updated_at?: string | null;
+  cadastro_completo_status: CadastroCompletoStatus | null;
+  cadastro_completo_at: string | null;
 };
 
 type PessoaQueryRow = {
   id: string;
   nome_completo: string;
   telefone_whatsapp: string | null;
-  cpf?: string | null;
-  foto_url?: string | null;
   origem: string | null;
-  igreja_origem: string | null;
-  bairro: string | null;
+  culto_origem?: string | null;
   data: string | null;
-  observacoes: string | null;
   created_at: string;
-  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
+  cadastro_completo_status?: CadastroCompletoStatus | null;
   cadastro_completo_at?: string | null;
 };
 
+function currentLocalDateInputValue() {
+  const now = new Date();
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function isMissingColumnError(message: string, code: string | undefined, column: string) {
+  return code === "PGRST204" && message.includes(column);
+}
+
 function isMissingRequestIdColumnError(message: string, code?: string) {
-  return code === "PGRST204" && message.includes("request_id");
+  return isMissingColumnError(message, code, "request_id");
 }
 
 function toTwoDigits(value: number) {
@@ -65,294 +63,168 @@ function normalizeImportDate(value: string) {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
 
-  // Already ISO date
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
 
-  // Excel serial
   if (/^\d+(?:\.\d+)?$/.test(raw)) {
     const serial = Number(raw);
     if (!Number.isFinite(serial)) return null;
-    const parsed = (XLSX as any)?.SSF?.parse_date_code?.(serial) as
-      | { y: number; m: number; d: number }
-      | null
-      | undefined;
+    const parsed = (XLSX as unknown as { SSF?: { parse_date_code?: (input: number) => { y: number; m: number; d: number } | null } })
+      ?.SSF?.parse_date_code?.(serial);
     if (parsed?.y && parsed?.m && parsed?.d) {
       return `${parsed.y}-${toTwoDigits(parsed.m)}-${toTwoDigits(parsed.d)}`;
     }
   }
 
-  // dd/mm/yyyy or mm/dd/yyyy
-  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const a = Number(m[1]);
-    const b = Number(m[2]);
-    const y = Number(m[3]);
-    if (!a || !b || !y) return null;
+  const slashDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashDate) {
+    const first = Number(slashDate[1]);
+    const second = Number(slashDate[2]);
+    const year = Number(slashDate[3]);
+    if (!first || !second || !year) return null;
 
-    // Disambiguate based on values:
-    // - if b > 12 it's definitely mm/dd (e.g. 4/20/2025)
-    // - if a > 12 it's definitely dd/mm
-    let day = a;
-    let month = b;
-    if (b > 12 && a <= 12) {
-      month = a;
-      day = b;
-    }
-    if (a > 12 && b <= 12) {
-      day = a;
-      month = b;
+    let day = first;
+    let month = second;
+    if (second > 12 && first <= 12) {
+      month = first;
+      day = second;
     }
     if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${y}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
   }
 
-  // dd-mm-yyyy
-  const m2 = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (m2) {
-    const day = Number(m2[1]);
-    const month = Number(m2[2]);
-    const y = Number(m2[3]);
-    if (!day || !month || !y) return null;
+  const dashedDate = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashedDate) {
+    const day = Number(dashedDate[1]);
+    const month = Number(dashedDate[2]);
+    const year = Number(dashedDate[3]);
+    if (!day || !month || !year) return null;
     if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${y}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
   }
 
   return null;
 }
 
 function isoDateToManausCreatedAt(isoDate: string) {
-  // Manaus is UTC-04:00. Using noon prevents day shifting when viewed in the UI timezone.
   return `${isoDate}T12:00:00-04:00`;
 }
 
-function isMissingProfileCompletionColumnsError(message: string, code?: string) {
-  return (
-    code === "PGRST204" ||
-    message.includes("cpf") ||
-    message.includes("foto_url") ||
-    message.includes("cadastro_completo_status") ||
-    message.includes("cadastro_completo_at")
-  );
+function parseCadastroCompletoStatus(value: string | null | undefined): CadastroCompletoStatus {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "concluido" || normalized === "concluído") return "concluido";
+  if (normalized === "link_enviado" || normalized === "link enviado") return "link_enviado";
+  return "pendente";
+}
+
+function getCadastroCompletoLabel(status: CadastroCompletoStatus | null | undefined) {
+  if (status === "concluido") return "Cadastro completo";
+  if (status === "link_enviado") return "Link enviado";
+  return "Pendente de complementação";
+}
+
+function getCadastroCompletoClass(status: CadastroCompletoStatus | null | undefined) {
+  if (status === "concluido") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "link_enviado") return "border-sky-200 bg-sky-50 text-sky-700";
+  return "border-amber-200 bg-amber-50 text-amber-800";
 }
 
 function CadastrosContent() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(true);
+  const [feedbackTone, setFeedbackTone] = useState<"error" | "success" | "info">("info");
   const [statusMessage, setStatusMessage] = useState("");
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("TODOS");
+  const [statusFilter, setStatusFilter] = useState<"TODOS" | CadastroCompletoStatus>("TODOS");
   const [showCreate, setShowCreate] = useState(false);
   const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [telefone, setTelefone] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [fotoUrl, setFotoUrl] = useState("");
-  const [nome, setNome] = useState("");
-  const [origem, setOrigem] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [data, setData] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-  const [igrejaSelecionada, setIgrejaSelecionada] = useState("Sede");
-  const [igrejaOutra, setIgrejaOutra] = useState("");
-  const [showIgreja, setShowIgreja] = useState(true);
-  const [showBairro, setShowBairro] = useState(true);
-  const [lastConfirmedAt, setLastConfirmedAt] = useState<Date | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
   const [canGenerateCompletionLink, setCanGenerateCompletionLink] = useState(false);
-  const [hasMemberProfileColumns, setHasMemberProfileColumns] = useState(true);
-  const searchParams = useSearchParams();
+  const [hasCompletionStatusColumn, setHasCompletionStatusColumn] = useState(true);
+  const [hasCultoColumn, setHasCultoColumn] = useState(true);
 
-  const igrejaOptions = ["Sede", "Congregação Cidade Nova", "Congregação Japiim", "Congregação Alvorada", "Outra"];
+  const [nome, setNome] = useState("");
+  const [telefone, setTelefone] = useState("");
+  const [dataCadastro, setDataCadastro] = useState(currentLocalDateInputValue());
+  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("DOMINGO_MANHA");
+
+  const resetForm = useCallback(() => {
+    setNome("");
+    setTelefone("");
+    setDataCadastro(currentLocalDateInputValue());
+    setCultoOrigem("DOMINGO_MANHA");
+  }, []);
 
   const loadPessoas = useCallback(async () => {
     const client = supabaseClient;
     if (!client) {
+      setFeedbackTone("error");
       setStatusMessage("Supabase não configurado.");
+      setLoading(false);
       return;
     }
+
     setLoading(true);
     setStatusMessage("");
-    const igrejaFiltro = searchParams.get("igreja_origem");
-    const bairroFiltro = searchParams.get("bairro");
-    const origemFiltro = searchParams.get("origem");
-    const origemTipo = searchParams.get("origem_tipo");
-    const mesFiltro = searchParams.get("mes");
 
-    const buildPessoasQuery = (columns: string) => {
-      let query = client
+    let usingLegacyCulto = false;
+    let usingLegacyCompletion = false;
+
+    let pessoasResult = await client
+      .from("pessoas")
+      .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at, cadastro_completo_status, cadastro_completo_at")
+      .eq("cadastro_origem", "ccm")
+      .order("created_at", { ascending: false });
+
+    if (pessoasResult.error && isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "culto_origem")) {
+      usingLegacyCulto = true;
+      pessoasResult = await client
         .from("pessoas")
-        .select(columns)
+        .select("id, nome_completo, telefone_whatsapp, origem, data, created_at, cadastro_completo_status, cadastro_completo_at")
         .eq("cadastro_origem", "ccm")
         .order("created_at", { ascending: false });
-
-      if (igrejaFiltro) {
-        if (igrejaFiltro === "__null") {
-          query = query.is("igreja_origem", null);
-        } else {
-          query = query.eq("igreja_origem", igrejaFiltro);
-        }
-      }
-      if (bairroFiltro) {
-        if (bairroFiltro === "__null") {
-          query = query.is("bairro", null);
-        } else {
-          query = query.eq("bairro", bairroFiltro);
-        }
-      }
-      if (origemFiltro) query = query.ilike("origem", `%${origemFiltro}%`);
-      if (origemTipo) {
-        if (origemTipo === "celula") {
-          query = query.or("origem.ilike.%celula%,origem.ilike.%célula%");
-        } else if (origemTipo === "manha") {
-          query = query.ilike("origem", "%manh%");
-        } else if (origemTipo === "noite") {
-          query = query.ilike("origem", "%noit%");
-        } else if (origemTipo === "evento") {
-          query = query.ilike("origem", "%evento%");
-        } else if (origemTipo === "outro") {
-          // filtro adicional aplicado após o merge
-        } else if (origemTipo !== "outro") {
-          query = query.ilike("origem", `%${origemTipo}%`);
-        }
-      }
-      if (mesFiltro && /^\d{4}-\d{2}$/.test(mesFiltro)) {
-        const [yearStr, monthStr] = mesFiltro.split("-");
-        const year = Number(yearStr);
-        const month = Number(monthStr);
-        const start = new Date(year, month - 1, 1);
-        const end = new Date(year, month, 0, 23, 59, 59);
-        query = query.gte("created_at", start.toISOString()).lte("created_at", end.toISOString());
-      }
-
-      return query;
-    };
-
-    const baseColumns =
-      "id, nome_completo, telefone_whatsapp, cpf, foto_url, origem, igreja_origem, bairro, data, observacoes, created_at";
-    let pessoasResult = await buildPessoasQuery(`${baseColumns}, cadastro_completo_status, cadastro_completo_at`);
-    let usingLegacyColumns = false;
+    }
 
     if (
       pessoasResult.error &&
-      isMissingProfileCompletionColumnsError(pessoasResult.error.message, pessoasResult.error.code)
+      isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "cadastro_completo_status")
     ) {
-      usingLegacyColumns = true;
-      pessoasResult = await buildPessoasQuery(
-        "id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes, created_at"
-      );
+      usingLegacyCompletion = true;
+      pessoasResult = await client
+        .from("pessoas")
+        .select(usingLegacyCulto
+          ? "id, nome_completo, telefone_whatsapp, origem, data, created_at"
+          : "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at")
+        .eq("cadastro_origem", "ccm")
+        .order("created_at", { ascending: false });
     }
 
     if (pessoasResult.error) {
+      setFeedbackTone("error");
       setStatusMessage(`Não foi possível carregar os cadastros. ${pessoasResult.error.message}`);
       setLoading(false);
       return;
     }
 
-    const pessoasRows: unknown[] = Array.isArray(pessoasResult.data) ? pessoasResult.data : [];
-    setHasMemberProfileColumns(!usingLegacyColumns);
-    const pessoasData: PessoaItem[] = pessoasRows.map((row) => {
-      const item = row as Partial<PessoaQueryRow>;
-      return {
-        id: String(item.id ?? ""),
-        nome_completo: String(item.nome_completo ?? ""),
-        telefone_whatsapp: item.telefone_whatsapp ?? null,
-        cpf: usingLegacyColumns ? null : item.cpf ?? null,
-        foto_url: usingLegacyColumns ? null : item.foto_url ?? null,
-        origem: item.origem ?? null,
-        igreja_origem: item.igreja_origem ?? null,
-        bairro: item.bairro ?? null,
-        data: item.data ?? null,
-        observacoes: item.observacoes ?? null,
-        created_at: String(item.created_at ?? ""),
-        cadastro_completo_status: usingLegacyColumns ? null : item.cadastro_completo_status ?? null,
-        cadastro_completo_at: usingLegacyColumns ? null : item.cadastro_completo_at ?? null
-      };
-    });
-
-    const pessoaIds = (pessoasData ?? []).map((item) => item.id);
-    let integracaoRows: IntegracaoItem[] = [];
-    let integracaoWarning = "";
-
-    if (pessoaIds.length) {
-      const loadIntegracao = (columns: string) =>
-        client
-          .from("integracao_novos_convertidos")
-          .select(columns)
-          .in("pessoa_id", pessoaIds);
-
-      let integracaoResult = await loadIntegracao("pessoa_id, status, updated_at, responsavel_id");
-      if (integracaoResult.error) {
-        // Fallback para ambientes legados que não possuem todas as colunas da integração.
-        integracaoResult = await loadIntegracao("pessoa_id, status, updated_at");
-      }
-      if (integracaoResult.error) {
-        integracaoResult = await loadIntegracao("pessoa_id, status");
-      }
-
-      if (integracaoResult.error) {
-        integracaoWarning = "Cadastros carregados sem dados de integração.";
-      } else {
-        const rawIntegracaoRows: unknown[] = Array.isArray(integracaoResult.data)
-          ? integracaoResult.data
-          : [];
-        integracaoRows = rawIntegracaoRows
-          .map((row) => {
-            const item = row as Partial<IntegracaoItem>;
-            if (!item.pessoa_id) return null;
-            return {
-              pessoa_id: String(item.pessoa_id),
-              status: item.status ?? null,
-              responsavel_id: item.responsavel_id ?? null,
-              updated_at: item.updated_at ?? null
-            } as IntegracaoItem;
-          })
-          .filter((item): item is IntegracaoItem => item !== null);
-      }
-    }
-
-    const integracaoMap = new Map(
-      integracaoRows.map((item) => [
-        item.pessoa_id,
-        { status: item.status, responsavel_id: item.responsavel_id, updated_at: item.updated_at }
-      ])
+    const rows = Array.isArray(pessoasResult.data) ? (pessoasResult.data as PessoaQueryRow[]) : [];
+    setHasCultoColumn(!usingLegacyCulto);
+    setHasCompletionStatusColumn(!usingLegacyCompletion);
+    setPessoas(
+      rows.map((row) => ({
+        id: String(row.id),
+        nome_completo: String(row.nome_completo ?? ""),
+        telefone_whatsapp: row.telefone_whatsapp ?? null,
+        origem: row.origem ?? null,
+        culto_origem: usingLegacyCulto ? null : row.culto_origem ?? null,
+        data: row.data ?? null,
+        created_at: String(row.created_at ?? ""),
+        cadastro_completo_status: usingLegacyCompletion ? null : row.cadastro_completo_status ?? "pendente",
+        cadastro_completo_at: usingLegacyCompletion ? null : row.cadastro_completo_at ?? null
+      }))
     );
-
-    let merged = (pessoasData ?? []).map((pessoa) => {
-      const integracao = integracaoMap.get(pessoa.id);
-      return {
-        ...pessoa,
-        status: integracao?.status ?? "PENDENTE",
-        responsavel_id: integracao?.responsavel_id ?? null,
-        updated_at: integracao?.updated_at ?? null
-      };
-    });
-
-    const statusQuery = searchParams.get("status");
-    if (statusQuery) {
-      merged = merged.filter((item) => item.status === statusQuery);
-      setStatusFilter(statusQuery);
-    }
-
-    if (origemTipo === "outro") {
-      merged = merged.filter((item) => {
-        const origem = (item.origem ?? "").toLowerCase();
-        return !(
-          origem.includes("manh") ||
-          origem.includes("noite") ||
-          origem.includes("evento") ||
-          origem.includes("celula") ||
-          origem.includes("célula")
-        );
-      });
-    }
-
-    setPessoas(merged);
-    if (integracaoWarning) {
-      setStatusMessage(integracaoWarning);
-    }
     setLoading(false);
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     loadPessoas();
@@ -360,6 +232,7 @@ function CadastrosContent() {
 
   useEffect(() => {
     let active = true;
+
     async function loadPermissions() {
       if (!supabaseClient) return;
       const { data } = await supabaseClient.rpc("get_my_roles");
@@ -371,6 +244,7 @@ function CadastrosContent() {
         )
       );
     }
+
     loadPermissions();
     return () => {
       active = false;
@@ -380,178 +254,139 @@ function CadastrosContent() {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return pessoas.filter((pessoa) => {
+      const cultoLabel = cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem).toLowerCase();
       const matchesSearch =
         !term ||
         pessoa.nome_completo.toLowerCase().includes(term) ||
         (pessoa.telefone_whatsapp ?? "").toLowerCase().includes(term) ||
-        (pessoa.cpf ?? "").toLowerCase().includes(term) ||
-        (pessoa.origem ?? "").toLowerCase().includes(term) ||
-        (pessoa.igreja_origem ?? "").toLowerCase().includes(term) ||
-        (pessoa.bairro ?? "").toLowerCase().includes(term);
-      const matchesStatus = statusFilter === "TODOS" || pessoa.status === statusFilter;
+        cultoLabel.includes(term);
+      const matchesStatus =
+        statusFilter === "TODOS" || (pessoa.cadastro_completo_status ?? "pendente") === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [pessoas, search, statusFilter]);
 
-  function getTodayKey() {
-    const now = new Date();
-    return new Intl.DateTimeFormat("pt-BR", {
+  const todayCount = useMemo(() => {
+    const todayKey = new Intl.DateTimeFormat("pt-BR", {
       timeZone: "America/Manaus",
       year: "numeric",
       month: "2-digit",
       day: "2-digit"
-    }).format(now);
-  }
+    }).format(new Date());
 
-  const todayCount = useMemo(() => {
-    const todayKey = getTodayKey();
     return pessoas.filter((pessoa) => {
       if (!pessoa.created_at) return false;
-      const key = new Intl.DateTimeFormat("pt-BR", {
+      const createdKey = new Intl.DateTimeFormat("pt-BR", {
         timeZone: "America/Manaus",
         year: "numeric",
         month: "2-digit",
         day: "2-digit"
       }).format(new Date(pessoa.created_at));
-      return key === todayKey;
+      return createdKey === todayKey;
     }).length;
   }, [pessoas]);
-
-  const columnCount = 8 + (showIgreja ? 1 : 0) + (showBairro ? 1 : 0);
-
-  function getCadastroCompletoLabel(status?: PessoaItem["cadastro_completo_status"]) {
-    if (status === "concluido") return "Concluído";
-    if (status === "link_enviado") return "Link enviado";
-    return "Pendente";
-  }
-
-  function getCadastroCompletoClass(status?: PessoaItem["cadastro_completo_status"]) {
-    if (status === "concluido") {
-      return "border-emerald-200 bg-emerald-50 text-emerald-700";
-    }
-    if (status === "link_enviado") {
-      return "border-amber-200 bg-amber-50 text-amber-700";
-    }
-    return "border-slate-200 bg-slate-100 text-slate-600";
-  }
-
-  function resetForm() {
-    setNome("");
-    setTelefone("");
-    setCpf("");
-    setFotoUrl("");
-    setOrigem("");
-    setIgrejaSelecionada("Sede");
-    setIgrejaOutra("");
-    setBairro("");
-    setData("");
-    setObservacoes("");
-  }
 
   function openCreate() {
     setEditingPessoa(null);
     resetForm();
     setShowCreate(true);
+    setStatusMessage("");
   }
 
   function openEdit(pessoa: PessoaItem) {
     setEditingPessoa(pessoa);
-    setNome(pessoa.nome_completo ?? "");
+    setNome(pessoa.nome_completo);
     setTelefone(formatBrazilPhoneInput(pessoa.telefone_whatsapp ?? ""));
-    setCpf(formatCpfInput(pessoa.cpf ?? ""));
-    setFotoUrl(pessoa.foto_url ?? "");
-    setOrigem(pessoa.origem ?? "");
-    const igrejaAtual = pessoa.igreja_origem ?? "Sede";
-    if (igrejaOptions.includes(igrejaAtual)) {
-      setIgrejaSelecionada(igrejaAtual);
-      setIgrejaOutra("");
-    } else {
-      setIgrejaSelecionada("Outra");
-      setIgrejaOutra(igrejaAtual);
-    }
-    setBairro(pessoa.bairro ?? "");
-    setData(pessoa.data ?? "");
-    setObservacoes(pessoa.observacoes ?? "");
+    setDataCadastro(pessoa.data ?? currentLocalDateInputValue());
+    setCultoOrigem(parseCultoOrigemCode(pessoa.culto_origem ?? pessoa.origem) ?? "OUTRO");
     setShowCreate(true);
+    setStatusMessage("");
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabaseClient) return;
-    setStatusMessage("");
-    const bairroInput = bairro;
-    const telefoneRaw = telefone;
-    const telefoneParsed = parseBrazilPhone(telefoneRaw);
-    if (bairroInput && bairroInput.trim().length < 2) {
-      setStatusMessage("O bairro precisa ter ao menos 2 caracteres.");
-      return;
-    }
-    if (!telefoneParsed) {
-      setStatusMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
-      return;
-    }
-    if (igrejaSelecionada === "Outra" && !igrejaOutra.trim()) {
-      setStatusMessage("Informe a igreja de origem.");
-      return;
-    }
-    const cpfRaw = cpf.trim();
-    const parsedCpf = cpfRaw ? parseCpf(cpfRaw) : null;
-    if (cpfRaw && !parsedCpf) {
-      setStatusMessage("Informe um CPF válido.");
-      return;
-    }
-    const igrejaOrigem = igrejaSelecionada === "Outra" ? igrejaOutra : igrejaSelecionada;
-    const payloadBase = {
-      nome_completo: nome.trim(),
-      telefone_whatsapp: telefoneParsed.formatted,
-      origem: origem.trim(),
-      igreja_origem: igrejaOrigem || null,
-      bairro: bairroInput || null,
-      data: data || null,
-      observacoes: observacoes.trim()
-    };
-    const payload = hasMemberProfileColumns
-      ? {
-          ...payloadBase,
-          cpf: parsedCpf?.digits ?? null,
-          foto_url: fotoUrl.trim() || null
-        }
-      : payloadBase;
 
-    if (!hasMemberProfileColumns && (cpfRaw || fotoUrl.trim())) {
-      setStatusMessage(
-        "CPF/Foto ainda não estão disponíveis neste banco. Aplique a migração de cadastro completo (0020)."
-      );
+    const nomeFinal = nome.trim();
+    if (nomeFinal.length < 3) {
+      setFeedbackTone("error");
+      setStatusMessage("Informe o nome com pelo menos 3 caracteres.");
+      return;
     }
+
+    const telefoneParsed = parseBrazilPhone(telefone);
+    if (!telefoneParsed) {
+      setFeedbackTone("error");
+      setStatusMessage("Informe o contato com DDD. Ex: (92) 99227-0057.");
+      return;
+    }
+
+    if (!dataCadastro) {
+      setFeedbackTone("error");
+      setStatusMessage("A data do cadastro é obrigatória.");
+      return;
+    }
+
+    const cultoSelecionado = parseCultoOrigemCode(cultoOrigem);
+    if (!cultoSelecionado) {
+      setFeedbackTone("error");
+      setStatusMessage("Selecione o culto.");
+      return;
+    }
+
+    let payload: Record<string, unknown> = {
+      nome_completo: nomeFinal,
+      telefone_whatsapp: telefoneParsed.formatted,
+      origem: cultoOrigemToLegacyOrigem(cultoSelecionado),
+      data: dataCadastro
+    };
+
+    if (hasCultoColumn) {
+      payload.culto_origem = cultoSelecionado;
+    }
+
+    if (!editingPessoa && hasCompletionStatusColumn) {
+      payload.cadastro_completo_status = "pendente";
+    }
+
     if (editingPessoa) {
-      // Nunca atualiza request_id (idempotência é somente para inserts).
       const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
       if (error) {
+        setFeedbackTone("error");
         setStatusMessage(error.message);
         return;
       }
+      setFeedbackTone("success");
+      setStatusMessage("Cadastro rápido atualizado com sucesso.");
     } else {
-      const insertPayload = { ...payload, request_id: crypto.randomUUID() };
-      let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
+      payload.request_id = crypto.randomUUID();
 
-      // Ambientes legados podem não ter a coluna request_id ou o schema cache pode estar desatualizado.
+      let { error } = await supabaseClient.from("pessoas").insert(payload);
+
       if (error && isMissingRequestIdColumnError(error.message, error.code)) {
+        const { request_id: _requestId, ...fallbackPayload } = payload;
+        payload = fallbackPayload;
         ({ error } = await supabaseClient.from("pessoas").insert(payload));
       }
 
       if (error) {
         if (error.code === "23505") {
-          setStatusMessage("Cadastro duplicado detectado e ignorado com segurança.");
+          setFeedbackTone("success");
+          setStatusMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
           setShowCreate(false);
-          setEditingPessoa(null);
           resetForm();
           await loadPessoas();
           return;
         }
+        setFeedbackTone("error");
         setStatusMessage(error.message);
         return;
       }
+
+      setFeedbackTone("success");
+      setStatusMessage("Cadastro rápido salvo. Os dados complementares ficam pendentes para depois.");
     }
+
     setShowCreate(false);
     setEditingPessoa(null);
     resetForm();
@@ -560,31 +395,16 @@ function CadastrosContent() {
 
   function handleExport() {
     const rows = filtered.map((pessoa) => [
-        pessoa.nome_completo,
-        pessoa.telefone_whatsapp ?? "",
-        pessoa.cpf ?? "",
-        pessoa.foto_url ?? "",
-        pessoa.origem ?? "",
-      pessoa.igreja_origem ?? "",
-      pessoa.bairro ?? "",
-      pessoa.status ?? "",
-      pessoa.responsavel_id ?? "",
-      pessoa.created_at
+      pessoa.nome_completo,
+      pessoa.telefone_whatsapp ?? "",
+      pessoa.data ?? "",
+      cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem),
+      getCadastroCompletoLabel(pessoa.cadastro_completo_status)
     ]);
+
     downloadCsv(
-      "cadastros.csv",
-      [
-        "nome",
-        "telefone",
-        "cpf",
-        "foto_url",
-        "origem",
-        "igreja_origem",
-        "bairro",
-        "status",
-        "responsavel_id",
-        "criado_em"
-      ],
+      "cadastros-rapidos-ccm.csv",
+      ["nome", "contato", "data", "culto", "status_cadastro"],
       rows
     );
   }
@@ -592,15 +412,19 @@ function CadastrosContent() {
   async function handleImportFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file || !supabaseClient) return;
+
     setStatusMessage("");
+
     const isExcel = file.name.toLowerCase().endsWith(".xlsx");
     let parsed: { headers: string[]; rows: string[][] };
+
     if (isExcel) {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
       if (!sheet) {
+        setFeedbackTone("error");
         setStatusMessage("Arquivo Excel inválido.");
         return;
       }
@@ -610,75 +434,86 @@ function CadastrosContent() {
         .filter((row) => row.some((cell) => cell.length > 0));
       parsed = { headers: rows[0] ?? [], rows: rows.slice(1) };
     } else {
-      const text = await file.text();
-      parsed = parseCsv(text);
+      parsed = parseCsv(await file.text());
     }
+
     if (!parsed.headers.length) {
+      setFeedbackTone("error");
       setStatusMessage("Arquivo de importação vazio ou inválido.");
       return;
     }
+
     const headerIndex = parsed.headers.reduce<Record<string, number>>((acc, header, index) => {
-      acc[header.toLowerCase()] = index;
+      acc[String(header).toLowerCase()] = index;
       return acc;
     }, {});
+
     const skippedRows: number[] = [];
     const invalidPhoneRows: number[] = [];
 
     const payload = parsed.rows
       .map((row, index) => {
         const line = index + 2;
-        const nome = String(row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "").trim();
-        if (!nome) {
+        const nomeValue = String(row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "").trim();
+        const contatoValue = String(
+          row[headerIndex.contato] ?? row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? ""
+        ).trim();
+        const cultoValue = String(
+          row[headerIndex.culto] ?? row[headerIndex.culto_origem] ?? row[headerIndex.origem] ?? row[headerIndex.turno] ?? ""
+        ).trim();
+        const rawDateValue = String(
+          row[headerIndex.data] ?? row[headerIndex.criado_em] ?? row[headerIndex.created_at] ?? ""
+        ).trim();
+
+        if (!nomeValue || !contatoValue || !cultoValue || !rawDateValue) {
           skippedRows.push(line);
           return null;
         }
 
-        const telefoneRaw = String(row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? "").trim();
-        const telefoneParsed = telefoneRaw ? parseBrazilPhone(telefoneRaw) : null;
-        const telefoneFinal = telefoneParsed?.formatted ?? (telefoneRaw || null);
-        if (!telefoneParsed && telefoneRaw) invalidPhoneRows.push(line);
+        const telefoneParsed = parseBrazilPhone(contatoValue);
+        if (!telefoneParsed) {
+          invalidPhoneRows.push(line);
+          return null;
+        }
 
-        const turno = String(row[headerIndex.turno] ?? "").trim();
+        const cultoParsed = parseCultoOrigemCode(cultoValue);
+        if (!cultoParsed) {
+          skippedRows.push(line);
+          return null;
+        }
 
-        const origemRaw = String(row[headerIndex.origem] ?? "").trim();
-        const origemFromTurno = (() => {
-          const t = turno.toLowerCase();
-          if (!t) return "";
-          if (t.includes("manh")) return "Manhã";
-          if (t.includes("noite")) return "Noite";
-          if (t.includes("tarde")) return "Tarde";
-          return "";
-        })();
-        const origemFinal = (origemRaw || origemFromTurno || "").trim() || null;
+        const isoDate = normalizeImportDate(rawDateValue);
+        if (!isoDate) {
+          skippedRows.push(line);
+          return null;
+        }
 
-        const rawDateValue =
-          row[headerIndex.data] ??
-          row[headerIndex.criado_em] ??
-          row[headerIndex.created_at] ??
-          "";
-        const isoDate = normalizeImportDate(String(rawDateValue ?? ""));
-        const createdAt = isoDate ? isoDateToManausCreatedAt(isoDate) : null;
-
-        const observacoesBase = String(row[headerIndex.observacoes] ?? "").trim();
-        const observacoes = observacoesBase;
-
-        return {
-          nome_completo: nome,
-          telefone_whatsapp: telefoneFinal,
-          origem: origemFinal,
-          igreja_origem: String(row[headerIndex.igreja_origem] ?? row[headerIndex.igreja] ?? "").trim() || null,
-          bairro: String(row[headerIndex.bairro] ?? "").trim() || null,
-          data: isoDate ?? (rawDateValue ? String(rawDateValue) : null),
-          observacoes,
-          created_at: createdAt,
-          updated_at: createdAt,
+        const item: Record<string, unknown> = {
+          nome_completo: nomeValue,
+          telefone_whatsapp: telefoneParsed.formatted,
+          origem: cultoOrigemToLegacyOrigem(cultoParsed),
+          data: isoDate,
+          created_at: isoDateToManausCreatedAt(isoDate),
+          updated_at: isoDateToManausCreatedAt(isoDate),
           request_id: crypto.randomUUID()
         };
+
+        if (hasCultoColumn) {
+          item.culto_origem = cultoParsed;
+        }
+        if (hasCompletionStatusColumn) {
+          item.cadastro_completo_status = parseCadastroCompletoStatus(
+            String(row[headerIndex.status_cadastro] ?? row[headerIndex.status] ?? "pendente")
+          );
+        }
+
+        return item;
       })
-      .filter((item): item is NonNullable<typeof item> => item !== null);
+      .filter((item): item is Record<string, unknown> => item !== null);
 
     if (!payload.length) {
-      setStatusMessage("Nenhuma linha válida para importar (nome vazio em todas as linhas).");
+      setFeedbackTone("error");
+      setStatusMessage("Nenhuma linha válida para importar. Verifique nome, contato, data e culto.");
       return;
     }
 
@@ -687,54 +522,58 @@ function CadastrosContent() {
       const fallbackPayload = payload.map(({ request_id: _requestId, ...rest }) => rest);
       ({ error } = await supabaseClient.from("pessoas").insert(fallbackPayload));
     }
+
     if (error) {
+      setFeedbackTone("error");
       setStatusMessage(error.message);
       return;
     }
 
-    if (skippedRows.length || invalidPhoneRows.length) {
-      const notes = [];
-      if (skippedRows.length) notes.push(`linhas ignoradas (nome vazio): ${skippedRows.slice(0, 8).join(", ")}`);
-      if (invalidPhoneRows.length) notes.push(`telefones não normalizados: ${invalidPhoneRows.slice(0, 8).join(", ")}`);
-      setStatusMessage(`Importação concluída com avisos: ${notes.join(" | ")}.`);
-    } else {
-      setStatusMessage("Importação concluída com sucesso.");
-    }
+    const notes = [];
+    if (skippedRows.length) notes.push(`linhas ignoradas: ${skippedRows.slice(0, 8).join(", ")}`);
+    if (invalidPhoneRows.length) notes.push(`contatos inválidos: ${invalidPhoneRows.slice(0, 8).join(", ")}`);
+
+    setFeedbackTone("success");
+    setStatusMessage(
+      notes.length
+        ? `Importação concluída com avisos: ${notes.join(" | ")}.`
+        : "Importação concluída com sucesso."
+    );
+
+    event.target.value = "";
     await loadPessoas();
   }
 
   async function handleDelete(pessoa: PessoaItem) {
     if (!supabaseClient) return;
+
     const confirmed = window.confirm(
       `Excluir o cadastro de "${pessoa.nome_completo}"? Essa ação não poderá ser desfeita.`
     );
     if (!confirmed) return;
-    setStatusMessage("");
+
     setDeletingId(pessoa.id);
-    // FK cascades should take care of dependent CCM rows (integracao/timeline/etc).
-    // If the member has an active/old Discipulado case, the FK is RESTRICT and we must block deletion.
+    setStatusMessage("");
+
     const { error } = await supabaseClient.from("pessoas").delete().eq("id", pessoa.id);
     if (error) {
-      const msg = String(error.message ?? "");
-      const code = (error as { code?: string } | null)?.code ?? "";
-      if (code === "23503" && msg.includes("discipleship_cases_member_id_fkey")) {
-        setStatusMessage(
-          "Não é possível excluir: este membro está vinculado ao Discipulado. Conclua/encerre o case no Discipulado ou mantenha o cadastro e apenas atualize os dados."
-        );
-      } else {
-        setStatusMessage(msg || "Não foi possível excluir o cadastro.");
-      }
+      setFeedbackTone("error");
+      setStatusMessage(error.message || "Não foi possível excluir o cadastro.");
       setDeletingId(null);
       return;
     }
-    await loadPessoas();
+
+    setFeedbackTone("success");
+    setStatusMessage("Cadastro removido com sucesso.");
     setDeletingId(null);
+    await loadPessoas();
   }
 
   async function handleGenerateCompletionLink(pessoa: PessoaItem) {
     if (!supabaseClient) return;
-    setStatusMessage("");
+
     setGeneratingLinkForId(pessoa.id);
+    setStatusMessage("");
 
     const { data, error } = await supabaseClient.rpc("generate_member_completion_token", {
       target_member_id: pessoa.id,
@@ -742,6 +581,7 @@ function CadastrosContent() {
     });
 
     if (error || !data) {
+      setFeedbackTone("error");
       setStatusMessage(error?.message ?? "Não foi possível gerar o link de cadastro completo.");
       setGeneratingLinkForId(null);
       return;
@@ -752,14 +592,16 @@ function CadastrosContent() {
 
     try {
       await navigator.clipboard.writeText(link);
-      setStatusMessage(`Link copiado para ${pessoa.nome_completo}. Envie para o membro concluir o cadastro.`);
+      setFeedbackTone("success");
+      setStatusMessage(`Link copiado para ${pessoa.nome_completo}.`);
     } catch {
       window.prompt("Copie o link de cadastro completo:", link);
+      setFeedbackTone("info");
       setStatusMessage(`Link gerado para ${pessoa.nome_completo}.`);
     }
 
-    await loadPessoas();
     setGeneratingLinkForId(null);
+    await loadPessoas();
   }
 
   return (
@@ -767,14 +609,18 @@ function CadastrosContent() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-          <h2 className="text-xl font-semibold text-emerald-900">Cadastros</h2>
+          <h2 className="text-xl font-semibold text-emerald-900">Cadastros rápidos</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Visualize o cadastro inicial resumido do perfil <strong>CADASTRADOR</strong>, com foco em nome, contato, data, culto e status de complementação.
+          </p>
         </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             onClick={openCreate}
             className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
-            Novo cadastro
+            Novo cadastro rápido (Cadastrador)
           </button>
           <button
             onClick={handleExport}
@@ -789,10 +635,10 @@ function CadastrosContent() {
             Importar CSV/XLSX
           </button>
           <Link
-            href="/cadastros_import_modelo.xlsx"
+            href="/cadastros_import_modelo.csv"
             className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
           >
-            Baixar modelo
+            Baixar modelo CSV
           </Link>
           <input
             ref={fileInputRef}
@@ -806,155 +652,86 @@ function CadastrosContent() {
 
       <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Cadastros feitos hoje
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cadastros feitos hoje</p>
           <p className="mt-1 text-3xl font-semibold text-emerald-900">{todayCount}</p>
-          {lastConfirmedAt ? (
-            <p className="mt-1 text-xs text-slate-500">
-              Confirmado às{" "}
-              {lastConfirmedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-            </p>
-          ) : null}
+          <p className="mt-1 text-xs text-slate-500">Fluxo pensado para operação rápida em culto.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setLastConfirmedAt(new Date())}
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-        >
-          Confirmar
-        </button>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como <strong>pendente de complementação</strong>.
+        </div>
       </div>
 
       {showCreate ? (
-        <form className="card grid gap-3 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          {!hasMemberProfileColumns ? (
+        <form className="card grid gap-4 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
+          {!hasCultoColumn ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:col-span-2">
-              Campos de perfil completo (CPF/Foto) indisponíveis neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
+              A coluna `culto_origem` ainda não existe neste ambiente. Aplique a migração `0067_ccm_culto_rapido.sql`.
             </p>
           ) : null}
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Nome completo</span>
+          {!hasCompletionStatusColumn ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 md:col-span-2">
+              O status de complementação ainda não existe neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
+            </p>
+          ) : null}
+
+          <label className="space-y-1 text-sm md:col-span-2">
+            <span className="text-slate-700">Nome</span>
             <input
-              name="nome_completo"
               required
               value={nome}
               onChange={(event) => setNome(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              placeholder="Digite o nome da pessoa"
             />
           </label>
+
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Telefone (WhatsApp)</span>
+            <span className="text-slate-700">Contato</span>
             <input
-              name="telefone_whatsapp"
               required
               value={telefone}
               onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
               placeholder="(92) 99227-0057"
             />
           </label>
+
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">CPF</span>
+            <span className="text-slate-700">Data</span>
             <input
-              name="cpf"
-              value={cpf}
-              onChange={(event) => setCpf(formatCpfInput(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="000.000.000-00"
-              disabled={!hasMemberProfileColumns}
+              required
+              type="date"
+              value={dataCadastro}
+              onChange={(event) => setDataCadastro(event.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
             />
           </label>
+
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Foto de perfil (URL)</span>
-            <input
-              name="foto_url"
-              type="url"
-              value={fotoUrl}
-              onChange={(event) => setFotoUrl(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              placeholder="https://..."
-              disabled={!hasMemberProfileColumns}
-            />
-            {fotoUrl ? (
-              <div className="pt-2">
-                {/* Preview simples para validar URL da foto antes de salvar */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={fotoUrl}
-                  alt="Prévia da foto de perfil"
-                  className="h-16 w-16 rounded-full border border-slate-200 object-cover"
-                />
-              </div>
-            ) : null}
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Origem</span>
-            <input
-              name="origem"
-              value={origem}
-              onChange={(event) => setOrigem(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Igreja de origem / Congregação</span>
+            <span className="text-slate-700">Culto</span>
             <select
-              name="igreja_origem"
-              value={igrejaSelecionada}
-              onChange={(event) => setIgrejaSelecionada(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              value={cultoOrigem}
+              onChange={(event) => {
+                const parsed = parseCultoOrigemCode(event.target.value);
+                if (parsed) setCultoOrigem(parsed);
+              }}
+              className="w-full rounded-lg border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
             >
-              {igrejaOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+              {CULTO_ORIGEM_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
           </label>
-          {igrejaSelecionada === "Outra" ? (
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Qual igreja?</span>
-              <input
-                name="igreja_origem_outra"
-                value={igrejaOutra}
-                onChange={(event) => setIgrejaOutra(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              />
-            </label>
-          ) : null}
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Bairro</span>
-            <input
-              name="bairro"
-              value={bairro}
-              onChange={(event) => setBairro(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data</span>
-            <input
-              name="data"
-              type="date"
-              value={data}
-              onChange={(event) => setData(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Observações</span>
-            <textarea
-              name="observacoes"
-              rows={2}
-              value={observacoes}
-              onChange={(event) => setObservacoes(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-            />
-          </label>
-          <div className="flex items-center gap-2 md:col-span-2">
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
+            Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão preenchidos posteriormente pela equipe ou pelo link de complementação.
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 md:col-span-2">
             <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-              {editingPessoa ? "Salvar alterações" : "Salvar cadastro"}
+              {editingPessoa ? "Salvar alterações" : "Salvar rápido"}
             </button>
             <button
               type="button"
@@ -975,22 +752,20 @@ function CadastrosContent() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="search"
-            placeholder="Buscar por nome, telefone, CPF ou origem"
+            placeholder="Buscar por nome, contato ou culto"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none md:w-80"
           />
           <select
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) => setStatusFilter(event.target.value as "TODOS" | CadastroCompletoStatus)}
             className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
           >
             <option value="TODOS">Todos os status</option>
-            <option>PENDENTE</option>
-            <option>EM_ANDAMENTO</option>
-            <option>CONTATO</option>
-            <option>INTEGRADO</option>
-            <option>BATIZADO</option>
+            <option value="pendente">Pendente de complementação</option>
+            <option value="link_enviado">Link enviado</option>
+            <option value="concluido">Cadastro completo</option>
           </select>
           <button
             onClick={loadPessoas}
@@ -998,28 +773,18 @@ function CadastrosContent() {
           >
             Atualizar
           </button>
-          <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={showIgreja}
-              onChange={(event) => setShowIgreja(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Igreja
-          </label>
-          <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600">
-            <input
-              type="checkbox"
-              checked={showBairro}
-              onChange={(event) => setShowBairro(event.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Bairro
-          </label>
         </div>
 
         {statusMessage ? (
-          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p
+            className={`mt-3 rounded-lg px-3 py-2 text-xs ${
+              feedbackTone === "error"
+                ? "border border-rose-200 bg-rose-50 text-rose-700"
+                : feedbackTone === "success"
+                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border border-slate-200 bg-slate-50 text-slate-700"
+            }`}
+          >
             {statusMessage}
           </p>
         ) : null}
@@ -1028,41 +793,30 @@ function CadastrosContent() {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {[
-                  "Nome",
-                  "Telefone",
-                  "Origem",
-                  showIgreja ? "Igreja" : null,
-                  showBairro ? "Bairro" : null,
-                  "Status",
-                  "Cadastro completo",
-                  "Responsável",
-                  "Atualizado em",
-                  "Ações"
-                ]
-                  .filter(Boolean)
-                  .map((col) => (
-                    <th key={col as string} className="px-4 py-2 text-left font-semibold text-slate-600">
-                      {col}
-                    </th>
-                  ))}
+                {["Nome", "Contato", "Data", "Culto", "Status do cadastro", "Ações"].map((col) => (
+                  <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
+                    {col}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={columnCount} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                     Carregando cadastros...
                   </td>
                 </tr>
               ) : null}
+
               {!loading && !filtered.length ? (
                 <tr>
-                  <td colSpan={columnCount} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                     Nenhum cadastro encontrado.
                   </td>
                 </tr>
               ) : null}
+
               {filtered.map((pessoa) => (
                 <tr key={pessoa.id} className="hover:bg-emerald-50/50">
                   <td className="px-4 py-3 font-semibold text-slate-900">
@@ -1070,16 +824,12 @@ function CadastrosContent() {
                       {pessoa.nome_completo}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{pessoa.telefone_whatsapp}</td>
-                  <td className="px-4 py-3 text-slate-700">{pessoa.origem}</td>
-                  {showIgreja ? (
-                    <td className="px-4 py-3 text-slate-700">{pessoa.igreja_origem ?? "-"}</td>
-                  ) : null}
-                  {showBairro ? (
-                    <td className="px-4 py-3 text-slate-700">{pessoa.bairro ?? "-"}</td>
-                  ) : null}
-                  <td className="px-4 py-3">
-                    <StatusBadge value={pessoa.status ?? "PENDENTE"} />
+                  <td className="px-4 py-3 text-slate-700">{pessoa.telefone_whatsapp ?? "-"}</td>
+                  <td className="px-4 py-3 text-slate-700">
+                    {pessoa.data ? formatDateBR(pessoa.data) : "-"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-700">
+                    {cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -1090,17 +840,13 @@ function CadastrosContent() {
                       {getCadastroCompletoLabel(pessoa.cadastro_completo_status)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{pessoa.responsavel_id ?? "A definir"}</td>
-                  <td className="px-4 py-3 text-slate-700">
-                    {pessoa.updated_at ? formatDateBR(pessoa.updated_at) : "-"}
-                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/pessoas/${pessoa.id}`}
                         className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
                       >
-                        Timeline
+                        Abrir
                       </Link>
                       <button
                         type="button"
@@ -1109,7 +855,7 @@ function CadastrosContent() {
                       >
                         Editar
                       </button>
-                      {canGenerateCompletionLink ? (
+                      {canGenerateCompletionLink && hasCompletionStatusColumn ? (
                         <button
                           type="button"
                           onClick={() => handleGenerateCompletionLink(pessoa)}
@@ -1120,7 +866,7 @@ function CadastrosContent() {
                           className="rounded-lg border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
                         >
                           {pessoa.cadastro_completo_status === "concluido"
-                            ? "Cadastro concluído"
+                            ? "Completo"
                             : generatingLinkForId === pessoa.id
                               ? "Gerando..."
                               : "Link completo"}

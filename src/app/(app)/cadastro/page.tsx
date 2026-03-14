@@ -1,78 +1,32 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { CULTO_ORIGEM_OPTIONS, CultoOrigemCode, cultoOrigemToLegacyOrigem, parseCultoOrigemCode } from "@/lib/cultoOrigem";
+import {
+  CULTO_ORIGEM_OPTIONS,
+  CultoOrigemCode,
+  cultoOrigemToLegacyOrigem,
+  parseCultoOrigemCode
+} from "@/lib/cultoOrigem";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 
-const igrejaOptions = [
-  "Sede",
-  "Congregação Cidade Nova",
-  "Congregação Japiim",
-  "Congregação Alvorada",
-  "Assembleia de Deus - Sede",
-  "Igreja Batista da Lagoinha Manaus",
-  "Igreja Batista do Amazonas",
-  "Igreja Adventista Central de Manaus",
-  "Igreja Universal - Alvorada",
-  "Igreja Universal - Centro",
-  "Igreja do Evangelho Quadrangular - Centro",
-  "Igreja do Evangelho Quadrangular - Cidade Nova",
-  "Igreja Presbiteriana de Manaus",
-  "Igreja Metodista de Manaus",
-  "Igreja Crista Maranata - Centro",
-  "Igreja Crista Maranata - Cidade Nova",
-  "Igreja de Deus no Brasil - Centro",
-  "Igreja Batista do Parque Dez",
-  "Igreja Batista de Adrianopolis",
-  "Igreja Batista de Flores",
-  "Igreja Batista de Compensa",
-  "Outra"
-];
-const bairroOptions = [
-  "Adrianópolis",
-  "Aleixo",
-  "Alvorada",
-  "Centro",
-  "Cidade Nova",
-  "Compensa",
-  "Dom Pedro",
-  "Flores",
-  "Japiim",
-  "Jorge Teixeira",
-  "Lago Azul",
-  "Mauazinho",
-  "Monte das Oliveiras",
-  "Parque Dez",
-  "Petrópolis",
-  "Planalto",
-  "Ponta Negra",
-  "Praça 14",
-  "Redenção",
-  "Santa Etelvina",
-  "São José",
-  "Tancredo Neves",
-  "Tarumã",
-  "Zumbi",
-  "Outro"
-];
+function currentLocalDateInputValue() {
+  const now = new Date();
+  const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+function isMissingColumnError(message: string, code: string | undefined, column: string) {
+  return code === "PGRST204" && message.includes(column);
+}
 
 export default function CadastroInternoPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("MANHA");
-  const [igreja, setIgreja] = useState("Sede");
-  const [igrejaOutra, setIgrejaOutra] = useState("");
-  const [igrejaBusca, setIgrejaBusca] = useState("");
-  const [bairro, setBairro] = useState("Adrianópolis");
-  const [bairroOutro, setBairroOutro] = useState("");
+  const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
-
-  const igrejaFilteredOptions = useMemo(() => {
-    const term = igrejaBusca.trim().toLowerCase();
-    if (!term) return igrejaOptions;
-    return igrejaOptions.filter((option) => option.toLowerCase().includes(term));
-  }, [igrejaBusca]);
+  const [dataCadastro, setDataCadastro] = useState(currentLocalDateInputValue());
+  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("DOMINGO_MANHA");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -85,62 +39,66 @@ export default function CadastroInternoPage() {
       return;
     }
 
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const bairroInput = String(formData.get("bairro") ?? "");
-    if (bairroInput && bairroInput.trim().length < 2) {
+    const nomeFinal = nome.trim();
+    if (nomeFinal.length < 3) {
       setStatus("error");
-      setMessage("O bairro precisa ter ao menos 2 caracteres.");
+      setMessage("Informe o nome com pelo menos 3 caracteres.");
       return;
     }
-    if (igreja === "Outra" && !igrejaOutra.trim()) {
-      setStatus("error");
-      setMessage("Informe a igreja de origem.");
-      return;
-    }
-    if (bairro === "Outro" && !bairroOutro.trim()) {
-      setStatus("error");
-      setMessage("Informe o bairro.");
-      return;
-    }
-    const telefoneRaw = String(formData.get("telefone_whatsapp") ?? "");
-    const telefoneParsed = parseBrazilPhone(telefoneRaw);
+
+    const telefoneParsed = parseBrazilPhone(telefone);
     if (!telefoneParsed) {
       setStatus("error");
-      setMessage("Informe o telefone com DDD. Ex: (92) 99227-0057.");
+      setMessage("Informe o contato com DDD. Ex: (92) 99227-0057.");
       return;
     }
-    const igrejaOrigem = igreja === "Outra" ? igrejaOutra : igreja;
-    const bairroFinal = bairro === "Outro" ? bairroOutro : bairro;
-    const payload = {
-      nome_completo: String(formData.get("nome_completo") ?? ""),
+
+    if (!dataCadastro) {
+      setStatus("error");
+      setMessage("A data do cadastro é obrigatória.");
+      return;
+    }
+
+    const cultoSelecionado = parseCultoOrigemCode(cultoOrigem);
+    if (!cultoSelecionado) {
+      setStatus("error");
+      setMessage("Selecione o culto.");
+      return;
+    }
+
+    let insertPayload: Record<string, unknown> = {
+      nome_completo: nomeFinal,
       telefone_whatsapp: telefoneParsed.formatted,
-      origem: cultoOrigemToLegacyOrigem(cultoOrigem),
-      culto_origem: cultoOrigem,
-      igreja_origem: igrejaOrigem || null,
-      bairro: bairroFinal || null,
-      data: formData.get("data") ? String(formData.get("data")) : null,
-      observacoes: String(formData.get("observacoes") ?? ""),
+      data: dataCadastro,
+      origem: cultoOrigemToLegacyOrigem(cultoSelecionado),
+      culto_origem: cultoSelecionado,
+      cadastro_completo_status: "pendente",
       request_id: crypto.randomUUID()
     };
 
-    let insertPayload: Record<string, unknown> = payload;
     let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
-    if (error && error.code === "PGRST204" && error.message.includes("request_id")) {
+
+    if (error && isMissingColumnError(error.message, error.code, "request_id")) {
       const { request_id: _requestId, ...fallbackPayload } = insertPayload;
       insertPayload = fallbackPayload;
       ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
     }
-    if (error && error.code === "PGRST204" && error.message.includes("culto_origem")) {
+
+    if (error && isMissingColumnError(error.message, error.code, "culto_origem")) {
       const { culto_origem: _cultoOrigem, ...fallbackPayload } = insertPayload;
       insertPayload = fallbackPayload;
       ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
     }
 
     if (error) {
+      if (isMissingColumnError(error.message, error.code, "cadastro_completo_status")) {
+        setStatus("error");
+        setMessage("Aplique a migração 0020_member_profile_completion.sql para marcar o cadastro como pendente.");
+        return;
+      }
       if (error.code === "23505") {
         setStatus("success");
-        setMessage("Cadastro já recebido anteriormente. Evitamos duplicidade.");
+        setMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
         return;
       }
       setStatus("error");
@@ -148,52 +106,71 @@ export default function CadastroInternoPage() {
       return;
     }
 
-    form.reset();
     setStatus("success");
-    setMessage("Cadastro enviado com sucesso. Aguarde o contato da equipe.");
-    setCultoOrigem("MANHA");
-    setIgreja("Sede");
-    setIgrejaOutra("");
-    setIgrejaBusca("");
-    setBairro("Adrianópolis");
-    setBairroOutro("");
+    setMessage("Cadastro rápido salvo com sucesso. Os dados complementares serão preenchidos depois.");
+    setNome("");
     setTelefone("");
+    setDataCadastro(currentLocalDateInputValue());
+    setCultoOrigem("DOMINGO_MANHA");
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <div>
         <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-        <h2 className="text-xl font-semibold text-emerald-900 md:text-2xl">Cadastro rápido</h2>
+        <h2 className="text-xl font-semibold text-emerald-900 md:text-2xl">Cadastro rápido no culto</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Cadastre as pessoas na sala com agilidade e sem perder nenhum registro.
+          Fluxo resumido do perfil <strong>CADASTRADOR</strong>: registre só o essencial agora e deixe a complementação para depois.
         </p>
       </div>
 
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_320px]">
-        <form className="card min-w-0 p-5 md:p-6 xl:col-start-1" onSubmit={handleSubmit}>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <form className="card min-w-0 space-y-5 p-5 md:p-6" onSubmit={handleSubmit}>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Formulário resumido exclusivo para o perfil <strong>CADASTRADOR</strong>: <strong>nome, contato, data e culto</strong>. Os demais dados serão completados depois.
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Nome completo</span>
+            <label className="space-y-1 text-sm md:col-span-2">
+              <span className="text-slate-700">Nome</span>
               <input
                 required
                 name="nome_completo"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                placeholder="Digite o nome"
+                value={nome}
+                onChange={(event) => setNome(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+                placeholder="Digite o nome da pessoa"
+                autoComplete="name"
               />
             </label>
+
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Telefone (WhatsApp)</span>
+              <span className="text-slate-700">Contato</span>
               <input
                 required
                 name="telefone_whatsapp"
                 value={telefone}
                 onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
                 placeholder="(92) 99227-0057"
+                inputMode="tel"
+                autoComplete="tel"
               />
             </label>
+
             <label className="space-y-1 text-sm">
+              <span className="text-slate-700">Data</span>
+              <input
+                required
+                name="data"
+                type="date"
+                value={dataCadastro}
+                onChange={(event) => setDataCadastro(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
+              />
+            </label>
+
+            <label className="space-y-1 text-sm md:col-span-2">
               <span className="text-slate-700">Culto</span>
               <select
                 name="culto_origem"
@@ -202,7 +179,7 @@ export default function CadastroInternoPage() {
                   const parsed = parseCultoOrigemCode(event.target.value);
                   if (parsed) setCultoOrigem(parsed);
                 }}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-base focus:border-emerald-400 focus:outline-none"
               >
                 {CULTO_ORIGEM_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -211,112 +188,42 @@ export default function CadastroInternoPage() {
                 ))}
               </select>
             </label>
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Bairro</span>
-              <select
-                name="bairro"
-                value={bairro}
-                onChange={(event) => setBairro(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              >
-                {bairroOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {bairro === "Outro" ? (
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Qual bairro?</span>
-                <input
-                  name="bairro_outro"
-                  value={bairroOutro}
-                  onChange={(event) => setBairroOutro(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                  placeholder="Digite o bairro"
-                />
-              </label>
-            ) : null}
-            <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Data</span>
-              <input
-                name="data"
-                type="date"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              />
-            </label>
-            <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-slate-700">Igreja de origem / Congregação</span>
-              <input
-                value={igrejaBusca}
-                onChange={(event) => setIgrejaBusca(event.target.value)}
-                placeholder="Buscar igreja..."
-                className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              />
-              <select
-                name="igreja_origem"
-                value={igreja}
-                onChange={(event) => setIgreja(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-              >
-                {igrejaFilteredOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {igreja === "Outra" ? (
-              <label className="space-y-1 text-sm md:col-span-2">
-                <span className="text-slate-700">Qual igreja?</span>
-                <input
-                  name="igreja_origem_outra"
-                  value={igrejaOutra}
-                  onChange={(event) => setIgrejaOutra(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                  placeholder="Digite o nome da igreja"
-                />
-              </label>
-            ) : null}
-            <label className="space-y-1 text-sm md:col-span-2">
-              <span className="text-slate-700">Observações</span>
-              <textarea
-                name="observacoes"
-                rows={3}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
-                placeholder="Compartilhe mais detalhes"
-              />
-            </label>
           </div>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+
+          <div className="flex flex-wrap items-center gap-3">
             <button
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
               disabled={status === "loading"}
             >
-              {status === "loading" ? "Enviando..." : "Enviar cadastro"}
+              {status === "loading" ? "Salvando..." : "Salvar rápido"}
             </button>
-            <p className="text-xs text-slate-500">Resposta rápida para operação em culto e plantão.</p>
+            <p className="text-xs text-slate-500">Ideal para uso no celular durante o culto, sem filas e sem demora.</p>
           </div>
+
           {status === "success" ? (
-            <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {message}
             </p>
           ) : null}
+
           {status === "error" ? (
-            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-              {message || "Não foi possível enviar o cadastro. Tente novamente."}
+            <p className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {message || "Não foi possível salvar o cadastro rápido."}
             </p>
           ) : null}
         </form>
 
-        <aside className="card hidden p-5 xl:col-start-2 xl:block xl:self-start">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Checklist rápido</h3>
-          <ul className="mt-3 space-y-2 text-sm text-slate-600">
-            <li>Nome completo e telefone com DDD.</li>
-            <li>Culto de origem e congregação de referência.</li>
-            <li>Bairro e observações úteis para acompanhamento.</li>
-            <li>Evite duplicidade: confirme telefone antes de enviar.</li>
+        <aside className="card space-y-4 p-5">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Fluxo</p>
+            <h3 className="mt-2 text-lg font-semibold text-emerald-900">Depois do culto</h3>
+          </div>
+
+          <ul className="space-y-3 text-sm text-slate-600">
+            <li>Este formato reduzido é o fluxo operacional do perfil <strong>CADASTRADOR</strong>.</li>
+            <li>O registro entra como <strong>pendente de complementação</strong>.</li>
+            <li>A equipe pode enviar o link de cadastro completo depois.</li>
+            <li>A listagem do CCM passa a mostrar o status desse complemento.</li>
           </ul>
         </aside>
       </div>

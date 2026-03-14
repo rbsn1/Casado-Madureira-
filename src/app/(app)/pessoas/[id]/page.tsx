@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { cultoOrigemLabelFromValue } from "@/lib/cultoOrigem";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { formatDateBR } from "@/lib/date";
 
@@ -12,10 +13,10 @@ type Pessoa = {
   nome_completo: string;
   telefone_whatsapp: string | null;
   origem: string | null;
-  igreja_origem?: string | null;
-  bairro?: string | null;
+  culto_origem?: string | null;
   data: string | null;
   observacoes: string | null;
+  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
 };
 
 type Integracao = {
@@ -65,6 +66,12 @@ export default function PessoaPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
 
+  function cadastroCompletoLabel(status: Pessoa["cadastro_completo_status"]) {
+    if (status === "concluido") return "Cadastro completo";
+    if (status === "link_enviado") return "Link enviado";
+    return "Pendente de complementação";
+  }
+
   const loadPessoa = useCallback(async () => {
     if (!supabaseClient || !pessoaId) return;
     setLoading(true);
@@ -79,7 +86,7 @@ export default function PessoaPerfilPage() {
     ] = await Promise.all([
       supabaseClient
         .from("pessoas")
-        .select("id, nome_completo, telefone_whatsapp, origem, igreja_origem, bairro, data, observacoes")
+        .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, data, observacoes, cadastro_completo_status")
         .eq("id", pessoaId)
         .single(),
       supabaseClient
@@ -170,16 +177,16 @@ export default function PessoaPerfilPage() {
               <dd className="text-sm font-semibold text-slate-900">{pessoa?.telefone_whatsapp ?? "-"}</dd>
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Origem</dt>
-              <dd className="text-sm font-semibold text-slate-900">{pessoa?.origem ?? "-"}</dd>
+              <dt className="text-xs text-slate-500">Culto</dt>
+              <dd className="text-sm font-semibold text-slate-900">
+                {cultoOrigemLabelFromValue(pessoa?.culto_origem ?? pessoa?.origem)}
+              </dd>
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Igreja de origem</dt>
-              <dd className="text-sm font-semibold text-slate-900">{pessoa?.igreja_origem ?? "-"}</dd>
-            </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Bairro</dt>
-              <dd className="text-sm font-semibold text-slate-900">{pessoa?.bairro ?? "-"}</dd>
+              <dt className="text-xs text-slate-500">Status do cadastro</dt>
+              <dd className="text-sm font-semibold text-slate-900">
+                {cadastroCompletoLabel(pessoa?.cadastro_completo_status ?? "pendente")}
+              </dd>
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
               <dt className="text-xs text-slate-500">Data</dt>
@@ -195,6 +202,10 @@ export default function PessoaPerfilPage() {
                   Responsavel: {integracao?.responsavel_id ?? "A definir"}
                 </span>
               </dd>
+            </div>
+            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3 sm:col-span-2">
+              <dt className="text-xs text-slate-500">Observações</dt>
+              <dd className="text-sm font-semibold text-slate-900">{pessoa?.observacoes ?? "-"}</dd>
             </div>
           </dl>
 

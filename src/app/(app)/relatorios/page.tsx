@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { downloadCsv } from "@/lib/csv";
+import { cultoOrigemLabelFromValue } from "@/lib/cultoOrigem";
 import { isMissingRpcSignature } from "@/lib/dashboard-utils";
 
 type ReportData = {
@@ -67,7 +68,7 @@ export default function RelatoriosPage() {
     if (reportType === "Cadastros (lista)") {
       let query = supabaseClient
         .from("pessoas")
-        .select("nome_completo, telefone_whatsapp, origem, created_at")
+        .select("nome_completo, telefone_whatsapp, culto_origem, origem, data, cadastro_completo_status, created_at")
         .eq("cadastro_origem", "ccm")
         .order("created_at", { ascending: false });
       query = applyRange(query, "created_at");
@@ -79,11 +80,12 @@ export default function RelatoriosPage() {
       const rows = (data ?? []).map((row) => [
         row.nome_completo,
         row.telefone_whatsapp,
-        row.origem,
-        row.created_at
+        row.data ?? row.created_at,
+        cultoOrigemLabelFromValue(row.culto_origem ?? row.origem),
+        row.cadastro_completo_status ?? "pendente"
       ]);
       setReportData({
-        headers: ["nome", "telefone", "origem", "criado_em"],
+        headers: ["nome", "contato", "data", "culto", "status_cadastro"],
         rows
       });
       return;
@@ -165,7 +167,7 @@ export default function RelatoriosPage() {
     if (reportType === "Integração & Batismo") {
       let pessoasQuery = supabaseClient
           .from("pessoas")
-          .select("id, nome_completo, telefone_whatsapp, origem, created_at")
+          .select("id, nome_completo, telefone_whatsapp, culto_origem, origem, cadastro_completo_status, created_at")
           .eq("cadastro_origem", "ccm")
           .order("created_at", { ascending: false });
       pessoasQuery = applyRange(pessoasQuery, "created_at");
@@ -191,14 +193,15 @@ export default function RelatoriosPage() {
         return [
           pessoa.nome_completo,
           pessoa.telefone_whatsapp,
-          pessoa.origem,
+          cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem),
+          pessoa.cadastro_completo_status ?? "pendente",
           integracao?.status ?? "PENDENTE",
           integracao?.responsavel_id ?? "",
           batismo?.data ?? ""
         ];
       });
       setReportData({
-        headers: ["nome", "telefone", "origem", "status_integracao", "responsavel_id", "batismo"],
+        headers: ["nome", "telefone", "culto", "status_cadastro", "status_integracao", "responsavel_id", "batismo"],
         rows
       });
     }
