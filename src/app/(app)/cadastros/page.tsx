@@ -627,8 +627,8 @@ function CadastrosContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm text-slate-500">Gestão de Pessoas</p>
           <h2 className="text-xl font-semibold text-emerald-900">Cadastros rápidos</h2>
@@ -637,28 +637,28 @@ function CadastrosContent() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={openCreate}
-            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto"
           >
             Novo cadastro rápido (Cadastrador)
           </button>
           <button
             onClick={handleExport}
-            className="rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+            className="w-full rounded-lg border border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
           >
             Exportar CSV
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-dashed border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+            className="w-full rounded-lg border border-dashed border-emerald-300 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
           >
             Importar CSV/XLSX
           </button>
           <Link
             href="/cadastros_import_modelo.csv"
-            className="rounded-lg border border-emerald-200 px-3 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+            className="block w-full rounded-lg border border-emerald-200 px-3 py-2 text-center text-sm font-semibold text-emerald-900 hover:bg-emerald-50 sm:w-auto"
           >
             Baixar modelo CSV
           </Link>
@@ -672,13 +672,13 @@ function CadastrosContent() {
         </div>
       </div>
 
-      <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+      <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cadastros feitos hoje</p>
           <p className="mt-1 text-3xl font-semibold text-emerald-900">{todayCount}</p>
           <p className="mt-1 text-xs text-slate-500">Fluxo pensado para operação rápida em culto.</p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 sm:max-w-md">
           O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como <strong>pendente de complementação</strong>.
         </div>
       </div>
@@ -751,8 +751,8 @@ function CadastrosContent() {
             Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão preenchidos posteriormente pela equipe ou pelo link de complementação.
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 md:col-span-2">
-            <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+          <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <button className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto">
               {editingPessoa ? "Salvar alterações" : "Salvar rápido"}
             </button>
             <button
@@ -762,7 +762,7 @@ function CadastrosContent() {
                 setEditingPessoa(null);
                 resetForm();
               }}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
+              className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900 sm:w-auto"
             >
               Cancelar
             </button>
@@ -771,18 +771,18 @@ function CadastrosContent() {
       ) : null}
 
       <div className="card p-4">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
           <input
             type="search"
             placeholder="Buscar por nome, contato ou culto"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none md:w-80"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none sm:max-w-sm"
           />
           <select
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value as "TODOS" | CadastroCompletoStatus)}
-            className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm focus:border-emerald-400 focus:outline-none sm:w-auto"
           >
             <option value="TODOS">Todos os status</option>
             <option value="pendente">Pendente de complementação</option>
@@ -791,7 +791,7 @@ function CadastrosContent() {
           </select>
           <button
             onClick={loadPessoas}
-            className="rounded-lg bg-emerald-100 px-3 py-2 text-sm font-semibold text-emerald-900"
+            className="w-full rounded-lg bg-emerald-100 px-3 py-2.5 text-sm font-semibold text-emerald-900 sm:w-auto"
           >
             Atualizar
           </button>
@@ -811,7 +811,95 @@ function CadastrosContent() {
           </p>
         ) : null}
 
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 space-y-3 md:hidden">
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Carregando cadastros...
+            </div>
+          ) : null}
+
+          {!loading && !filtered.length ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+              Nenhum cadastro encontrado.
+            </div>
+          ) : null}
+
+          {!loading
+            ? filtered.map((pessoa) => (
+                <article key={pessoa.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/pessoas/${pessoa.id}`} className="block text-sm font-semibold text-slate-900">
+                        {pessoa.nome_completo}
+                      </Link>
+                      <p className="mt-1 text-xs text-slate-500">{pessoa.telefone_whatsapp ?? "Sem contato"}</p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${getCadastroCompletoClass(
+                        pessoa.cadastro_completo_status
+                      )}`}
+                    >
+                      {getCadastroCompletoLabel(pessoa.cadastro_completo_status)}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <dt className="text-xs text-slate-500">Data</dt>
+                      <dd className="font-medium text-slate-800">{pessoa.data ? formatDateBR(pessoa.data) : "-"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Culto</dt>
+                      <dd className="font-medium text-slate-800">{cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-4 grid gap-2">
+                    <Link
+                      href={`/pessoas/${pessoa.id}`}
+                      className="rounded-lg bg-emerald-600 px-3 py-2.5 text-center text-xs font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Abrir
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => openEdit(pessoa)}
+                      className="rounded-lg border border-emerald-200 px-3 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                    >
+                      Editar
+                    </button>
+                    {canGenerateCompletionLink && hasCompletionStatusColumn ? (
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateCompletionLink(pessoa)}
+                        disabled={
+                          generatingLinkForId === pessoa.id ||
+                          pessoa.cadastro_completo_status === "concluido"
+                        }
+                        className="rounded-lg border border-sky-200 px-3 py-2.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {pessoa.cadastro_completo_status === "concluido"
+                          ? "Cadastro completo"
+                          : generatingLinkForId === pessoa.id
+                            ? "Gerando link..."
+                            : "Gerar link completo"}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(pessoa)}
+                      disabled={deletingId === pessoa.id}
+                      className="rounded-lg border border-rose-200 px-3 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </article>
+              ))
+            : null}
+        </div>
+
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50">
               <tr>
