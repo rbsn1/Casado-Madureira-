@@ -9,7 +9,7 @@ import { downloadCsv, parseCsv } from "@/lib/csv";
 import { formatDateBR } from "@/lib/date";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
-  CULTO_ORIGEM_OPTIONS,
+  CULTO_ORIGEM_CCM_FORM_OPTIONS,
   CultoOrigemCode,
   cultoOrigemLabelFromValue,
   cultoOrigemToLegacyOrigem,
@@ -900,7 +900,7 @@ function CadastrosContent() {
                 required
               >
                 <option value="">Selecione o culto</option>
-                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                {CULTO_ORIGEM_CCM_FORM_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

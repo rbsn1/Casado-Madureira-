@@ -6,7 +6,7 @@ import { createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
 import { getAuthScope } from "@/lib/authScope";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
-  CULTO_ORIGEM_OPTIONS,
+  CULTO_ORIGEM_CCM_FORM_OPTIONS,
   CultoOrigemCode,
   parseCultoOrigemCode
 } from "@/lib/cultoOrigem";
@@ -218,7 +218,7 @@ export default function CadastroInternoPage() {
                 required
               >
                 <option value="">Selecione o culto</option>
-                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                {CULTO_ORIGEM_CCM_FORM_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

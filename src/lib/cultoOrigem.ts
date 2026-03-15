@@ -118,3 +118,7 @@ export const CULTO_ORIGEM_OPTIONS = CULT_CODE_ORDER.map((value) => ({
   value,
   label: CULT_LABEL_BY_CODE[value]
 }));
+
+export const CULTO_ORIGEM_CCM_FORM_OPTIONS = CULTO_ORIGEM_OPTIONS.filter(
+  (option) => option.value === "DOMINGO_MANHA" || option.value === "DOMINGO_NOITE"
+);
