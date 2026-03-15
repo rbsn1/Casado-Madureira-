@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
+import { getAuthScope } from "@/lib/authScope";
 import { supabaseClient } from "@/lib/supabaseClient";
 import {
   CULTO_ORIGEM_OPTIONS,
   CultoOrigemCode,
-  cultoOrigemToLegacyOrigem,
   parseCultoOrigemCode
 } from "@/lib/cultoOrigem";
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
@@ -16,10 +18,6 @@ function currentLocalDateInputValue() {
   return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
 }
 
-function isMissingColumnError(message: string, code: string | undefined, column: string) {
-  return code === "PGRST204" && message.includes(column);
-}
-
 const fieldLabelClass = "text-slate-700";
 const fieldClass =
   "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
@@ -28,12 +26,49 @@ const primaryButtonClass =
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
 
 export default function CadastroInternoPage() {
+  const router = useRouter();
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [dataCadastro, setDataCadastro] = useState(currentLocalDateInputValue());
-  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("DOMINGO_MANHA");
+  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode | "">("");
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkAccess() {
+      if (!supabaseClient) {
+        if (active) setCheckingAccess(false);
+        return;
+      }
+
+      const scope = await getAuthScope();
+      if (!active) return;
+
+      const onlyCadastrador = scope.roles.length === 1 && scope.roles.includes("CADASTRADOR");
+      if (!onlyCadastrador) {
+        router.replace("/cadastros");
+        return;
+      }
+
+      setCheckingAccess(false);
+    }
+
+    checkAccess();
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  if (checkingAccess) {
+    return (
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="card p-4 text-sm text-slate-500">Validando perfil...</div>
+      </div>
+    );
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -73,43 +108,23 @@ export default function CadastroInternoPage() {
       return;
     }
 
-    let insertPayload: Record<string, unknown> = {
-      nome_completo: nomeFinal,
-      telefone_whatsapp: telefoneParsed.formatted,
-      data: dataCadastro,
-      origem: cultoOrigemToLegacyOrigem(cultoSelecionado),
-      culto_origem: cultoSelecionado,
-      cadastro_completo_status: "pendente",
-      request_id: crypto.randomUUID()
-    };
+    const result = await createQuickCcmRegistration(supabaseClient, {
+      fullName: nomeFinal,
+      phoneWhatsapp: telefoneParsed.formatted,
+      registeredOn: dataCadastro,
+      cultoOrigem: cultoSelecionado,
+      requestId: crypto.randomUUID()
+    });
 
-    let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
-
-    if (error && isMissingColumnError(error.message, error.code, "request_id")) {
-      const { request_id: _requestId, ...fallbackPayload } = insertPayload;
-      insertPayload = fallbackPayload;
-      ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
-    }
-
-    if (error && isMissingColumnError(error.message, error.code, "culto_origem")) {
-      const { culto_origem: _cultoOrigem, ...fallbackPayload } = insertPayload;
-      insertPayload = fallbackPayload;
-      ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
-    }
-
-    if (error) {
-      if (isMissingColumnError(error.message, error.code, "cadastro_completo_status")) {
-        setStatus("error");
-        setMessage("Aplique a migração 0020_member_profile_completion.sql para marcar o cadastro como pendente.");
-        return;
-      }
-      if (error.code === "23505") {
-        setStatus("success");
-        setMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
-        return;
-      }
+    if (result.errorMessage) {
       setStatus("error");
-      setMessage(error.message);
+      setMessage(result.errorMessage);
+      return;
+    }
+
+    if (result.duplicate) {
+      setStatus("success");
+      setMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
       return;
     }
 
@@ -118,7 +133,7 @@ export default function CadastroInternoPage() {
     setNome("");
     setTelefone("");
     setDataCadastro(currentLocalDateInputValue());
-    setCultoOrigem("DOMINGO_MANHA");
+    setCultoOrigem("");
   }
 
   return (
@@ -196,11 +211,13 @@ export default function CadastroInternoPage() {
                 name="culto_origem"
                 value={cultoOrigem}
                 onChange={(event) => {
-                  const parsed = parseCultoOrigemCode(event.target.value);
-                  if (parsed) setCultoOrigem(parsed);
+                  const rawValue = event.target.value;
+                  setCultoOrigem(parseCultoOrigemCode(rawValue) ?? "");
                 }}
                 className={fieldClass}
+                required
               >
+                <option value="">Selecione o culto</option>
                 {CULTO_ORIGEM_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}

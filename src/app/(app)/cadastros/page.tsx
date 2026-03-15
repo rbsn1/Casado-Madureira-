@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { formatCpfInput, parseCpf } from "@/lib/cpf";
+import { createFullCcmRegistration, createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
 import { downloadCsv, parseCsv } from "@/lib/csv";
 import { formatDateBR } from "@/lib/date";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -49,6 +51,18 @@ type QueryFallbackError = {
 type PessoasQueryResult = {
   data: unknown[] | null;
   error: QueryFallbackError | null;
+};
+
+type ImportCadastroItem = {
+  sourceLine: number;
+  nome_completo: string;
+  telefone_whatsapp: string;
+  data: string;
+  culto_origem: CultoOrigemCode;
+  cadastro_completo_status: CadastroCompletoStatus;
+  created_at: string;
+  updated_at: string;
+  request_id: string;
 };
 
 const fieldLabelClass = "text-slate-700";
@@ -161,19 +175,39 @@ function CadastrosContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
   const [canGenerateCompletionLink, setCanGenerateCompletionLink] = useState(false);
+  const [canManageCadastrosDirectly, setCanManageCadastrosDirectly] = useState(false);
+  const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
   const [hasCompletionStatusColumn, setHasCompletionStatusColumn] = useState(true);
   const [hasCultoColumn, setHasCultoColumn] = useState(true);
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [dataCadastro, setDataCadastro] = useState(currentLocalDateInputValue());
-  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode>("DOMINGO_MANHA");
+  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode | "">("");
+  const [igrejaOrigem, setIgrejaOrigem] = useState("");
+  const [bairro, setBairro] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [rg, setRg] = useState("");
+  const [fotoUrl, setFotoUrl] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [email, setEmail] = useState("");
+  const [endereco, setEndereco] = useState("");
+  const [observacoes, setObservacoes] = useState("");
 
   const resetForm = useCallback(() => {
     setNome("");
     setTelefone("");
     setDataCadastro(currentLocalDateInputValue());
-    setCultoOrigem("DOMINGO_MANHA");
+    setCultoOrigem("");
+    setIgrejaOrigem("");
+    setBairro("");
+    setCpf("");
+    setRg("");
+    setFotoUrl("");
+    setDataNascimento("");
+    setEmail("");
+    setEndereco("");
+    setObservacoes("");
   }, []);
 
   const loadPessoas = useCallback(async () => {
@@ -270,6 +304,10 @@ function CadastrosContent() {
       const { data } = await supabaseClient.rpc("get_my_roles");
       if (!active) return;
       const roles = (data ?? []) as string[];
+      setIsCadastradorOnly(roles.length === 1 && roles.includes("CADASTRADOR"));
+      setCanManageCadastrosDirectly(
+        roles.some((role) => ["ADMIN_MASTER", "PASTOR", "SECRETARIA"].includes(role))
+      );
       setCanGenerateCompletionLink(
         roles.some((role) =>
           ["ADMIN_MASTER", "PASTOR", "SECRETARIA", "NOVOS_CONVERTIDOS", "CADASTRADOR"].includes(role)
@@ -330,7 +368,7 @@ function CadastrosContent() {
     setNome(pessoa.nome_completo);
     setTelefone(formatBrazilPhoneInput(pessoa.telefone_whatsapp ?? ""));
     setDataCadastro(pessoa.data ?? currentLocalDateInputValue());
-    setCultoOrigem(parseCultoOrigemCode(pessoa.culto_origem ?? pessoa.origem) ?? "OUTRO");
+    setCultoOrigem(parseCultoOrigemCode(pessoa.culto_origem ?? pessoa.origem) ?? "");
     setShowCreate(true);
     setStatusMessage("");
   }
@@ -391,18 +429,22 @@ function CadastrosContent() {
       setFeedbackTone("success");
       setStatusMessage("Cadastro rápido atualizado com sucesso.");
     } else {
-      payload.request_id = crypto.randomUUID();
+      if (isCadastradorOnly) {
+        const result = await createQuickCcmRegistration(supabaseClient, {
+          fullName: nomeFinal,
+          phoneWhatsapp: telefoneParsed.formatted,
+          registeredOn: dataCadastro,
+          cultoOrigem: cultoSelecionado,
+          requestId: crypto.randomUUID()
+        });
 
-      let { error } = await supabaseClient.from("pessoas").insert(payload);
+        if (result.errorMessage) {
+          setFeedbackTone("error");
+          setStatusMessage(result.errorMessage);
+          return;
+        }
 
-      if (error && isMissingRequestIdColumnError(error.message, error.code)) {
-        const { request_id: _requestId, ...fallbackPayload } = payload;
-        payload = fallbackPayload;
-        ({ error } = await supabaseClient.from("pessoas").insert(payload));
-      }
-
-      if (error) {
-        if (error.code === "23505") {
+        if (result.duplicate) {
           setFeedbackTone("success");
           setStatusMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
           setShowCreate(false);
@@ -410,13 +452,59 @@ function CadastrosContent() {
           await loadPessoas();
           return;
         }
-        setFeedbackTone("error");
-        setStatusMessage(error.message);
-        return;
-      }
 
-      setFeedbackTone("success");
-      setStatusMessage("Cadastro rápido salvo. Os dados complementares ficam pendentes para depois.");
+        setFeedbackTone("success");
+        setStatusMessage("Cadastro rápido salvo. Os dados complementares ficam pendentes para depois.");
+      } else {
+        const cpfParsed = parseCpf(cpf);
+        if (!cpfParsed) {
+          setFeedbackTone("error");
+          setStatusMessage("Informe um CPF válido para o cadastro completo.");
+          return;
+        }
+
+        if (!rg.trim()) {
+          setFeedbackTone("error");
+          setStatusMessage("Informe o RG para o cadastro completo.");
+          return;
+        }
+
+        const result = await createFullCcmRegistration(supabaseClient, {
+          fullName: nomeFinal,
+          phoneWhatsapp: telefoneParsed.formatted,
+          registeredOn: dataCadastro,
+          cultoOrigem: cultoSelecionado,
+          cpfDigits: cpfParsed.digits,
+          rg,
+          originChurch: igrejaOrigem,
+          neighborhood: bairro,
+          photoUrl: fotoUrl,
+          birthDate: dataNascimento,
+          email,
+          address: endereco,
+          notes: observacoes,
+          requestId: crypto.randomUUID(),
+          allowDirectInsertFallback: canManageCadastrosDirectly
+        });
+
+        if (result.errorMessage) {
+          setFeedbackTone("error");
+          setStatusMessage(result.errorMessage);
+          return;
+        }
+
+        if (result.duplicate) {
+          setFeedbackTone("success");
+          setStatusMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
+          setShowCreate(false);
+          resetForm();
+          await loadPessoas();
+          return;
+        }
+
+        setFeedbackTone("success");
+        setStatusMessage("Cadastro completo salvo com sucesso.");
+      }
     }
 
     setShowCreate(false);
@@ -520,28 +608,23 @@ function CadastrosContent() {
           return null;
         }
 
-        const item: Record<string, unknown> = {
+        const item: ImportCadastroItem = {
+          sourceLine: line,
           nome_completo: nomeValue,
           telefone_whatsapp: telefoneParsed.formatted,
-          origem: cultoOrigemToLegacyOrigem(cultoParsed),
           data: isoDate,
+          culto_origem: cultoParsed,
           created_at: isoDateToManausCreatedAt(isoDate),
           updated_at: isoDateToManausCreatedAt(isoDate),
-          request_id: crypto.randomUUID()
-        };
-
-        if (hasCultoColumn) {
-          item.culto_origem = cultoParsed;
-        }
-        if (hasCompletionStatusColumn) {
-          item.cadastro_completo_status = parseCadastroCompletoStatus(
+          request_id: crypto.randomUUID(),
+          cadastro_completo_status: parseCadastroCompletoStatus(
             String(row[headerIndex.status_cadastro] ?? row[headerIndex.status] ?? "pendente")
-          );
-        }
+          )
+        };
 
         return item;
       })
-      .filter((item): item is Record<string, unknown> => item !== null);
+      .filter((item): item is ImportCadastroItem => item !== null);
 
     if (!payload.length) {
       setFeedbackTone("error");
@@ -549,16 +632,56 @@ function CadastrosContent() {
       return;
     }
 
-    let { error } = await supabaseClient.from("pessoas").insert(payload);
-    if (error && isMissingRequestIdColumnError(error.message, error.code)) {
-      const fallbackPayload = payload.map(({ request_id: _requestId, ...rest }) => rest);
-      ({ error } = await supabaseClient.from("pessoas").insert(fallbackPayload));
-    }
+    if (canManageCadastrosDirectly) {
+      let insertPayload = payload.map((item) => {
+        const rowPayload: Record<string, unknown> = {
+          nome_completo: item.nome_completo,
+          telefone_whatsapp: item.telefone_whatsapp,
+          origem: cultoOrigemToLegacyOrigem(item.culto_origem),
+          data: item.data,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+          request_id: item.request_id
+        };
 
-    if (error) {
-      setFeedbackTone("error");
-      setStatusMessage(error.message);
-      return;
+        if (hasCultoColumn) {
+          rowPayload.culto_origem = item.culto_origem;
+        }
+
+        if (hasCompletionStatusColumn) {
+          rowPayload.cadastro_completo_status = item.cadastro_completo_status;
+        }
+
+        return rowPayload;
+      });
+
+      let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
+      if (error && isMissingRequestIdColumnError(error.message, error.code)) {
+        insertPayload = insertPayload.map(({ request_id: _requestId, ...rest }) => rest);
+        ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
+      }
+
+      if (error) {
+        setFeedbackTone("error");
+        setStatusMessage(error.message);
+        return;
+      }
+    } else {
+      for (const item of payload) {
+        const result = await createQuickCcmRegistration(supabaseClient, {
+          fullName: item.nome_completo,
+          phoneWhatsapp: item.telefone_whatsapp,
+          registeredOn: item.data,
+          cultoOrigem: item.culto_origem,
+          requestId: item.request_id
+        });
+
+        if (result.errorMessage) {
+          setFeedbackTone("error");
+          setStatusMessage(`Falha na linha ${item.sourceLine}: ${result.errorMessage}`);
+          return;
+        }
+      }
     }
 
     const notes = [];
@@ -641,9 +764,21 @@ function CadastrosContent() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-          <h2 className="text-xl font-semibold text-emerald-900">Cadastros rápidos</h2>
+          <h2 className="text-xl font-semibold text-emerald-900">
+            {isCadastradorOnly ? "Cadastros rápidos" : "Cadastros"}
+          </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Visualize o cadastro inicial resumido do perfil <strong>CADASTRADOR</strong>, com foco em nome, contato, data, culto e status de complementação.
+            {isCadastradorOnly ? (
+              <>
+                Visualize o cadastro inicial resumido do perfil <strong>CADASTRADOR</strong>, com foco em nome,
+                contato, data, culto e status de complementação.
+              </>
+            ) : (
+              <>
+                Perfis administrativos usam o formulário completo. O fluxo reduzido fica restrito ao perfil{" "}
+                <strong>CADASTRADOR</strong> para posterior complementação.
+              </>
+            )}
           </p>
         </div>
 
@@ -652,7 +787,7 @@ function CadastrosContent() {
             onClick={openCreate}
             className={`${toolbarButtonClass} bg-emerald-600 text-white hover:bg-emerald-700`}
           >
-            Novo cadastro rápido (Cadastrador)
+            {isCadastradorOnly ? "Novo cadastro rápido (Cadastrador)" : "Novo cadastro completo"}
           </button>
           <button
             onClick={handleExport}
@@ -686,10 +821,24 @@ function CadastrosContent() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cadastros feitos hoje</p>
           <p className="mt-1 text-3xl font-semibold text-emerald-900">{todayCount}</p>
-          <p className="mt-1 text-xs text-slate-500">Fluxo pensado para operação rápida em culto.</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {isCadastradorOnly
+              ? "Fluxo pensado para operação rápida em culto."
+              : "Perfis administrativos usam o formulário completo no CCM."}
+          </p>
         </div>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 sm:max-w-md">
-          O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como <strong>pendente de complementação</strong>.
+          {isCadastradorOnly ? (
+            <>
+              O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como{" "}
+              <strong>pendente de complementação</strong>.
+            </>
+          ) : (
+            <>
+              Perfis administrativos usam o <strong>formulário completo</strong>. O fluxo reduzido fica reservado ao{" "}
+              <strong>CADASTRADOR</strong> para complementação posterior.
+            </>
+          )}
         </div>
       </div>
 
@@ -741,29 +890,145 @@ function CadastrosContent() {
 
           <label className="space-y-1 text-sm md:col-span-2">
             <span className={fieldLabelClass}>Culto</span>
-            <select
-              value={cultoOrigem}
-              onChange={(event) => {
-                const parsed = parseCultoOrigemCode(event.target.value);
-                if (parsed) setCultoOrigem(parsed);
-              }}
-              className={fieldClass}
-            >
-              {CULTO_ORIGEM_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
+              <select
+                value={cultoOrigem}
+                onChange={(event) => {
+                  const rawValue = event.target.value;
+                  setCultoOrigem(parseCultoOrigemCode(rawValue) ?? "");
+                }}
+                className={fieldClass}
+                required
+              >
+                <option value="">Selecione o culto</option>
+                {CULTO_ORIGEM_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
               ))}
             </select>
           </label>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
-            Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão preenchidos posteriormente pela equipe ou pelo link de complementação.
-          </div>
+          {isCadastradorOnly ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
+              Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão
+              preenchidos posteriormente pela equipe ou pelo link de complementação.
+            </div>
+          ) : !editingPessoa ? (
+            <>
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 md:col-span-2">
+                Este é o <strong>formulário completo</strong> para perfis administrativos. Cadastros criados aqui já
+                entram com os dados complementares preenchidos.
+              </div>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>CPF</span>
+                <input
+                  required
+                  value={cpf}
+                  onChange={(event) => setCpf(formatCpfInput(event.target.value))}
+                  className={fieldClass}
+                  placeholder="000.000.000-00"
+                  inputMode="numeric"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>RG</span>
+                <input
+                  required
+                  value={rg}
+                  onChange={(event) => setRg(event.target.value)}
+                  className={fieldClass}
+                  placeholder="Digite o RG"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>Igreja de origem</span>
+                <input
+                  value={igrejaOrigem}
+                  onChange={(event) => setIgrejaOrigem(event.target.value)}
+                  className={fieldClass}
+                  placeholder="Opcional"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>Bairro</span>
+                <input
+                  value={bairro}
+                  onChange={(event) => setBairro(event.target.value)}
+                  className={fieldClass}
+                  placeholder="Opcional"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>Data de nascimento</span>
+                <input
+                  type="date"
+                  value={dataNascimento}
+                  onChange={(event) => setDataNascimento(event.target.value)}
+                  className={fieldClass}
+                />
+              </label>
+
+              <label className="space-y-1 text-sm">
+                <span className={fieldLabelClass}>E-mail</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={fieldClass}
+                  placeholder="voce@email.com"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span className={fieldLabelClass}>Endereço</span>
+                <input
+                  value={endereco}
+                  onChange={(event) => setEndereco(event.target.value)}
+                  className={fieldClass}
+                  placeholder="Rua, número, complemento"
+                />
+              </label>
+
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span className={fieldLabelClass}>Foto (URL)</span>
+                <input
+                  value={fotoUrl}
+                  onChange={(event) => setFotoUrl(event.target.value)}
+                  className={fieldClass}
+                  placeholder="https://..."
+                />
+              </label>
+
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span className={fieldLabelClass}>Observações</span>
+                <textarea
+                  rows={4}
+                  value={observacoes}
+                  onChange={(event) => setObservacoes(event.target.value)}
+                  className={fieldClass}
+                  placeholder="Informações relevantes para o cadastro."
+                />
+              </label>
+            </>
+          ) : (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
+              A edição continua focada nos dados iniciais do cadastro. A complementação segue pelo fluxo de cadastro
+              completo.
+            </div>
+          )}
 
           <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button className={primaryButtonClass}>
-              {editingPessoa ? "Salvar alterações" : "Salvar rápido"}
+              {editingPessoa
+                ? "Salvar alterações"
+                : isCadastradorOnly
+                  ? "Salvar rápido"
+                  : "Salvar cadastro completo"}
             </button>
             <button
               type="button"
@@ -871,13 +1136,15 @@ function CadastrosContent() {
                     >
                       Abrir
                     </Link>
-                    <button
-                      type="button"
-                      onClick={() => openEdit(pessoa)}
-                      className="rounded-xl border border-emerald-200 px-3 py-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                    >
-                      Editar
-                    </button>
+                    {canManageCadastrosDirectly ? (
+                      <button
+                        type="button"
+                        onClick={() => openEdit(pessoa)}
+                        className="rounded-xl border border-emerald-200 px-3 py-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                      >
+                        Editar
+                      </button>
+                    ) : null}
                     {canGenerateCompletionLink && hasCompletionStatusColumn ? (
                       <button
                         type="button"
@@ -895,14 +1162,16 @@ function CadastrosContent() {
                             : "Gerar link completo"}
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(pessoa)}
-                      disabled={deletingId === pessoa.id}
-                      className="rounded-xl border border-rose-200 px-3 py-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      Excluir
-                    </button>
+                    {canManageCadastrosDirectly ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(pessoa)}
+                        disabled={deletingId === pessoa.id}
+                        className="rounded-xl border border-rose-200 px-3 py-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        Excluir
+                      </button>
+                    ) : null}
                   </div>
                 </article>
               ))
@@ -968,13 +1237,15 @@ function CadastrosContent() {
                       >
                         Abrir
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(pessoa)}
-                        className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                      >
-                        Editar
-                      </button>
+                      {canManageCadastrosDirectly ? (
+                        <button
+                          type="button"
+                          onClick={() => openEdit(pessoa)}
+                          className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                        >
+                          Editar
+                        </button>
+                      ) : null}
                       {canGenerateCompletionLink && hasCompletionStatusColumn ? (
                         <button
                           type="button"
@@ -992,14 +1263,16 @@ function CadastrosContent() {
                               : "Link completo"}
                         </button>
                       ) : null}
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(pessoa)}
-                        disabled={deletingId === pessoa.id}
-                        className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        Excluir
-                      </button>
+                      {canManageCadastrosDirectly ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(pessoa)}
+                          disabled={deletingId === pessoa.id}
+                          className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        >
+                          Excluir
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
