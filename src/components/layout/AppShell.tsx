@@ -37,6 +37,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
+      { href: "/escalas-domingo", label: "Escala", roles: ["ADMIN_MASTER","SUPER_ADMIN","PASTOR","SECRETARIA","LIDER_DEPTO"] },
       { href: "/admin/agenda-semanal", label: "Agenda semanal", roles: ["ADMIN_MASTER"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
       { href: "/admin/whatsapp", label: "WhatsApp", roles: ["ADMIN_MASTER","SUPER_ADMIN","SECRETARIA"] },
@@ -102,6 +103,7 @@ function getNavGlyph(href: string): NavGlyphName {
   if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
   if (href.includes("/cadastros") || href.includes("/convertidos")) return "list";
   if (href.includes("/confraternizacao")) return "agenda";
+  if (href.includes("/escalas") || href.includes("/escala")) return "agenda";
   if (href.includes("/agenda")) return "agenda";
   if (href.includes("/relatorios")) return "report";
   if (href.includes("/admin")) return "admin";
