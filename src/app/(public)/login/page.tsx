@@ -7,6 +7,8 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { useAuth } from "@/hooks/useAuth";
 import { HelpChatWidget } from "@/components/shared/HelpChatWidget";
 import { formatDateBR } from "@/lib/date";
+import { SundayScalePortalTrackingCard } from "@/components/sunday-scale/PortalTrackingCard";
+import { isSundayScaleLeader } from "@/lib/sundayServiceScale";
 
 type WeeklyEvent = {
   id?: string | number;
@@ -335,6 +337,7 @@ export default function LoginPage() {
   }, [nextEvents]);
 
   const isCadastrador = userRoles.includes("CADASTRADOR");
+  const canManageSundayScale = isSundayScaleLeader(userRoles, role === "admin");
 
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
@@ -601,6 +604,12 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
+          </section>
+        ) : null}
+
+        {user && canManageSundayScale ? (
+          <section className="mt-6 sm:mt-10">
+            <SundayScalePortalTrackingCard />
           </section>
         ) : null}
 
