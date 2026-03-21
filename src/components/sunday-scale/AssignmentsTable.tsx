@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatDateBR } from "@/lib/date";
 import { SundayScaleAssignmentView, formatScaleTime, sundayScaleCultoLabel } from "@/lib/sundayServiceScale";
 import { PresenceStatusBadge } from "@/components/sunday-scale/PresenceStatusBadge";
@@ -10,6 +11,8 @@ type AssignmentsTableProps = {
   onConfirm?: (row: SundayScaleAssignmentView) => void;
   onDecline?: (row: SundayScaleAssignmentView) => void;
   onRemove?: (row: SundayScaleAssignmentView) => void;
+  pendingActionHref?: string;
+  pendingActionLabel?: string;
 };
 
 export function SundayScaleAssignmentsTable({
@@ -19,7 +22,9 @@ export function SundayScaleAssignmentsTable({
   actionLoadingId,
   onConfirm,
   onDecline,
-  onRemove
+  onRemove,
+  pendingActionHref,
+  pendingActionLabel = "Entrar para confirmar"
 }: AssignmentsTableProps) {
   if (!rows.length) {
     return <p className="rounded-2xl border border-dashed border-emerald-100 bg-emerald-50/30 px-4 py-6 text-sm text-slate-600">{emptyMessage}</p>;
@@ -44,6 +49,7 @@ export function SundayScaleAssignmentsTable({
               const isLoading = actionLoadingId === row.id;
               const canRespond = Boolean(onConfirm && onDecline && row.status === "pendente");
               const canRemove = Boolean(onRemove);
+              const canRedirectToConfirm = Boolean(!canRespond && !canRemove && row.status === "pendente" && pendingActionHref);
               return (
                 <tr key={row.id} className="align-top text-slate-700 transition hover:bg-brand-50/30">
                   {showNameColumn ? (
@@ -87,6 +93,13 @@ export function SundayScaleAssignmentsTable({
                       >
                         Remover da escala
                       </button>
+                    ) : canRedirectToConfirm ? (
+                      <Link
+                        href={pendingActionHref as string}
+                        className="inline-flex rounded-full bg-brand-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-brand-800"
+                      >
+                        {pendingActionLabel}
+                      </Link>
                     ) : row.status === "confirmado" ? (
                       <span className="text-xs font-semibold text-emerald-700">Confirmado</span>
                     ) : row.status === "nao_podera_ir" ? (

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope, isDiscipuladoScopedAccount } from "@/lib/authScope";
@@ -14,6 +14,12 @@ const cardClass =
 
 export default function AcessoInternoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = useMemo(() => {
+    const requested = searchParams.get("next") ?? "";
+    if (!requested.startsWith("/") || requested.startsWith("//")) return null;
+    return requested;
+  }, [searchParams]);
   const [status, setStatus] = useState<LoginStatus>("idle");
   const [message, setMessage] = useState("");
   const [emailValue, setEmailValue] = useState("");
@@ -54,6 +60,11 @@ export default function AcessoInternoPage() {
         "Seu perfil é de discipulado e não pode acessar o CCM. Use o login em /discipulado/login."
       );
       router.push("/discipulado/login");
+      return;
+    }
+
+    if (nextPath) {
+      router.push(nextPath);
       return;
     }
 

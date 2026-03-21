@@ -10,6 +10,8 @@ import {
   SundayScalePresenceStatus
 } from "@/lib/sundayServiceScale";
 
+const PENDING_CONFIRMATION_HREF = "/acesso-interno?next=%2Fminhas-escalas";
+
 async function loadPublicTracking() {
   const response = await fetch("/api/escalas-domingo/public-tracking", {
     cache: "no-store"
@@ -65,7 +67,7 @@ export function SundayScalePortalTrackingCard() {
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-emerald-950">Usuários vinculados à escala</h3>
           <p className="mt-2 max-w-2xl text-sm text-slate-600/90">
-            Visualização pública do acompanhamento dos vínculos e do status de presença dos cultos de domingo.
+            Visualização pública do acompanhamento dos vínculos e do status de presença dos cultos de domingo. Usuários pendentes podem entrar para confirmar a própria escala.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -116,6 +118,8 @@ export function SundayScalePortalTrackingCard() {
           <SundayScaleAssignmentsTable
             rows={filteredAssignments}
             emptyMessage="Nenhum usuário vinculado encontrado para os filtros atuais."
+            pendingActionHref={PENDING_CONFIRMATION_HREF}
+            pendingActionLabel="Entrar para confirmar"
           />
         )}
       </div>
