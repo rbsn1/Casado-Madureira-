@@ -361,8 +361,9 @@ export function SundayScalePortalSection() {
   }, [currentUser, hasPortalAccess, loadPersonalAssignments, scopeResolved]);
 
   useEffect(() => {
-    if (supabaseClient == null || !hasPortalAccess) return;
-    const channel = supabaseClient
+    const client = supabaseClient;
+    if (client == null || !hasPortalAccess) return;
+    const channel = client
       .channel("escalas-domingo-portal")
       .on("postgres_changes", { event: "*", schema: "public", table: "escalas_domingo" }, () => {
         if (canManageScale) void loadLeadershipAssignments();
@@ -375,7 +376,7 @@ export function SundayScalePortalSection() {
       .subscribe();
 
     return () => {
-      void supabaseClient.removeChannel(channel);
+      void client.removeChannel(channel);
     };
   }, [canManageScale, hasPortalAccess, loadLeadershipAssignments, loadPersonalAssignments]);
 
