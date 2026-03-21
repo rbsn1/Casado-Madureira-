@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope, isDiscipuladoScopedAccount } from "@/lib/authScope";
@@ -14,15 +14,19 @@ const cardClass =
 
 export default function AcessoInternoPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const nextPath = useMemo(() => {
-    const requested = searchParams.get("next") ?? "";
-    if (!requested.startsWith("/") || requested.startsWith("//")) return null;
-    return requested;
-  }, [searchParams]);
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const [status, setStatus] = useState<LoginStatus>("idle");
   const [message, setMessage] = useState("");
   const [emailValue, setEmailValue] = useState("");
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("next") ?? "";
+    if (!requested.startsWith("/") || requested.startsWith("//")) {
+      setNextPath(null);
+      return;
+    }
+    setNextPath(requested);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
