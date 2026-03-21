@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { StatCard } from "@/components/cards/StatCard";
 import { InsightBarChart } from "@/components/charts/InsightBarChart";
 import { MonthlyRegistrationsChart } from "@/components/charts/MonthlyRegistrationsChart";
+import { SundayScalePortalSection } from "@/components/sunday-scale/PortalSection";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { formatDate, getPeriodRange, formatDelta } from "@/lib/dashboard-utils";
 
@@ -190,6 +191,8 @@ export default function DashboardPage() {
         <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="sky" />
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
+
+      <SundayScalePortalSection />
 
       {userRoles.includes("DISCIPULADOR") ? (
         <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6">
