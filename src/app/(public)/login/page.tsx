@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { HelpChatWidget } from "@/components/shared/HelpChatWidget";
 import { formatDateBR } from "@/lib/date";
 import { SundayScalePortalTrackingCard } from "@/components/sunday-scale/PortalTrackingCard";
-import { isSundayScaleLeader } from "@/lib/sundayServiceScale";
 
 type WeeklyEvent = {
   id?: string | number;
@@ -337,7 +336,6 @@ export default function LoginPage() {
   }, [nextEvents]);
 
   const isCadastrador = userRoles.includes("CADASTRADOR");
-  const canManageSundayScale = isSundayScaleLeader(userRoles, role === "admin");
 
   return (
     <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="560px">
@@ -607,11 +605,9 @@ export default function LoginPage() {
           </section>
         ) : null}
 
-        {user && canManageSundayScale ? (
-          <section className="mt-6 sm:mt-10">
-            <SundayScalePortalTrackingCard />
-          </section>
-        ) : null}
+        <section className="mt-6 sm:mt-10">
+          <SundayScalePortalTrackingCard />
+        </section>
 
         <section className="mt-6 sm:mt-10">
           <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-white via-emerald-50/70 to-white px-4 py-3 shadow-sm sm:rounded-3xl sm:px-6 sm:py-4">
