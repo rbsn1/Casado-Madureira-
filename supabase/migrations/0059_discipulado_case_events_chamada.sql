@@ -2,7 +2,7 @@
 
 create table if not exists public.discipleship_case_events (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.discipleship_cases(id) on delete cascade,
+  case_id uuid not null references public.ccm_discipleship_cases(id) on delete cascade,
   member_id uuid not null references public.pessoas(id) on delete cascade,
   congregation_id uuid not null references public.congregations(id) on delete restrict,
   event_type text not null,
@@ -169,7 +169,7 @@ begin
   into
     target_case_id,
     target_case_congregation
-  from public.discipleship_cases dc
+  from public.ccm_discipleship_cases dc
   where dc.member_id = new.aluno_id
   order by
     case

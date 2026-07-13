@@ -59,7 +59,7 @@ async function listMembersWithFallback() {
     for (let i = 0; i < memberIds.length; i += batchSize) {
       const chunk = memberIds.slice(i, i + batchSize);
       const { data: casesData, error: casesError } = await sb
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .select("member_id, status")
         .in("member_id", chunk);
 
@@ -182,7 +182,7 @@ async function listMembersWithFallback() {
   for (let i = 0; i < memberIds.length; i += batchSize) {
     const chunk = memberIds.slice(i, i + batchSize);
     const { data: casesData, error: casesError } = await sb
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("member_id, status")
       .in("member_id", chunk);
 
@@ -311,7 +311,7 @@ export default function NovoConvertidoDiscipuladoPage() {
         map.set(currentUserId, currentUserEmail ?? "Você");
       }
 
-      const { data: casesData } = await supabaseClient.rpc("list_discipleship_cases_summary", {
+      const { data: casesData } = await supabaseClient.rpc("list_ccm_discipleship_cases_summary", {
         status_filter: null,
         target_congregation_id: null,
         rows_limit: 1000
@@ -380,7 +380,7 @@ export default function NovoConvertidoDiscipuladoPage() {
       data: insertedData,
       error
     } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .insert(payload)
       .select("id, status")
       .maybeSingle();
@@ -392,7 +392,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     if (error && isMissingWelcomedOnColumnError(error.message, error.code)) {
       const { welcomed_on: _welcomedOn, ...fallbackPayload } = payload;
       const retry = await supabaseClient
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .insert(fallbackPayload)
         .select("id, status")
         .maybeSingle();
@@ -405,7 +405,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     if (!error) {
       if (createdCase?.id && createdCase.status === "em_discipulado") {
         const fix = await supabaseClient
-          .from("discipleship_cases")
+          .from("ccm_discipleship_cases")
           .update({ status: "pendente_matricula" })
           .eq("id", createdCase.id)
           .select("status")
@@ -427,7 +427,7 @@ export default function NovoConvertidoDiscipuladoPage() {
     }
 
     if (
-      error.message.includes("discipleship_cases_status_check") ||
+      error.message.includes("ccm_discipleship_cases_status_check") ||
       error.message.includes("status in") ||
       error.message.includes("pendente_matricula")
     ) {

@@ -14,11 +14,11 @@ create index if not exists pessoa_departamento_pessoa_status_idx
 create index if not exists departamentos_ativo_nome_idx
   on public.departamentos (ativo, nome);
 
-create index if not exists discipleship_cases_congregation_criticality_days_updated_idx
-  on public.discipleship_cases (congregation_id, criticality, days_to_confra, updated_at desc);
+create index if not exists ccm_discipleship_cases_congregation_criticality_days_updated_idx
+  on public.ccm_discipleship_cases (congregation_id, criticality, days_to_confra, updated_at desc);
 
-create index if not exists discipleship_cases_congregation_updated_idx
-  on public.discipleship_cases (congregation_id, updated_at desc);
+create index if not exists ccm_discipleship_cases_congregation_updated_idx
+  on public.ccm_discipleship_cases (congregation_id, updated_at desc);
 
 create index if not exists discipleship_modules_congregation_active_sort_idx
   on public.discipleship_modules (congregation_id, is_active, sort_order, title);
@@ -65,7 +65,7 @@ begin
     from visible_members vm
     where not exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = vm.id
         and dc.status in ('em_discipulado', 'pausado')
     )

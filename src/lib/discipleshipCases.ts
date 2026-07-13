@@ -76,7 +76,7 @@ type ExtraCaseRow = {
 };
 
 function isMissingListCasesFunctionError(message: string, code?: string) {
-  return code === "PGRST202" || message.includes("list_discipleship_cases_summary");
+  return code === "PGRST202" || message.includes("list_ccm_discipleship_cases_summary");
 }
 
 function isMissingCriticalityColumnsError(message: string, code?: string) {
@@ -126,7 +126,7 @@ async function withCaseExtraFields(items: DiscipleshipCaseSummaryItem[]) {
 
   const caseIds = [...new Set(items.map((item) => item.case_id))];
   const { data, error } = await supabaseClient
-    .from("discipleship_cases")
+    .from("ccm_discipleship_cases")
     .select(
       "id, confraternizacao_id, confraternizacao_confirmada, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em, fase, modulo_atual_id, turno_origem, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate"
     )
@@ -181,7 +181,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
     };
   }
 
-  const { data: rpcData, error: rpcError } = await supabaseClient.rpc("list_discipleship_cases_summary", {
+  const { data: rpcData, error: rpcError } = await supabaseClient.rpc("list_ccm_discipleship_cases_summary", {
     status_filter: statusFilter,
     target_congregation_id: targetCongregationId,
     rows_limit: rowsLimit
@@ -258,7 +258,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
   let hasCriticalityColumns = true;
   let hasAttendanceColumns = true;
   let baseQuery = supabaseClient
-    .from("discipleship_cases")
+    .from("ccm_discipleship_cases")
     .select(baseSelect)
     .order("updated_at", { ascending: false })
     .limit(rowsLimit);
@@ -283,7 +283,7 @@ export async function loadDiscipleshipCaseSummariesWithFallback(
     hasCriticalityColumns = false;
     hasAttendanceColumns = false;
     let fallbackQuery = supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("id, member_id, assigned_to, status, notes, created_at, updated_at")
       .order("updated_at", { ascending: false })
       .limit(rowsLimit);

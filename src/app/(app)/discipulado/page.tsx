@@ -283,14 +283,14 @@ export default function DiscipuladoDashboardPage() {
     const caseIds = [...new Set(summaries.map((item) => item.case_id))];
 
     const attemptsResult = await supabaseClient
-      .from("contact_attempts")
+      .from("ccm_contact_attempts")
       .select("case_id, outcome, created_at")
       .in("case_id", caseIds)
       .order("created_at", { ascending: true });
 
     if (attemptsResult.error) {
       const message = String(attemptsResult.error.message ?? "");
-      if (!message.includes("contact_attempts") && attemptsResult.error.code !== "42P01") {
+      if (!message.includes("ccm_contact_attempts") && attemptsResult.error.code !== "42P01") {
         setStatusMessage((prev) => prev || attemptsResult.error?.message || "Falha ao carregar tentativas de contato.");
       }
       setContactAttempts([]);

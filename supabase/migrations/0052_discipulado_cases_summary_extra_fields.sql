@@ -1,7 +1,9 @@
 -- Expande o summary de cases para incluir campos usados nos paineis
 -- e evitar roundtrip adicional ao carregar fase/confraternizacao/modulo/turno.
 
-create or replace function public.list_discipleship_cases_summary(
+drop function if exists public.list_ccm_discipleship_cases_summary(text, uuid, int);
+
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -69,7 +71,7 @@ begin
       dc.fase,
       dc.modulo_atual_id,
       dc.turno_origem
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -135,4 +137,4 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;

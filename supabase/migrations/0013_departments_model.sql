@@ -82,32 +82,32 @@ create policy "departments_read_public" on public.departments
 
 create policy "departments_manage_admin" on public.departments
   for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.has_role(array['ADMIN_MASTER']))
+  with check (public.has_role(array['ADMIN_MASTER']));
 
 create policy "department_roles_read_public" on public.department_roles
   for select using (is_active = true);
 
 create policy "department_roles_manage_admin" on public.department_roles
   for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.has_role(array['ADMIN_MASTER']))
+  with check (public.has_role(array['ADMIN_MASTER']));
 
 create policy "department_contacts_read_public" on public.department_contacts
   for select using (is_active = true);
 
 create policy "department_contacts_manage_admin" on public.department_contacts
   for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.has_role(array['ADMIN_MASTER']))
+  with check (public.has_role(array['ADMIN_MASTER']));
 
 create policy "department_faq_read_public" on public.department_faq
   for select using (is_active = true);
 
 create policy "department_faq_manage_admin" on public.department_faq
   for all
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin'));
+  using (public.has_role(array['ADMIN_MASTER']))
+  with check (public.has_role(array['ADMIN_MASTER']));
 
 drop trigger if exists trg_touch_departments on public.departments;
 create trigger trg_touch_departments before update on public.departments

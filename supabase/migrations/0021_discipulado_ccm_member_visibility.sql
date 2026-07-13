@@ -60,7 +60,7 @@ begin
     p.cadastro_completo_status,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case

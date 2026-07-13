@@ -9,10 +9,66 @@ create table if not exists public.congregations (
   created_at timestamptz not null default now()
 );
 
+-- Compatibilidade: em ambientes onde public.congregations já existe com outro
+-- formato (ex.: módulo de discipulado independente, sem coluna slug), garante
+-- que as colunas que o CCM depende existam antes de seguir.
+alter table public.congregations add column if not exists slug text;
+alter table public.congregations add column if not exists is_active boolean not null default true;
+alter table public.congregations add column if not exists created_at timestamptz not null default now();
+
+update public.congregations
+set slug = lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '(^-+|-+$)', '', 'g'))
+where slug is null;
+
+alter table public.congregations alter column slug set not null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.congregations'::regclass
+      and contype = 'u'
+      and conkey = (select array_agg(attnum) from pg_attribute
+                    where attrelid = 'public.congregations'::regclass and attname = 'slug')
+  ) then
+    alter table public.congregations add constraint congregations_slug_key unique (slug);
+  end if;
+end$$;
+
 alter table public.congregations enable row level security;
 
-insert into public.congregations (id, name, slug, is_active)
-values ('11111111-1111-1111-1111-111111111111', 'Sede', 'sede', true)
+-- Compatibilidade: se a tabela já existir com colunas NOT NULL adicionais
+-- (ex.: timezone/accent_color/sidebar_color/updated_at do módulo de
+-- discipulado independente), garante um default pra não quebrar o insert.
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'congregations' and column_name = 'timezone') then
+    execute 'alter table public.congregations alter column timezone set default ''America/Manaus''';
+    execute 'update public.congregations set timezone = ''America/Manaus'' where timezone is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'congregations' and column_name = 'accent_color') then
+    execute 'alter table public.congregations alter column accent_color set default ''#047857''';
+    execute 'update public.congregations set accent_color = ''#047857'' where accent_color is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'congregations' and column_name = 'sidebar_color') then
+    execute 'alter table public.congregations alter column sidebar_color set default ''#111827''';
+    execute 'update public.congregations set sidebar_color = ''#111827'' where sidebar_color is null';
+  end if;
+
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'congregations' and column_name = 'updated_at') then
+    execute 'alter table public.congregations alter column updated_at set default now()';
+    execute 'update public.congregations set updated_at = now() where updated_at is null';
+  end if;
+end$$;
+
+insert into public.congregations (id, name, slug, is_active, created_at)
+values ('11111111-1111-1111-1111-111111111111', 'Sede', 'sede', true, now())
 on conflict (slug) do update
 set name = excluded.name,
     is_active = excluded.is_active;
@@ -216,9 +272,13 @@ set congregation_id = coalesce(congregation_id, public.get_default_congregation_
 where congregation_id is null;
 
 update public.pessoa_departamento pd
-set congregation_id = coalesce(pd.congregation_id, p.congregation_id, d.congregation_id, public.get_default_congregation_id())
+set congregation_id = coalesce(
+  pd.congregation_id,
+  p.congregation_id,
+  (select d.congregation_id from public.departamentos d where d.id = pd.departamento_id),
+  public.get_default_congregation_id()
+)
 from public.pessoas p
-left join public.departamentos d on d.id = pd.departamento_id
 where p.id = pd.pessoa_id
   and pd.congregation_id is null;
 
@@ -1430,7 +1490,7 @@ $$;
 grant execute on function public.get_novos_dashboard(timestamptz, timestamptz, int, uuid) to authenticated;
 
 -- 8) Modelagem Discipulado (aditiva)
-create table if not exists public.discipleship_cases (
+create table if not exists public.ccm_discipleship_cases (
   id uuid primary key default gen_random_uuid(),
   member_id uuid not null references public.pessoas(id) on delete restrict,
   congregation_id uuid not null references public.congregations(id),
@@ -1455,7 +1515,7 @@ create table if not exists public.discipleship_modules (
 
 create table if not exists public.discipleship_progress (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.discipleship_cases(id) on delete cascade,
+  case_id uuid not null references public.ccm_discipleship_cases(id) on delete cascade,
   module_id uuid not null references public.discipleship_modules(id) on delete restrict,
   congregation_id uuid not null references public.congregations(id),
   status text not null default 'nao_iniciado' check (status in ('nao_iniciado','em_andamento','concluido')),
@@ -1467,19 +1527,19 @@ create table if not exists public.discipleship_progress (
   unique (case_id, module_id)
 );
 
-alter table public.discipleship_cases enable row level security;
+alter table public.ccm_discipleship_cases enable row level security;
 alter table public.discipleship_modules enable row level security;
 alter table public.discipleship_progress enable row level security;
 
 -- Índices obrigatórios de pico
-create index if not exists discipleship_cases_congregation_created_idx
-  on public.discipleship_cases (congregation_id, created_at desc);
+create index if not exists ccm_discipleship_cases_congregation_created_idx
+  on public.ccm_discipleship_cases (congregation_id, created_at desc);
 
-create index if not exists discipleship_cases_congregation_status_idx
-  on public.discipleship_cases (congregation_id, status);
+create index if not exists ccm_discipleship_cases_congregation_status_idx
+  on public.ccm_discipleship_cases (congregation_id, status);
 
-create index if not exists discipleship_cases_member_idx
-  on public.discipleship_cases (member_id);
+create index if not exists ccm_discipleship_cases_member_idx
+  on public.ccm_discipleship_cases (member_id);
 
 create index if not exists discipleship_progress_case_idx
   on public.discipleship_progress (case_id);
@@ -1487,20 +1547,20 @@ create index if not exists discipleship_progress_case_idx
 create index if not exists discipleship_progress_congregation_status_idx
   on public.discipleship_progress (congregation_id, status);
 
-create unique index if not exists discipleship_cases_active_member_uidx
-  on public.discipleship_cases (member_id)
+create unique index if not exists ccm_discipleship_cases_active_member_uidx
+  on public.ccm_discipleship_cases (member_id)
   where status in ('em_discipulado', 'pausado');
 
-create unique index if not exists discipleship_cases_request_id_uidx
-  on public.discipleship_cases (request_id)
+create unique index if not exists ccm_discipleship_cases_request_id_uidx
+  on public.ccm_discipleship_cases (request_id)
   where request_id is not null;
 
 create unique index if not exists discipleship_modules_congregation_title_uidx
   on public.discipleship_modules (congregation_id, title);
 
 -- Triggers de updated_at
- drop trigger if exists trg_touch_discipleship_cases on public.discipleship_cases;
-create trigger trg_touch_discipleship_cases before update on public.discipleship_cases
+ drop trigger if exists trg_touch_ccm_discipleship_cases on public.ccm_discipleship_cases;
+create trigger trg_touch_ccm_discipleship_cases before update on public.ccm_discipleship_cases
 for each row execute function public.touch_updated_at();
 
  drop trigger if exists trg_touch_discipleship_modules on public.discipleship_modules;
@@ -1529,9 +1589,9 @@ begin
 end;
 $$;
 
- drop trigger if exists trg_discipleship_case_insert on public.discipleship_cases;
+ drop trigger if exists trg_discipleship_case_insert on public.ccm_discipleship_cases;
 create trigger trg_discipleship_case_insert
-after insert on public.discipleship_cases
+after insert on public.ccm_discipleship_cases
 for each row execute function public.handle_discipleship_case_insert();
 
 -- Mantém progresso/case na mesma congregação
@@ -1546,7 +1606,7 @@ declare
   module_congregation uuid;
 begin
   select c.congregation_id into case_congregation
-  from public.discipleship_cases c
+  from public.ccm_discipleship_cases c
   where c.id = new.case_id;
 
   select m.congregation_id into module_congregation
@@ -1594,9 +1654,9 @@ begin
 end;
 $$;
 
- drop trigger if exists trg_enforce_discipleship_case_conclusion on public.discipleship_cases;
+ drop trigger if exists trg_enforce_discipleship_case_conclusion on public.ccm_discipleship_cases;
 create trigger trg_enforce_discipleship_case_conclusion
-before update on public.discipleship_cases
+before update on public.ccm_discipleship_cases
 for each row execute function public.enforce_discipleship_case_conclusion();
 
 create or replace function public.touch_case_from_progress()
@@ -1606,7 +1666,7 @@ security definer
 set search_path = public
 as $$
 begin
-  update public.discipleship_cases
+  update public.ccm_discipleship_cases
   set updated_at = now()
   where id = new.case_id;
 
@@ -1620,14 +1680,14 @@ after insert or update on public.discipleship_progress
 for each row execute function public.touch_case_from_progress();
 
 -- Policies Discipulado
- drop policy if exists "discipleship_cases_read" on public.discipleship_cases;
- drop policy if exists "discipleship_cases_manage" on public.discipleship_cases;
+ drop policy if exists "ccm_discipleship_cases_read" on public.ccm_discipleship_cases;
+ drop policy if exists "ccm_discipleship_cases_manage" on public.ccm_discipleship_cases;
  drop policy if exists "discipleship_modules_read" on public.discipleship_modules;
  drop policy if exists "discipleship_modules_manage" on public.discipleship_modules;
  drop policy if exists "discipleship_progress_read" on public.discipleship_progress;
  drop policy if exists "discipleship_progress_manage" on public.discipleship_progress;
 
-create policy "discipleship_cases_read" on public.discipleship_cases
+create policy "ccm_discipleship_cases_read" on public.ccm_discipleship_cases
   for select
   using (
     public.has_role(array['ADMIN_MASTER','DISCIPULADOR'])
@@ -1637,7 +1697,7 @@ create policy "discipleship_cases_read" on public.discipleship_cases
     )
   );
 
-create policy "discipleship_cases_manage" on public.discipleship_cases
+create policy "ccm_discipleship_cases_manage" on public.ccm_discipleship_cases
   for all
   using (
     public.has_role(array['ADMIN_MASTER','DISCIPULADOR'])
@@ -1718,7 +1778,7 @@ set search_path = public
 as $$
   select exists (
     select 1
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.member_id = target_member_id
       and dc.status = 'concluido'
   );
@@ -1775,26 +1835,26 @@ begin
     'cards', jsonb_build_object(
       'em_discipulado', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'em_discipulado'
       ),
       'concluidos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'concluido'
       ),
       'parados', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'em_discipulado'
           and dc.updated_at < now() - make_interval(days => stale_days)
       ),
       'pendentes_criticos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status in ('em_discipulado', 'pausado')
           and dc.updated_at < now() - interval '21 days'
@@ -1805,7 +1865,7 @@ begin
             dc.id,
             count(dp.id) as total_modules,
             count(*) filter (where dp.status = 'concluido') as done_modules
-          from public.discipleship_cases dc
+          from public.ccm_discipleship_cases dc
           left join public.discipleship_progress dp on dp.case_id = dc.id
           where (effective_congregation is null or dc.congregation_id = effective_congregation)
             and dc.status in ('em_discipulado', 'pausado')
@@ -1826,7 +1886,7 @@ begin
           dc.updated_at,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
@@ -1853,7 +1913,7 @@ begin
           p.nome_completo as member_name,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where (effective_congregation is null or dc.congregation_id = effective_congregation)

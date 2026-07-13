@@ -25,7 +25,7 @@ create index if not exists discipleship_progress_case_turno_idx
 -- Backfill inicial com o turno atual do case.
 update public.discipleship_progress dp
 set turno = dc.turno_origem
-from public.discipleship_cases dc
+from public.ccm_discipleship_cases dc
 where dc.id = dp.case_id
   and dp.turno is null
   and dc.turno_origem in ('MANHA', 'NOITE', 'EVENTO');

@@ -36,14 +36,23 @@ from ranked_discipulado_roles r
 where up.ctid = r.ctid
   and r.rn > 1;
 
--- Mantém compatibilidade com o perfil legado em public.profiles.
-update public.profiles p
-set role = 'user'
-where p.role is distinct from 'user'
-  and exists (
-    select 1
-    from public.usuarios_perfis up
-    where up.user_id = p.id
-      and up.active is true
-      and up.role in ('DISCIPULADOR', 'SM_DISCIPULADO')
-  );
+-- Mantém compatibilidade com o perfil legado em public.profiles, quando existir.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles'
+      and column_name = 'role' and data_type = 'text'
+  ) then
+    update public.profiles p
+    set role = 'user'
+    where p.role is distinct from 'user'
+      and exists (
+        select 1
+        from public.usuarios_perfis up
+        where up.user_id = p.id
+          and up.active is true
+          and up.role in ('DISCIPULADOR', 'SM_DISCIPULADO')
+      );
+  end if;
+end$$;

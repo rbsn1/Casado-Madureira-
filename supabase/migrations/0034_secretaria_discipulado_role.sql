@@ -92,16 +92,25 @@ from ranked_discipulado_roles r
 where up.ctid = r.ctid
   and r.rn > 1;
 
-update public.profiles p
-set role = 'user'
-where p.role is distinct from 'user'
-  and exists (
-    select 1
-    from public.usuarios_perfis up
-    where up.user_id = p.id
-      and up.active is true
-      and up.role in ('DISCIPULADOR', 'SM_DISCIPULADO', 'SECRETARIA_DISCIPULADO')
-  );
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles'
+      and column_name = 'role' and data_type = 'text'
+  ) then
+    update public.profiles p
+    set role = 'user'
+    where p.role is distinct from 'user'
+      and exists (
+        select 1
+        from public.usuarios_perfis up
+        where up.user_id = p.id
+          and up.active is true
+          and up.role in ('DISCIPULADOR', 'SM_DISCIPULADO', 'SECRETARIA_DISCIPULADO')
+      );
+  end if;
+end$$;
 
 create or replace function public.is_discipulado_user()
 returns boolean
@@ -136,8 +145,8 @@ create policy "pessoas_read_discipulado_bridge" on public.pessoas
     and public.is_congregation_active(congregation_id)
   );
 
-drop policy if exists "discipleship_cases_insert_discipulado" on public.discipleship_cases;
-create policy "discipleship_cases_insert_discipulado" on public.discipleship_cases
+drop policy if exists "ccm_discipleship_cases_insert_discipulado" on public.ccm_discipleship_cases;
+create policy "ccm_discipleship_cases_insert_discipulado" on public.ccm_discipleship_cases
   for insert
   with check (
     public.has_role(array['DISCIPULADOR', 'SM_DISCIPULADO', 'SECRETARIA_DISCIPULADO'])
@@ -192,7 +201,7 @@ begin
     p.cadastro_completo_status,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -245,7 +254,7 @@ begin
     p.created_at,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -472,7 +481,7 @@ begin
 
   with scoped_cases as (
     select dc.id, dc.congregation_id
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (target_congregation_id is null or dc.congregation_id = target_congregation_id)
       and (target_case_id is null or dc.id = target_case_id)
       and (my_congregation is null or dc.congregation_id = my_congregation)
@@ -482,7 +491,7 @@ begin
       ca.case_id,
       count(*) filter (where public.is_negative_contact_outcome(ca.outcome))::int as negative_contact_count,
       max(ca.created_at) filter (where public.is_negative_contact_outcome(ca.outcome)) as last_negative_contact_at
-    from public.contact_attempts ca
+    from public.ccm_contact_attempts ca
     join scoped_cases sc on sc.id = ca.case_id
     group by ca.case_id
   ),
@@ -507,7 +516,7 @@ begin
     left join confra cf on cf.congregation_id = sc.congregation_id
   ),
   updated as (
-    update public.discipleship_cases dc
+    update public.ccm_discipleship_cases dc
     set
       negative_contact_count = c.negative_contact_count,
       days_to_confra = c.days_to_confra,

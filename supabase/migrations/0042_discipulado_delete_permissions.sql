@@ -2,8 +2,8 @@
 -- Perfis: ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO.
 
 -- 1) DELETE em cases para perfis de cadastro do discipulado.
-drop policy if exists "discipleship_cases_manage_delete" on public.discipleship_cases;
-create policy "discipleship_cases_manage_delete" on public.discipleship_cases
+drop policy if exists "ccm_discipleship_cases_manage_delete" on public.ccm_discipleship_cases;
+create policy "ccm_discipleship_cases_manage_delete" on public.ccm_discipleship_cases
   for delete
   using (
     public.has_role(array['ADMIN_DISCIPULADO', 'DISCIPULADOR', 'SM_DISCIPULADO', 'SECRETARIA_DISCIPULADO'])

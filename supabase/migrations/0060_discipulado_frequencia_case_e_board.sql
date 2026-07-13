@@ -1,6 +1,6 @@
 -- Discipulado: acompanhamento de frequencia no case e no board.
 
-alter table public.discipleship_cases
+alter table public.ccm_discipleship_cases
   add column if not exists attendance_total_classes int not null default 0,
   add column if not exists attendance_present_count int not null default 0,
   add column if not exists attendance_absent_count int not null default 0,
@@ -34,7 +34,7 @@ begin
 
   with scoped_cases as (
     select dc.id, dc.member_id
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (target_case_id is null or dc.id = target_case_id)
       and (target_member_id is null or dc.member_id = target_member_id)
   ),
@@ -51,7 +51,7 @@ begin
     group by sc.id
   ),
   updated as (
-    update public.discipleship_cases dc
+    update public.ccm_discipleship_cases dc
     set attendance_total_classes = coalesce(stats.total_classes, 0),
         attendance_present_count = coalesce(stats.present_count, 0),
         attendance_absent_count = coalesce(stats.absent_count, 0),
@@ -143,7 +143,9 @@ begin
 end;
 $$;
 
-create or replace function public.list_discipleship_cases_summary(
+drop function if exists public.list_ccm_discipleship_cases_summary(text, uuid, int);
+
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -221,7 +223,7 @@ begin
       dc.attendance_absent_count,
       dc.attendance_justified_count,
       dc.attendance_presence_rate
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -292,6 +294,6 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;
 
 select public.refresh_discipleship_case_attendance(null, null);

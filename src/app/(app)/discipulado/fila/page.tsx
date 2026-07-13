@@ -618,7 +618,7 @@ export default function DiscipuladoFilaPage() {
     setStatusMessage("");
 
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({ assigned_to: assignedTo })
       .eq("id", caseId);
 
@@ -657,7 +657,7 @@ export default function DiscipuladoFilaPage() {
 
     const targetTurno = item.turno_origem ?? mapOriginToTurnoValue(item.origin);
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({
         fase: "DISCIPULADO",
         modulo_atual_id: firstModule.id,

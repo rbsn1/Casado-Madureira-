@@ -4,14 +4,14 @@
 create extension if not exists pg_trgm;
 
 -- 1) Índices para reduzir custo dos dashboards/listas do discipulado
-create index if not exists discipleship_cases_congregation_updated_idx
-  on public.discipleship_cases (congregation_id, updated_at desc);
+create index if not exists ccm_discipleship_cases_congregation_updated_idx
+  on public.ccm_discipleship_cases (congregation_id, updated_at desc);
 
-create index if not exists discipleship_cases_congregation_status_updated_idx
-  on public.discipleship_cases (congregation_id, status, updated_at desc);
+create index if not exists ccm_discipleship_cases_congregation_status_updated_idx
+  on public.ccm_discipleship_cases (congregation_id, status, updated_at desc);
 
-create index if not exists discipleship_cases_member_status_idx
-  on public.discipleship_cases (member_id, status);
+create index if not exists ccm_discipleship_cases_member_status_idx
+  on public.ccm_discipleship_cases (member_id, status);
 
 create index if not exists discipleship_progress_case_status_idx
   on public.discipleship_progress (case_id, status);
@@ -74,7 +74,7 @@ begin
     p.cadastro_completo_status,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -89,7 +89,7 @@ $$;
 grant execute on function public.search_ccm_members_for_discipleship(text, int, uuid) to authenticated;
 
 -- 3) RPC única para lista de convertidos com progresso agregado
-create or replace function public.list_discipleship_cases_summary(
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -133,7 +133,7 @@ begin
       dc.status,
       dc.notes,
       dc.updated_at
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (effective_congregation is null or dc.congregation_id = effective_congregation)
       and (
         status_filter is null
@@ -169,4 +169,4 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;

@@ -124,7 +124,7 @@ async function resolveCongregationIdFromFirstCase(cases: DiscipleshipCaseSummary
   if (!fallbackCaseId) return null;
 
   const { data: fallbackCaseRow } = await supabaseClient
-    .from("discipleship_cases")
+    .from("ccm_discipleship_cases")
     .select("congregation_id")
     .eq("id", fallbackCaseId)
     .single();
@@ -541,7 +541,7 @@ export default function DiscipuladoBoardPage() {
     const caseIds = turmaCases.map((item) => item.case_id);
 
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({
         status: nextStatus,
         fase: "DISCIPULADO"

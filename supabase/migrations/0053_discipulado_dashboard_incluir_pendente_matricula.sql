@@ -26,26 +26,26 @@ begin
     'cards', jsonb_build_object(
       'em_discipulado', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status in ('pendente_matricula', 'em_discipulado')
       ),
       'concluidos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status = 'concluido'
       ),
       'parados', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status = 'em_discipulado'
           and dc.updated_at < now() - make_interval(days => stale_days)
       ),
       'pendentes_criticos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status in ('em_discipulado', 'pausado')
           and dc.updated_at < now() - interval '21 days'
@@ -56,7 +56,7 @@ begin
             dc.id,
             count(dp.id) as total_modules,
             count(*) filter (where dp.status = 'concluido') as done_modules
-          from public.discipleship_cases dc
+          from public.ccm_discipleship_cases dc
           left join public.discipleship_progress dp on dp.case_id = dc.id
           where dc.congregation_id = effective_congregation
             and dc.status in ('em_discipulado', 'pausado')
@@ -77,7 +77,7 @@ begin
           dc.updated_at,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where dc.congregation_id = effective_congregation
@@ -104,7 +104,7 @@ begin
           p.nome_completo as member_name,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where dc.congregation_id = effective_congregation

@@ -28,14 +28,14 @@ create policy "pessoas_read_discipulado_bridge" on public.pessoas
   );
 
 -- Discipleship cases: leitura/gestão por DISCIPULADOR; criação por DISCIPULADOR ou SM_DISCIPULADO.
-drop policy if exists "discipleship_cases_read" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_manage" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_manage_update" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_manage_delete" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_insert_cadastrador" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_insert_sm_discipulado" on public.discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_read" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_manage" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_manage_update" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_manage_delete" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_insert_cadastrador" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_insert_sm_discipulado" on public.ccm_discipleship_cases;
 
-create policy "discipleship_cases_read" on public.discipleship_cases
+create policy "ccm_discipleship_cases_read" on public.ccm_discipleship_cases
   for select
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -43,7 +43,7 @@ create policy "discipleship_cases_read" on public.discipleship_cases
     and public.is_congregation_active(congregation_id)
   );
 
-create policy "discipleship_cases_manage_update" on public.discipleship_cases
+create policy "ccm_discipleship_cases_manage_update" on public.ccm_discipleship_cases
   for update
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -56,7 +56,7 @@ create policy "discipleship_cases_manage_update" on public.discipleship_cases
     and public.is_congregation_active(congregation_id)
   );
 
-create policy "discipleship_cases_manage_delete" on public.discipleship_cases
+create policy "ccm_discipleship_cases_manage_delete" on public.ccm_discipleship_cases
   for delete
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -64,7 +64,7 @@ create policy "discipleship_cases_manage_delete" on public.discipleship_cases
     and public.is_congregation_active(congregation_id)
   );
 
-create policy "discipleship_cases_insert_discipulado" on public.discipleship_cases
+create policy "ccm_discipleship_cases_insert_discipulado" on public.ccm_discipleship_cases
   for insert
   with check (
     public.has_role(array['DISCIPULADOR', 'SM_DISCIPULADO'])
@@ -123,8 +123,8 @@ create policy "discipleship_progress_manage" on public.discipleship_progress
 -- Calendário e tentativas de contato: somente DISCIPULADOR.
 drop policy if exists "discipleship_calendar_read" on public.discipleship_calendar;
 drop policy if exists "discipleship_calendar_manage" on public.discipleship_calendar;
-drop policy if exists "contact_attempts_read" on public.contact_attempts;
-drop policy if exists "contact_attempts_manage" on public.contact_attempts;
+drop policy if exists "contact_attempts_read" on public.ccm_contact_attempts;
+drop policy if exists "contact_attempts_manage" on public.ccm_contact_attempts;
 
 create policy "discipleship_calendar_read" on public.discipleship_calendar
   for select
@@ -147,7 +147,7 @@ create policy "discipleship_calendar_manage" on public.discipleship_calendar
     and public.is_congregation_active(congregation_id)
   );
 
-create policy "contact_attempts_read" on public.contact_attempts
+create policy "contact_attempts_read" on public.ccm_contact_attempts
   for select
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -155,7 +155,7 @@ create policy "contact_attempts_read" on public.contact_attempts
     and public.is_congregation_active(congregation_id)
   );
 
-create policy "contact_attempts_manage" on public.contact_attempts
+create policy "contact_attempts_manage" on public.ccm_contact_attempts
   for all
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -216,7 +216,7 @@ begin
     p.cadastro_completo_status,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -231,7 +231,7 @@ $$;
 grant execute on function public.search_ccm_members_for_discipleship(text, int, uuid) to authenticated;
 
 -- Lista de cases com criticidade: somente DISCIPULADOR da própria congregação.
-create or replace function public.list_discipleship_cases_summary(
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -280,7 +280,7 @@ begin
       dc.criticality,
       dc.negative_contact_count,
       dc.days_to_confra
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -335,7 +335,7 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;
 
 -- Dashboard do Discipulado: somente DISCIPULADOR.
 create or replace function public.get_discipleship_dashboard(
@@ -364,26 +364,26 @@ begin
     'cards', jsonb_build_object(
       'em_discipulado', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status = 'em_discipulado'
       ),
       'concluidos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status = 'concluido'
       ),
       'parados', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status = 'em_discipulado'
           and dc.updated_at < now() - make_interval(days => stale_days)
       ),
       'pendentes_criticos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where dc.congregation_id = effective_congregation
           and dc.status in ('em_discipulado', 'pausado')
           and dc.updated_at < now() - interval '21 days'
@@ -394,7 +394,7 @@ begin
             dc.id,
             count(dp.id) as total_modules,
             count(*) filter (where dp.status = 'concluido') as done_modules
-          from public.discipleship_cases dc
+          from public.ccm_discipleship_cases dc
           left join public.discipleship_progress dp on dp.case_id = dc.id
           where dc.congregation_id = effective_congregation
             and dc.status in ('em_discipulado', 'pausado')
@@ -415,7 +415,7 @@ begin
           dc.updated_at,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where dc.congregation_id = effective_congregation
@@ -442,7 +442,7 @@ begin
           p.nome_completo as member_name,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where dc.congregation_id = effective_congregation
@@ -512,7 +512,7 @@ begin
     from visible_members vm
     where not exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = vm.id
         and dc.status in ('em_discipulado', 'pausado')
     )
@@ -597,7 +597,7 @@ begin
 
   with scoped_cases as (
     select dc.id, dc.congregation_id
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (target_congregation_id is null or dc.congregation_id = target_congregation_id)
       and (target_case_id is null or dc.id = target_case_id)
       and (my_congregation is null or dc.congregation_id = my_congregation)
@@ -607,7 +607,7 @@ begin
       ca.case_id,
       count(*) filter (where public.is_negative_contact_outcome(ca.outcome))::int as negative_contact_count,
       max(ca.created_at) filter (where public.is_negative_contact_outcome(ca.outcome)) as last_negative_contact_at
-    from public.contact_attempts ca
+    from public.ccm_contact_attempts ca
     join scoped_cases sc on sc.id = ca.case_id
     group by ca.case_id
   ),
@@ -632,7 +632,7 @@ begin
     left join confra cf on cf.congregation_id = sc.congregation_id
   ),
   updated as (
-    update public.discipleship_cases dc
+    update public.ccm_discipleship_cases dc
     set
       negative_contact_count = c.negative_contact_count,
       days_to_confra = c.days_to_confra,

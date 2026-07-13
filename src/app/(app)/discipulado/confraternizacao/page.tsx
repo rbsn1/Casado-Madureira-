@@ -177,7 +177,7 @@ export default function DiscipuladoConfraternizacaoPage() {
       setStatusMessage("");
 
       const withCompareceu = await supabaseClient
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .select(
           "id, member_id, confraternizacao_confirmada_em, confraternizacao_compareceu, confraternizacao_compareceu_em, confraternizacao_turma"
         )
@@ -208,7 +208,7 @@ export default function DiscipuladoConfraternizacaoPage() {
       if (casesError && isMissingCompareceuColumnsError(casesError.message, casesError.code)) {
         hasTurmaColumn = false;
         const fallback = await supabaseClient
-          .from("discipleship_cases")
+          .from("ccm_discipleship_cases")
           .select("id, member_id, confraternizacao_confirmada_em")
           .eq("confraternizacao_id", selectedConfraternizacaoId)
           .eq("confraternizacao_confirmada", true)
@@ -408,7 +408,7 @@ export default function DiscipuladoConfraternizacaoPage() {
     setStatusMessage("");
 
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({
         confraternizacao_turma: draft
       })
@@ -461,7 +461,7 @@ export default function DiscipuladoConfraternizacaoPage() {
     }
 
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update(payload)
       .eq("id", item.case_id);
 

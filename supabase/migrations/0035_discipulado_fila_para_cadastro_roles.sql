@@ -1,7 +1,7 @@
 -- Permite que perfis de cadastro do discipulado visualizem a fila.
 -- Escopo continua limitado à congregação ativa do usuário autenticado.
 
-create or replace function public.list_discipleship_cases_summary(
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -50,7 +50,7 @@ begin
       dc.criticality,
       dc.negative_contact_count,
       dc.days_to_confra
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -105,4 +105,4 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;

@@ -52,9 +52,9 @@ create index if not exists discipleship_calendar_congregation_idx
   on public.discipleship_calendar (congregation_id);
 
 -- 2) Log de tentativas de contato.
-create table if not exists public.contact_attempts (
+create table if not exists public.ccm_contact_attempts (
   id uuid primary key default gen_random_uuid(),
-  case_id uuid not null references public.discipleship_cases(id) on delete cascade,
+  case_id uuid not null references public.ccm_discipleship_cases(id) on delete cascade,
   member_id uuid not null references public.pessoas(id) on delete cascade,
   congregation_id uuid not null references public.congregations(id) on delete restrict,
   outcome text not null
@@ -67,17 +67,17 @@ create table if not exists public.contact_attempts (
   updated_at timestamptz not null default now()
 );
 
-alter table public.contact_attempts enable row level security;
+alter table public.ccm_contact_attempts enable row level security;
 
-drop trigger if exists trg_touch_contact_attempts on public.contact_attempts;
+drop trigger if exists trg_touch_contact_attempts on public.ccm_contact_attempts;
 create trigger trg_touch_contact_attempts
-before update on public.contact_attempts
+before update on public.ccm_contact_attempts
 for each row execute function public.touch_updated_at();
 
-drop policy if exists "contact_attempts_read" on public.contact_attempts;
-drop policy if exists "contact_attempts_manage" on public.contact_attempts;
+drop policy if exists "contact_attempts_read" on public.ccm_contact_attempts;
+drop policy if exists "contact_attempts_manage" on public.ccm_contact_attempts;
 
-create policy "contact_attempts_read" on public.contact_attempts
+create policy "contact_attempts_read" on public.ccm_contact_attempts
   for select
   using (
     public.has_role(array['ADMIN_MASTER', 'SUPER_ADMIN', 'DISCIPULADOR'])
@@ -87,7 +87,7 @@ create policy "contact_attempts_read" on public.contact_attempts
     )
   );
 
-create policy "contact_attempts_manage" on public.contact_attempts
+create policy "contact_attempts_manage" on public.ccm_contact_attempts
   for all
   using (
     public.has_role(array['ADMIN_MASTER', 'SUPER_ADMIN', 'DISCIPULADOR'])
@@ -105,16 +105,16 @@ create policy "contact_attempts_manage" on public.contact_attempts
   );
 
 create index if not exists contact_attempts_case_created_idx
-  on public.contact_attempts (case_id, created_at desc);
+  on public.ccm_contact_attempts (case_id, created_at desc);
 
 create index if not exists contact_attempts_congregation_outcome_created_idx
-  on public.contact_attempts (congregation_id, outcome, created_at desc);
+  on public.ccm_contact_attempts (congregation_id, outcome, created_at desc);
 
 create index if not exists contact_attempts_case_outcome_idx
-  on public.contact_attempts (case_id, outcome);
+  on public.ccm_contact_attempts (case_id, outcome);
 
--- 3) Persistência da criticidade em discipleship_cases.
-alter table public.discipleship_cases
+-- 3) Persistência da criticidade em ccm_discipleship_cases.
+alter table public.ccm_discipleship_cases
   add column if not exists negative_contact_count int not null default 0,
   add column if not exists days_to_confra int null,
   add column if not exists criticality text not null default 'BAIXA',
@@ -125,21 +125,21 @@ begin
   if not exists (
     select 1
     from pg_constraint
-    where conname = 'discipleship_cases_criticality_check'
-      and conrelid = 'public.discipleship_cases'::regclass
+    where conname = 'ccm_discipleship_cases_criticality_check'
+      and conrelid = 'public.ccm_discipleship_cases'::regclass
   ) then
-    alter table public.discipleship_cases
-      add constraint discipleship_cases_criticality_check
+    alter table public.ccm_discipleship_cases
+      add constraint ccm_discipleship_cases_criticality_check
       check (criticality in ('BAIXA', 'MEDIA', 'ALTA', 'CRITICA'));
   end if;
 end
 $$;
 
-create index if not exists discipleship_cases_congregation_criticality_days_idx
-  on public.discipleship_cases (congregation_id, criticality, days_to_confra);
+create index if not exists ccm_discipleship_cases_congregation_criticality_days_idx
+  on public.ccm_discipleship_cases (congregation_id, criticality, days_to_confra);
 
-create index if not exists discipleship_cases_negative_contact_count_idx
-  on public.discipleship_cases (negative_contact_count);
+create index if not exists ccm_discipleship_cases_negative_contact_count_idx
+  on public.ccm_discipleship_cases (negative_contact_count);
 
 -- 4) Funções de criticidade.
 create or replace function public.is_negative_contact_outcome(target_outcome text)
@@ -209,7 +209,7 @@ begin
 
   with scoped_cases as (
     select dc.id, dc.congregation_id
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (target_congregation_id is null or dc.congregation_id = target_congregation_id)
       and (target_case_id is null or dc.id = target_case_id)
   ),
@@ -218,7 +218,7 @@ begin
       ca.case_id,
       count(*) filter (where public.is_negative_contact_outcome(ca.outcome))::int as negative_contact_count,
       max(ca.created_at) filter (where public.is_negative_contact_outcome(ca.outcome)) as last_negative_contact_at
-    from public.contact_attempts ca
+    from public.ccm_contact_attempts ca
     join scoped_cases sc on sc.id = ca.case_id
     group by ca.case_id
   ),
@@ -243,7 +243,7 @@ begin
     left join confra cf on cf.congregation_id = sc.congregation_id
   ),
   updated as (
-    update public.discipleship_cases dc
+    update public.ccm_discipleship_cases dc
     set
       negative_contact_count = c.negative_contact_count,
       days_to_confra = c.days_to_confra,
@@ -276,7 +276,7 @@ declare
 begin
   select dc.member_id, dc.congregation_id
   into case_member_id, case_congregation_id
-  from public.discipleship_cases dc
+  from public.ccm_discipleship_cases dc
   where dc.id = new.case_id;
 
   if case_member_id is null or case_congregation_id is null then
@@ -289,9 +289,9 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_sync_contact_attempt_context on public.contact_attempts;
+drop trigger if exists trg_sync_contact_attempt_context on public.ccm_contact_attempts;
 create trigger trg_sync_contact_attempt_context
-before insert or update on public.contact_attempts
+before insert or update on public.ccm_contact_attempts
 for each row execute function public.sync_contact_attempt_context();
 
 create or replace function public.handle_contact_attempt_change()
@@ -309,9 +309,9 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_refresh_case_criticality_on_contact_attempt on public.contact_attempts;
+drop trigger if exists trg_refresh_case_criticality_on_contact_attempt on public.ccm_contact_attempts;
 create trigger trg_refresh_case_criticality_on_contact_attempt
-after insert or update or delete on public.contact_attempts
+after insert or update or delete on public.ccm_contact_attempts
 for each row execute function public.handle_contact_attempt_change();
 
 create or replace function public.handle_discipleship_calendar_change()
@@ -343,9 +343,9 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_init_case_criticality on public.discipleship_cases;
+drop trigger if exists trg_init_case_criticality on public.ccm_discipleship_cases;
 create trigger trg_init_case_criticality
-after insert on public.discipleship_cases
+after insert on public.ccm_discipleship_cases
 for each row execute function public.handle_discipleship_case_criticality_init();
 
 create or replace function public.refresh_discipleship_case_criticality_daily()
@@ -362,7 +362,9 @@ $$;
 grant execute on function public.refresh_discipleship_case_criticality_daily() to authenticated;
 
 -- 5) Atualiza RPC da fila/lista com dados de criticidade.
-create or replace function public.list_discipleship_cases_summary(
+drop function if exists public.list_ccm_discipleship_cases_summary(text, uuid, int);
+
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -412,7 +414,7 @@ begin
       dc.criticality,
       dc.negative_contact_count,
       dc.days_to_confra
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (effective_congregation is null or dc.congregation_id = effective_congregation)
       and (
         status_filter is null
@@ -467,7 +469,7 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;
 
 -- Recalcula criticidade inicial (backfill aditivo e seguro).
 select public.refresh_discipleship_case_criticality(null, null);

@@ -27,8 +27,8 @@ create policy "pessoas_read_discipulado_bridge" on public.pessoas
   );
 
 -- 3) Cases do discipulado: leitura restrita ao DISCIPULADOR da própria congregação ativa.
-drop policy if exists "discipleship_cases_read" on public.discipleship_cases;
-create policy "discipleship_cases_read" on public.discipleship_cases
+drop policy if exists "ccm_discipleship_cases_read" on public.ccm_discipleship_cases;
+create policy "ccm_discipleship_cases_read" on public.ccm_discipleship_cases
   for select
   using (
     public.has_role(array['DISCIPULADOR'])
@@ -85,7 +85,7 @@ begin
     p.cadastro_completo_status,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -101,7 +101,7 @@ grant execute on function public.search_ccm_members_for_discipleship(text, int, 
 
 -- 5) Lista de convertidos do discipulado:
 -- somente DISCIPULADOR, sempre na própria congregação ativa.
-create or replace function public.list_discipleship_cases_summary(
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -150,7 +150,7 @@ begin
       dc.criticality,
       dc.negative_contact_count,
       dc.days_to_confra
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -205,7 +205,7 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;
 
 -- 6) Snapshot de membros sem case:
 -- somente DISCIPULADOR, sempre na própria congregação ativa.
@@ -242,7 +242,7 @@ begin
     from visible_members vm
     where not exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = vm.id
         and dc.status in ('em_discipulado', 'pausado')
     )

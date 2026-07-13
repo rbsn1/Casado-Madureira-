@@ -3,8 +3,8 @@
 -- no fluxo de "Cadastrar e criar case".
 
 -- 1) Garante policy de insert do case para os perfis de cadastro.
-drop policy if exists "discipleship_cases_insert_discipulado" on public.discipleship_cases;
-create policy "discipleship_cases_insert_discipulado" on public.discipleship_cases
+drop policy if exists "ccm_discipleship_cases_insert_discipulado" on public.ccm_discipleship_cases;
+create policy "ccm_discipleship_cases_insert_discipulado" on public.ccm_discipleship_cases
   for insert
   with check (
     public.has_role(array['ADMIN_DISCIPULADO', 'DISCIPULADOR', 'SM_DISCIPULADO', 'SECRETARIA_DISCIPULADO'])
@@ -52,7 +52,7 @@ begin
     p.created_at,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('em_discipulado', 'pausado')
     ) as has_active_case
@@ -206,7 +206,7 @@ begin
 
   with scoped_cases as (
     select dc.id, dc.congregation_id
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where (target_congregation_id is null or dc.congregation_id = target_congregation_id)
       and (target_case_id is null or dc.id = target_case_id)
       and (my_congregation is null or dc.congregation_id = my_congregation)
@@ -216,7 +216,7 @@ begin
       ca.case_id,
       count(*) filter (where public.is_negative_contact_outcome(ca.outcome))::int as negative_contact_count,
       max(ca.created_at) filter (where public.is_negative_contact_outcome(ca.outcome)) as last_negative_contact_at
-    from public.contact_attempts ca
+    from public.ccm_contact_attempts ca
     join scoped_cases sc on sc.id = ca.case_id
     group by ca.case_id
   ),
@@ -241,7 +241,7 @@ begin
     left join confra cf on cf.congregation_id = sc.congregation_id
   ),
   updated as (
-    update public.discipleship_cases dc
+    update public.ccm_discipleship_cases dc
     set
       negative_contact_count = c.negative_contact_count,
       days_to_confra = c.days_to_confra,

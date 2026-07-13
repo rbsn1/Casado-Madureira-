@@ -8,31 +8,31 @@ begin
   for constraint_row in
     select c.conname
     from pg_constraint c
-    where c.conrelid = 'public.discipleship_cases'::regclass
+    where c.conrelid = 'public.ccm_discipleship_cases'::regclass
       and c.contype = 'c'
       and pg_get_constraintdef(c.oid) ilike '%status%'
   loop
-    execute format('alter table public.discipleship_cases drop constraint %I', constraint_row.conname);
+    execute format('alter table public.ccm_discipleship_cases drop constraint %I', constraint_row.conname);
   end loop;
 end;
 $$;
 
-alter table public.discipleship_cases
+alter table public.ccm_discipleship_cases
   alter column status set default 'pendente_matricula';
 
-alter table public.discipleship_cases
-  add constraint discipleship_cases_status_check
+alter table public.ccm_discipleship_cases
+  add constraint ccm_discipleship_cases_status_check
   check (status in ('pendente_matricula', 'em_discipulado', 'concluido', 'pausado'));
 
 -- 2) Case ativo por membro também inclui pendente_matricula.
-drop index if exists public.discipleship_cases_active_member_uidx;
-create unique index if not exists discipleship_cases_active_member_uidx
-  on public.discipleship_cases (member_id)
+drop index if exists public.ccm_discipleship_cases_active_member_uidx;
+create unique index if not exists ccm_discipleship_cases_active_member_uidx
+  on public.ccm_discipleship_cases (member_id)
   where status in ('pendente_matricula', 'em_discipulado', 'pausado');
 
 -- 3) Regras de transição: cases com progresso existente ficam em em_discipulado;
 -- sem progresso ficam pendentes.
-update public.discipleship_cases dc
+update public.ccm_discipleship_cases dc
 set status = 'em_discipulado'
 where dc.status = 'pendente_matricula'
   and exists (
@@ -41,7 +41,7 @@ where dc.status = 'pendente_matricula'
     where dp.case_id = dc.id
   );
 
-update public.discipleship_cases dc
+update public.ccm_discipleship_cases dc
 set status = 'pendente_matricula'
 where dc.status = 'em_discipulado'
   and not exists (
@@ -51,7 +51,7 @@ where dc.status = 'em_discipulado'
   );
 
 -- 4) Não matricular automaticamente em todos os módulos ao criar case.
-drop trigger if exists trg_discipleship_case_insert on public.discipleship_cases;
+drop trigger if exists trg_discipleship_case_insert on public.ccm_discipleship_cases;
 
 -- 5) Primeira matrícula promove o case para em_discipulado.
 create or replace function public.promote_case_status_on_first_enrollment()
@@ -61,7 +61,7 @@ security definer
 set search_path = public
 as $$
 begin
-  update public.discipleship_cases dc
+  update public.ccm_discipleship_cases dc
   set status = 'em_discipulado'
   where dc.id = new.case_id
     and dc.status = 'pendente_matricula';
@@ -115,7 +115,7 @@ begin
     p.created_at,
     exists (
       select 1
-      from public.discipleship_cases dc
+      from public.ccm_discipleship_cases dc
       where dc.member_id = p.id
         and dc.status in ('pendente_matricula', 'em_discipulado', 'pausado')
     ) as has_active_case

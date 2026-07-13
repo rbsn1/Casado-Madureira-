@@ -269,12 +269,12 @@ export default function DiscipuladoAdminPage() {
       .order("title", { ascending: true });
 
     let openCasesQuery = supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("*", { count: "exact", head: true })
       .in("status", ["pendente_matricula", "em_discipulado", "pausado"]);
 
     let totalCasesQuery = supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("*", { count: "exact", head: true });
 
     let calendarQuery = Promise.resolve({

@@ -70,8 +70,8 @@ create policy "pessoas_read_sm_discipulado" on public.pessoas
     and public.is_congregation_active(congregation_id)
   );
 
-drop policy if exists "discipleship_cases_insert_sm_discipulado" on public.discipleship_cases;
-create policy "discipleship_cases_insert_sm_discipulado" on public.discipleship_cases
+drop policy if exists "ccm_discipleship_cases_insert_sm_discipulado" on public.ccm_discipleship_cases;
+create policy "ccm_discipleship_cases_insert_sm_discipulado" on public.ccm_discipleship_cases
   for insert
   with check (
     public.has_role(array['SM_DISCIPULADO'])

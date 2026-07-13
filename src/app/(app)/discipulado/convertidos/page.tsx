@@ -248,7 +248,7 @@ export default function DiscipuladoConvertidosPage() {
 
     setStatusMessage("");
     setDeletingCaseId(item.case_id);
-    const { error } = await supabaseClient.from("discipleship_cases").delete().eq("id", item.case_id);
+    const { error } = await supabaseClient.from("ccm_discipleship_cases").delete().eq("id", item.case_id);
     if (error) {
       const message = String(error.message ?? "");
       if (message === "not allowed") {
@@ -286,7 +286,7 @@ export default function DiscipuladoConvertidosPage() {
     setStatusMessage("");
     setUpdatingConfraternizacaoCaseId(item.case_id);
     const { error } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({
         confraternizacao_id: confraternizacaoId,
         confraternizacao_confirmada: nextConfirmed,

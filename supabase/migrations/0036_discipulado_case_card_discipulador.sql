@@ -1,7 +1,9 @@
 -- Exibe quem é o discipulador no card dos cases (fila/convertidos).
 -- Mantém escopo da congregação ativa e perfis permitidos.
 
-create or replace function public.list_discipleship_cases_summary(
+drop function if exists public.list_ccm_discipleship_cases_summary(text, uuid, int);
+
+create or replace function public.list_ccm_discipleship_cases_summary(
   status_filter text default null,
   target_congregation_id uuid default null,
   rows_limit int default 250
@@ -53,7 +55,7 @@ begin
       dc.criticality,
       dc.negative_contact_count,
       dc.days_to_confra
-    from public.discipleship_cases dc
+    from public.ccm_discipleship_cases dc
     where dc.congregation_id = effective_congregation
       and (
         status_filter is null
@@ -111,4 +113,4 @@ begin
 end;
 $$;
 
-grant execute on function public.list_discipleship_cases_summary(text, uuid, int) to authenticated;
+grant execute on function public.list_ccm_discipleship_cases_summary(text, uuid, int) to authenticated;

@@ -153,16 +153,16 @@ do update set
   status = excluded.status,
   updated_at = now();
 
-alter table public.discipleship_cases
+alter table public.ccm_discipleship_cases
   add column if not exists confraternizacao_id uuid null references public.confraternizacoes(id) on delete set null,
   add column if not exists confraternizacao_confirmada boolean not null default false,
   add column if not exists confraternizacao_confirmada_em timestamptz null;
 
-create index if not exists discipleship_cases_confraternizacao_idx
-  on public.discipleship_cases (confraternizacao_id);
+create index if not exists ccm_discipleship_cases_confraternizacao_idx
+  on public.ccm_discipleship_cases (confraternizacao_id);
 
-create index if not exists discipleship_cases_confraternizacao_confirmada_idx
-  on public.discipleship_cases (congregation_id, confraternizacao_confirmada, updated_at desc);
+create index if not exists ccm_discipleship_cases_confraternizacao_confirmada_idx
+  on public.ccm_discipleship_cases (congregation_id, confraternizacao_confirmada, updated_at desc);
 
 create or replace function public.get_active_confraternizacao(target_congregation_id uuid default null)
 returns table (

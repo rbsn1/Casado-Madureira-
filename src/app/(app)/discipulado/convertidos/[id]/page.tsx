@@ -192,7 +192,7 @@ function isMissingContactAttemptsTable(message: string, code?: string) {
   return (
     code === "42P01" ||
     code === "PGRST205" ||
-    message.includes("contact_attempts") ||
+    message.includes("ccm_contact_attempts") ||
     message.includes("relation")
   );
 }
@@ -363,7 +363,7 @@ export default function DiscipulandoDetalhePage() {
     let hasCaseCriticality = true;
     let hasCaseAttendance = true;
     let caseResult = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select(
         "id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at, criticality, negative_contact_count, days_to_confra, last_negative_contact_at, attendance_total_classes, attendance_present_count, attendance_absent_count, attendance_justified_count, attendance_presence_rate, confraternizacao_confirmada, confraternizacao_compareceu"
       )
@@ -374,7 +374,7 @@ export default function DiscipulandoDetalhePage() {
       hasCaseCriticality = false;
       hasCaseAttendance = false;
       caseResult = await supabaseClient
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .select("id, member_id, congregation_id, status, notes, assigned_to, created_at, updated_at")
         .eq("id", caseId)
         .single();
@@ -490,7 +490,7 @@ export default function DiscipulandoDetalhePage() {
         .order("data", { ascending: false })
         .limit(5),
       supabaseClient
-        .from("contact_attempts")
+        .from("ccm_contact_attempts")
         .select("id, outcome, channel, notes, created_at")
         .eq("case_id", currentCase.id)
         .order("created_at", { ascending: false })
@@ -709,7 +709,7 @@ export default function DiscipulandoDetalhePage() {
     }
 
     const { data: caseFlowData, error: caseFlowError } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("turno_origem, modulo_atual_id")
       .eq("id", currentCase.id)
       .single();
@@ -801,7 +801,7 @@ export default function DiscipulandoDetalhePage() {
   async function handleCaseStatus(nextStatus: CaseItem["status"]) {
     if (!supabaseClient || !caseData) return;
     setStatusMessage("");
-    const { error } = await supabaseClient.from("discipleship_cases").update({ status: nextStatus }).eq("id", caseData.id);
+    const { error } = await supabaseClient.from("ccm_discipleship_cases").update({ status: nextStatus }).eq("id", caseData.id);
     if (error) {
       setStatusMessage(error.message);
       return;
@@ -873,7 +873,7 @@ export default function DiscipulandoDetalhePage() {
         payload.turno_origem = nextTurno;
       }
       const { error: caseError } = await supabaseClient
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .update(payload)
         .eq("id", caseData.id);
       if (caseError && !isMissingCaseFlowColumnsError(caseError.message, caseError.code)) {
@@ -886,7 +886,7 @@ export default function DiscipulandoDetalhePage() {
       }
       if (caseError && shouldPromoteCase) {
         const { error: fallbackStatusError } = await supabaseClient
-          .from("discipleship_cases")
+          .from("ccm_discipleship_cases")
           .update({ status: "em_discipulado" })
           .eq("id", caseData.id);
         if (fallbackStatusError) {
@@ -924,7 +924,7 @@ export default function DiscipulandoDetalhePage() {
 
     if (!caseModuloAtualId || caseModuloAtualId === item.module_id) {
       const { error: caseError } = await supabaseClient
-        .from("discipleship_cases")
+        .from("ccm_discipleship_cases")
         .update({
           modulo_atual_id: item.module_id,
           turno_origem: selectedTurno
@@ -999,7 +999,7 @@ export default function DiscipulandoDetalhePage() {
     const shouldMoveToInProgress = caseData.status === "pendente_matricula" || caseData.status === "concluido";
     const nextStatus = shouldMoveToInProgress ? "em_discipulado" : caseData.status;
     const { error: caseFlowError } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .update({
         status: nextStatus,
         fase: "DISCIPULADO",
@@ -1011,7 +1011,7 @@ export default function DiscipulandoDetalhePage() {
     if (caseFlowError) {
       if (isMissingCaseFlowColumnsError(caseFlowError.message, caseFlowError.code)) {
         const { error: fallbackError } = await supabaseClient
-          .from("discipleship_cases")
+          .from("ccm_discipleship_cases")
           .update({ status: nextStatus })
           .eq("id", caseData.id);
         if (fallbackError) {
@@ -1166,7 +1166,7 @@ export default function DiscipulandoDetalhePage() {
     const previousDaysToConfra = caseData.days_to_confra;
     setStatusMessage("");
 
-    const { error } = await supabaseClient.from("contact_attempts").insert({
+    const { error } = await supabaseClient.from("ccm_contact_attempts").insert({
       case_id: caseData.id,
       member_id: member.id,
       outcome: contactOutcomeDraft,
@@ -1181,7 +1181,7 @@ export default function DiscipulandoDetalhePage() {
     }
 
     const { data: refreshedCaseData } = await supabaseClient
-      .from("discipleship_cases")
+      .from("ccm_discipleship_cases")
       .select("criticality, days_to_confra")
       .eq("id", caseData.id)
       .single();

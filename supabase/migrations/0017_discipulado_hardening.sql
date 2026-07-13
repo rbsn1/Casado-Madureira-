@@ -39,9 +39,9 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_ensure_discipleship_case_has_active_modules on public.discipleship_cases;
+drop trigger if exists trg_ensure_discipleship_case_has_active_modules on public.ccm_discipleship_cases;
 create trigger trg_ensure_discipleship_case_has_active_modules
-before insert on public.discipleship_cases
+before insert on public.ccm_discipleship_cases
 for each row execute function public.ensure_discipleship_case_has_active_modules();
 
 -- 3) Conclusão exige progresso existente e 100% concluído
@@ -75,9 +75,9 @@ begin
 end;
 $$;
 
-drop trigger if exists trg_enforce_discipleship_case_conclusion on public.discipleship_cases;
+drop trigger if exists trg_enforce_discipleship_case_conclusion on public.ccm_discipleship_cases;
 create trigger trg_enforce_discipleship_case_conclusion
-before update on public.discipleship_cases
+before update on public.ccm_discipleship_cases
 for each row execute function public.enforce_discipleship_case_conclusion();
 
 -- 4) Isolamento de papéis: DISCIPULADOR não pode coexistir ativo com papéis CCM/admin
@@ -123,14 +123,14 @@ before insert or update on public.usuarios_perfis
 for each row execute function public.enforce_discipleship_role_isolation();
 
 -- 5) Policies do Discipulado: tenant precisa estar ativo
-drop policy if exists "discipleship_cases_read" on public.discipleship_cases;
-drop policy if exists "discipleship_cases_manage" on public.discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_read" on public.ccm_discipleship_cases;
+drop policy if exists "ccm_discipleship_cases_manage" on public.ccm_discipleship_cases;
 drop policy if exists "discipleship_modules_read" on public.discipleship_modules;
 drop policy if exists "discipleship_modules_manage" on public.discipleship_modules;
 drop policy if exists "discipleship_progress_read" on public.discipleship_progress;
 drop policy if exists "discipleship_progress_manage" on public.discipleship_progress;
 
-create policy "discipleship_cases_read" on public.discipleship_cases
+create policy "ccm_discipleship_cases_read" on public.ccm_discipleship_cases
   for select
   using (
     public.is_admin_master()
@@ -141,7 +141,7 @@ create policy "discipleship_cases_read" on public.discipleship_cases
     )
   );
 
-create policy "discipleship_cases_manage" on public.discipleship_cases
+create policy "ccm_discipleship_cases_manage" on public.ccm_discipleship_cases
   for all
   using (
     public.is_admin_master()
@@ -251,26 +251,26 @@ begin
     'cards', jsonb_build_object(
       'em_discipulado', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'em_discipulado'
       ),
       'concluidos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'concluido'
       ),
       'parados', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status = 'em_discipulado'
           and dc.updated_at < now() - make_interval(days => stale_days)
       ),
       'pendentes_criticos', (
         select count(*)
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
           and dc.status in ('em_discipulado', 'pausado')
           and dc.updated_at < now() - interval '21 days'
@@ -281,7 +281,7 @@ begin
             dc.id,
             count(dp.id) as total_modules,
             count(*) filter (where dp.status = 'concluido') as done_modules
-          from public.discipleship_cases dc
+          from public.ccm_discipleship_cases dc
           left join public.discipleship_progress dp on dp.case_id = dc.id
           where (effective_congregation is null or dc.congregation_id = effective_congregation)
             and dc.status in ('em_discipulado', 'pausado')
@@ -302,7 +302,7 @@ begin
           dc.updated_at,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
@@ -329,7 +329,7 @@ begin
           p.nome_completo as member_name,
           count(dp.id) as total_modules,
           count(*) filter (where dp.status = 'concluido') as done_modules
-        from public.discipleship_cases dc
+        from public.ccm_discipleship_cases dc
         join public.pessoas p on p.id = dc.member_id
         left join public.discipleship_progress dp on dp.case_id = dc.id
         where (effective_congregation is null or dc.congregation_id = effective_congregation)
