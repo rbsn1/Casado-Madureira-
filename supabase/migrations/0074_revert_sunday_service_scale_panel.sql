@@ -10,9 +10,11 @@ revoke execute on function public.can_assign_escala_domingo_usuario(uuid, uuid) 
 revoke execute on function public.can_manage_escala_domingo(uuid) from authenticated;
 revoke execute on function public.normalize_escala_domingo_culto(text) from authenticated;
 
--- Dropar as tabelas também remove policies, triggers e índices associados.
-drop table if exists public.escalas_domingo_usuarios;
-drop table if exists public.escalas_domingo;
+-- CASCADE é necessário: a policy escalas_domingo_read (em escalas_domingo)
+-- referencia escalas_domingo_usuarios numa subquery, o que o Postgres trata
+-- como dependência e bloqueia o DROP TABLE simples.
+drop table if exists public.escalas_domingo_usuarios cascade;
+drop table if exists public.escalas_domingo cascade;
 
 drop function if exists public.respond_sunday_service_scale(uuid, text);
 drop function if exists public.create_sunday_service_scale(text, date, time, uuid[]);
