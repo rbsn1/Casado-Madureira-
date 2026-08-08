@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -109,11 +108,7 @@ function NovosConvertidosContent() {
       ) : null}
 
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        Operação transferida para o módulo Discipulado. Nesta tela do CCM a fila é somente leitura.
-        {" "}
-        <Link href="/discipulado/convertidos" className="font-semibold underline">
-          Abrir Discipulado
-        </Link>
+        Esta tela do CCM é somente leitura.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

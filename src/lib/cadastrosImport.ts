@@ -1,0 +1,286 @@
+import { type SupabaseClient } from "@supabase/supabase-js";
+import * as XLSX from "xlsx";
+import { parseCsv } from "@/lib/csv";
+import {
+  CultoOrigemCode,
+  cultoOrigemToLegacyOrigem,
+  parseCultoOrigemCode
+} from "@/lib/cultoOrigem";
+import { parseBrazilPhone } from "@/lib/phone";
+import { createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
+import { isMissingColumnError, type CadastroCompletoStatus } from "@/lib/cadastrosApi";
+
+type ImportCadastroItem = {
+  sourceLine: number;
+  nome_completo: string;
+  telefone_whatsapp: string;
+  data: string;
+  culto_origem: CultoOrigemCode;
+  cadastro_completo_status: CadastroCompletoStatus;
+  created_at: string;
+  updated_at: string;
+  request_id: string;
+};
+
+export type ImportCadastrosResult = {
+  tone: "error" | "success";
+  message: string;
+};
+
+export type ImportCadastrosOptions = {
+  canManageCadastrosDirectly: boolean;
+  hasCultoColumn: boolean;
+  hasCompletionStatusColumn: boolean;
+};
+
+function isMissingRequestIdColumnError(message: string, code?: string) {
+  return isMissingColumnError(message, code, "request_id");
+}
+
+function toTwoDigits(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function normalizeImportDate(value: string) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  if (/^\d+(?:\.\d+)?$/.test(raw)) {
+    const serial = Number(raw);
+    if (!Number.isFinite(serial)) return null;
+    const parsed = (XLSX as unknown as { SSF?: { parse_date_code?: (input: number) => { y: number; m: number; d: number } | null } })
+      ?.SSF?.parse_date_code?.(serial);
+    if (parsed?.y && parsed?.m && parsed?.d) {
+      return `${parsed.y}-${toTwoDigits(parsed.m)}-${toTwoDigits(parsed.d)}`;
+    }
+  }
+
+  const slashDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashDate) {
+    const first = Number(slashDate[1]);
+    const second = Number(slashDate[2]);
+    const year = Number(slashDate[3]);
+    if (!first || !second || !year) return null;
+
+    let day = first;
+    let month = second;
+    if (second > 12 && first <= 12) {
+      month = first;
+      day = second;
+    }
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+  }
+
+  const dashedDate = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashedDate) {
+    const day = Number(dashedDate[1]);
+    const month = Number(dashedDate[2]);
+    const year = Number(dashedDate[3]);
+    if (!day || !month || !year) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
+  }
+
+  return null;
+}
+
+function isoDateToManausCreatedAt(isoDate: string) {
+  return `${isoDate}T12:00:00-04:00`;
+}
+
+function parseCadastroCompletoStatus(value: string | null | undefined): CadastroCompletoStatus {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "concluido" || normalized === "concluído") return "concluido";
+  if (normalized === "link_enviado" || normalized === "link enviado") return "link_enviado";
+  return "pendente";
+}
+
+async function parseImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  const isExcel = file.name.toLowerCase().endsWith(".xlsx");
+
+  if (isExcel) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
+    if (!sheet) {
+      throw new Error("Arquivo Excel inválido.");
+    }
+    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
+    const rows = data
+      .map((row) => row.map((cell) => String(cell ?? "").trim()))
+      .filter((row) => row.some((cell) => cell.length > 0));
+    return { headers: rows[0] ?? [], rows: rows.slice(1) };
+  }
+
+  return parseCsv(await file.text());
+}
+
+function buildImportPayload(headers: string[], rows: string[][]) {
+  const headerIndex = headers.reduce<Record<string, number>>((acc, header, index) => {
+    acc[String(header).toLowerCase()] = index;
+    return acc;
+  }, {});
+
+  const skippedRows: number[] = [];
+  const invalidPhoneRows: number[] = [];
+
+  const payload = rows
+    .map((row, index) => {
+      const line = index + 2;
+      const nomeValue = String(row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "").trim();
+      const contatoValue = String(
+        row[headerIndex.contato] ?? row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? ""
+      ).trim();
+      const cultoValue = String(
+        row[headerIndex.culto] ?? row[headerIndex.culto_origem] ?? row[headerIndex.origem] ?? row[headerIndex.turno] ?? ""
+      ).trim();
+      const rawDateValue = String(
+        row[headerIndex.data] ?? row[headerIndex.criado_em] ?? row[headerIndex.created_at] ?? ""
+      ).trim();
+
+      if (!nomeValue || !contatoValue || !cultoValue || !rawDateValue) {
+        skippedRows.push(line);
+        return null;
+      }
+
+      const telefoneParsed = parseBrazilPhone(contatoValue);
+      if (!telefoneParsed) {
+        invalidPhoneRows.push(line);
+        return null;
+      }
+
+      const cultoParsed = parseCultoOrigemCode(cultoValue);
+      if (!cultoParsed) {
+        skippedRows.push(line);
+        return null;
+      }
+
+      const isoDate = normalizeImportDate(rawDateValue);
+      if (!isoDate) {
+        skippedRows.push(line);
+        return null;
+      }
+
+      const item: ImportCadastroItem = {
+        sourceLine: line,
+        nome_completo: nomeValue,
+        telefone_whatsapp: telefoneParsed.formatted,
+        data: isoDate,
+        culto_origem: cultoParsed,
+        created_at: isoDateToManausCreatedAt(isoDate),
+        updated_at: isoDateToManausCreatedAt(isoDate),
+        request_id: crypto.randomUUID(),
+        cadastro_completo_status: parseCadastroCompletoStatus(
+          String(row[headerIndex.status_cadastro] ?? row[headerIndex.status] ?? "pendente")
+        )
+      };
+
+      return item;
+    })
+    .filter((item): item is ImportCadastroItem => item !== null);
+
+  return { payload, skippedRows, invalidPhoneRows };
+}
+
+async function submitImportPayload(
+  client: SupabaseClient,
+  payload: ImportCadastroItem[],
+  options: ImportCadastrosOptions
+): Promise<{ errorMessage: string | null }> {
+  if (options.canManageCadastrosDirectly) {
+    let insertPayload = payload.map((item) => {
+      const rowPayload: Record<string, unknown> = {
+        nome_completo: item.nome_completo,
+        telefone_whatsapp: item.telefone_whatsapp,
+        origem: cultoOrigemToLegacyOrigem(item.culto_origem),
+        data: item.data,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        request_id: item.request_id
+      };
+
+      if (options.hasCultoColumn) {
+        rowPayload.culto_origem = item.culto_origem;
+      }
+
+      if (options.hasCompletionStatusColumn) {
+        rowPayload.cadastro_completo_status = item.cadastro_completo_status;
+      }
+
+      return rowPayload;
+    });
+
+    let { error } = await client.from("pessoas").insert(insertPayload);
+    if (error && isMissingRequestIdColumnError(error.message, error.code)) {
+      insertPayload = insertPayload.map(({ request_id: _requestId, ...rest }) => rest);
+      ({ error } = await client.from("pessoas").insert(insertPayload));
+    }
+
+    if (error) {
+      return { errorMessage: error.message };
+    }
+    return { errorMessage: null };
+  }
+
+  for (const item of payload) {
+    const result = await createQuickCcmRegistration(client, {
+      fullName: item.nome_completo,
+      phoneWhatsapp: item.telefone_whatsapp,
+      registeredOn: item.data,
+      cultoOrigem: item.culto_origem,
+      requestId: item.request_id
+    });
+
+    if (result.errorMessage) {
+      return { errorMessage: `Falha na linha ${item.sourceLine}: ${result.errorMessage}` };
+    }
+  }
+
+  return { errorMessage: null };
+}
+
+export async function importCadastrosFile(
+  client: SupabaseClient,
+  file: File,
+  options: ImportCadastrosOptions
+): Promise<ImportCadastrosResult> {
+  let parsed: { headers: string[]; rows: string[][] };
+  try {
+    parsed = await parseImportFile(file);
+  } catch (error) {
+    return { tone: "error", message: error instanceof Error ? error.message : "Arquivo inválido." };
+  }
+
+  if (!parsed.headers.length) {
+    return { tone: "error", message: "Arquivo de importação vazio ou inválido." };
+  }
+
+  const { payload, skippedRows, invalidPhoneRows } = buildImportPayload(parsed.headers, parsed.rows);
+
+  if (!payload.length) {
+    return {
+      tone: "error",
+      message: "Nenhuma linha válida para importar. Verifique nome, contato, data e culto."
+    };
+  }
+
+  const { errorMessage } = await submitImportPayload(client, payload, options);
+  if (errorMessage) {
+    return { tone: "error", message: errorMessage };
+  }
+
+  const notes = [];
+  if (skippedRows.length) notes.push(`linhas ignoradas: ${skippedRows.slice(0, 8).join(", ")}`);
+  if (invalidPhoneRows.length) notes.push(`contatos inválidos: ${invalidPhoneRows.slice(0, 8).join(", ")}`);
+
+  return {
+    tone: "success",
+    message: notes.length
+      ? `Importação concluída com avisos: ${notes.join(" | ")}.`
+      : "Importação concluída com sucesso."
+  };
+}

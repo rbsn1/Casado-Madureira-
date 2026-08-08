@@ -14,14 +14,6 @@ export type MonthlyEntry = {
   count: number;
 };
 
-export type DiscipleshipCards = {
-  em_discipulado: number;
-  concluidos: number;
-  parados: number;
-  pendentes_criticos: number;
-  proximos_a_concluir: number;
-};
-
 export type Congregation = {
   id: string;
   name: string;

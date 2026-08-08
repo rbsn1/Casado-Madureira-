@@ -1,10 +1,9 @@
 "use client";
 
-const mindMap = `PORTAL CCM + DISCIPULADO (JORNADA COMPLETA)
+const mindMap = `PORTAL CCM (JORNADA COMPLETA)
 ├─ 1) Entrada no Sistema
 │  ├─ Login público (CCM)
-│  ├─ Login interno (/acesso-interno)
-│  └─ Login discipulado (/discipulado/login)
+│  └─ Login interno (/acesso-interno)
 ├─ 2) Captação (CCM é fonte única)
 │  ├─ Pré-cadastro de pessoa no CCM
 │  ├─ Geração de link de cadastro completo
@@ -14,25 +13,15 @@ const mindMap = `PORTAL CCM + DISCIPULADO (JORNADA COMPLETA)
 ├─ 3) Operação Interna CCM
 │  ├─ Cadastros e filtros
 │  ├─ Timeline e contato
-│  ├─ Batismos e relatórios
-│  └─ Departamentos (com regra de elegibilidade)
-├─ 4) Discipulado (módulo separado)
-│  ├─ Novo convertido (usa membro já existente)
-│  ├─ Abertura de case
-│  ├─ Progresso por módulos obrigatórios
-│  ├─ Pausa, retomada e conclusão
-│  └─ Dashboard de acompanhamento
-├─ 5) Governança Multi-congregação
+│  └─ Batismos e relatórios
+├─ 4) Governança Multi-congregação
 │  ├─ congregation_id em dados críticos
 │  ├─ RLS por congregação
 │  └─ Admin geral com visão global
-├─ 6) Perfis e Segurança
+├─ 5) Perfis e Segurança
 │  ├─ CADASTRADOR (cadastro operacional)
-│  ├─ ADMIN_DISCIPULADO (administração do módulo)
-│  ├─ DISCIPULADOR (gestão do discipulado)
-│  ├─ SM_DISCIPULADO (escopo restrito, se ativo)
 │  └─ ADMIN_MASTER / SUPER_ADMIN (governança)
-└─ 7) Ciclo de Qualidade
+└─ 6) Ciclo de Qualidade
    ├─ Auditoria de trilha e status
    ├─ Métricas de desempenho
    ├─ Revisão de acessos por congregação
@@ -45,8 +34,7 @@ export default function ManualJornadaCompletaPage() {
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-900">Manual Operacional</p>
         <h2 className="mt-2 text-2xl font-semibold text-text">Jornada Completa do Sistema</h2>
         <p className="mt-2 text-sm text-text-muted">
-          Guia de referência do Portal CCM + Discipulado para operação diária, gestão por perfil e escala por
-          congregação.
+          Guia de referência do Portal CCM para operação diária, gestão por perfil e escala por congregação.
         </p>
       </section>
 
@@ -64,7 +52,7 @@ export default function ManualJornadaCompletaPage() {
             <p className="font-semibold text-text">1. Entrada e autenticação</p>
             <p className="mt-1">
               Usuários entram pelas rotas de login. O sistema identifica os perfis e aplica o redirecionamento para o
-              ambiente correto (CCM, Discipulado ou painel de cadastro).
+              ambiente correto (CCM ou painel de cadastro).
             </p>
           </article>
           <article className="rounded-xl border border-border bg-surface p-4">
@@ -76,21 +64,13 @@ export default function ManualJornadaCompletaPage() {
             </p>
           </article>
           <article className="rounded-xl border border-border bg-surface p-4">
-            <p className="font-semibold text-text">3. Acompanhamento interno e departamentos</p>
+            <p className="font-semibold text-text">3. Acompanhamento interno</p>
             <p className="mt-1">
-              A equipe acompanha timeline, status, encaminhamentos e departamentos. A elegibilidade para departamentos
-              considera a conclusão do discipulado quando exigido.
+              A equipe acompanha timeline, status e encaminhamentos.
             </p>
           </article>
           <article className="rounded-xl border border-border bg-surface p-4">
-            <p className="font-semibold text-text">4. Jornada do discipulado</p>
-            <p className="mt-1">
-              O módulo de Discipulado cria um case para membro existente, abre progresso por módulos, registra notas e
-              controla pausa, retomada e conclusão.
-            </p>
-          </article>
-          <article className="rounded-xl border border-border bg-surface p-4">
-            <p className="font-semibold text-text">5. Governança e escala</p>
+            <p className="font-semibold text-text">4. Governança e escala</p>
             <p className="mt-1">
               Dados segregados por congregação com RLS e gestão central para sede. O modelo suporta expansão para
               múltiplas congregações mantendo isolamento e auditoria.
@@ -117,23 +97,8 @@ export default function ManualJornadaCompletaPage() {
                 <td className="px-3 py-2">Garantir qualidade da captação inicial</td>
               </tr>
               <tr className="border-b border-border">
-                <td className="px-3 py-2 font-medium text-text">ADMIN_DISCIPULADO</td>
-                <td className="px-3 py-2">Administração do Discipulado</td>
-                <td className="px-3 py-2">Gerir usuários, módulos e configurações do módulo</td>
-              </tr>
-              <tr className="border-b border-border">
-                <td className="px-3 py-2 font-medium text-text">DISCIPULADOR</td>
-                <td className="px-3 py-2">Dashboard e convertidos do discipulado</td>
-                <td className="px-3 py-2">Conduzir progresso e conclusão dos módulos</td>
-              </tr>
-              <tr className="border-b border-border">
-                <td className="px-3 py-2 font-medium text-text">SM_DISCIPULADO</td>
-                <td className="px-3 py-2">Escopo disciplinado conforme regra vigente</td>
-                <td className="px-3 py-2">Suporte operacional controlado</td>
-              </tr>
-              <tr className="border-b border-border">
                 <td className="px-3 py-2 font-medium text-text">ADMIN_MASTER / SUPER_ADMIN</td>
-                <td className="px-3 py-2">Visão global (CCM + Discipulado)</td>
+                <td className="px-3 py-2">Visão global do CCM</td>
                 <td className="px-3 py-2">Governança, auditoria e liberação de acessos</td>
               </tr>
             </tbody>

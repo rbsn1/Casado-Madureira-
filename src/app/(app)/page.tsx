@@ -36,9 +36,7 @@ export default function DashboardPage() {
     isAdminMaster,
     congregationFilter,
     setCongregationFilter,
-    congregations,
-    discipleshipCards,
-    userRoles
+    congregations
   } = useDashboardData();
 
   useEffect(() => {
@@ -191,45 +189,6 @@ export default function DashboardPage() {
         <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
       </div>
 
-
-      {userRoles.includes("DISCIPULADOR") ? (
-        <section className="card border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Discipulado</p>
-              <h3 className="text-lg font-semibold text-sky-950">Indicadores integrados</h3>
-            </div>
-            <Link
-              href="/discipulado"
-              className="rounded-full border border-sky-200 bg-white px-3 py-1 text-xs font-semibold text-sky-900 hover:bg-sky-50"
-            >
-              Abrir módulo
-            </Link>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-5">
-            <div className="rounded-xl border border-sky-100 bg-white p-3">
-              <p className="text-xs text-slate-600">Em discipulado</p>
-              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.em_discipulado}</p>
-            </div>
-            <div className="rounded-xl border border-sky-100 bg-white p-3">
-              <p className="text-xs text-slate-600">Concluídos</p>
-              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.concluidos}</p>
-            </div>
-            <div className="rounded-xl border border-sky-100 bg-white p-3">
-              <p className="text-xs text-slate-600">Parados</p>
-              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.parados}</p>
-            </div>
-            <div className="rounded-xl border border-sky-100 bg-white p-3">
-              <p className="text-xs text-slate-600">Pendentes críticos</p>
-              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.pendentes_criticos}</p>
-            </div>
-            <div className="rounded-xl border border-sky-100 bg-white p-3">
-              <p className="text-xs text-slate-600">Próximos a concluir</p>
-              <p className="text-2xl font-semibold text-sky-950">{discipleshipCards.proximos_a_concluir}</p>
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">

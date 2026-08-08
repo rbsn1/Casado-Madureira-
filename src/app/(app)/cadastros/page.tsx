@@ -2,168 +2,32 @@
 
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
-import { formatCpfInput, parseCpf } from "@/lib/cpf";
-import { createFullCcmRegistration, createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
-import { downloadCsv, parseCsv } from "@/lib/csv";
+import { downloadCsv } from "@/lib/csv";
 import { formatDateBR } from "@/lib/date";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { cultoOrigemLabelFromValue } from "@/lib/cultoOrigem";
+import { useCadastrosPermissions } from "@/hooks/useCadastrosPermissions";
+import { importCadastrosFile } from "@/lib/cadastrosImport";
 import {
-  CULTO_ORIGEM_CCM_FORM_OPTIONS,
-  CultoOrigemCode,
-  cultoOrigemLabelFromValue,
-  cultoOrigemToLegacyOrigem,
-  parseCultoOrigemCode
-} from "@/lib/cultoOrigem";
-import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
+  CadastroCompletoStatus,
+  PessoaItem,
+  deletePessoa,
+  generateCompletionLink,
+  getCadastroCompletoClass,
+  getCadastroCompletoLabel,
+  loadPessoas as loadPessoasFromApi
+} from "@/lib/cadastrosApi";
+import { CadastroForm } from "@/components/cadastros/CadastroForm";
 
-type CadastroCompletoStatus = "pendente" | "link_enviado" | "concluido";
-
-type PessoaItem = {
-  id: string;
-  nome_completo: string;
-  telefone_whatsapp: string | null;
-  origem: string | null;
-  culto_origem: string | null;
-  data: string | null;
-  created_at: string;
-  cadastro_completo_status: CadastroCompletoStatus | null;
-  cadastro_completo_at: string | null;
-};
-
-type PessoaQueryRow = {
-  id: string;
-  nome_completo: string;
-  telefone_whatsapp: string | null;
-  origem: string | null;
-  culto_origem?: string | null;
-  data: string | null;
-  created_at: string;
-  cadastro_completo_status?: CadastroCompletoStatus | null;
-  cadastro_completo_at?: string | null;
-};
-
-type QueryFallbackError = {
-  message: string;
-  code?: string;
-};
-
-type PessoasQueryResult = {
-  data: unknown[] | null;
-  error: QueryFallbackError | null;
-};
-
-type ImportCadastroItem = {
-  sourceLine: number;
-  nome_completo: string;
-  telefone_whatsapp: string;
-  data: string;
-  culto_origem: CultoOrigemCode;
-  cadastro_completo_status: CadastroCompletoStatus;
-  created_at: string;
-  updated_at: string;
-  request_id: string;
-};
-
-const fieldLabelClass = "text-slate-700";
-const fieldClass =
-  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
-const primaryButtonClass =
-  "w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto";
-const secondaryButtonClass =
-  "w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900 sm:w-auto";
 const toolbarButtonClass = "w-full rounded-xl px-3 py-3 text-sm font-semibold sm:w-auto";
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
-
-function currentLocalDateInputValue() {
-  const now = new Date();
-  const timezoneOffsetMs = now.getTimezoneOffset() * 60_000;
-  return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
-}
-
-function isMissingColumnError(message: string, code: string | undefined, column: string) {
-  return code === "PGRST204" && message.includes(column);
-}
-
-function isMissingRequestIdColumnError(message: string, code?: string) {
-  return isMissingColumnError(message, code, "request_id");
-}
-
-function toTwoDigits(value: number) {
-  return String(value).padStart(2, "0");
-}
-
-function normalizeImportDate(value: string) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-
-  if (/^\d+(?:\.\d+)?$/.test(raw)) {
-    const serial = Number(raw);
-    if (!Number.isFinite(serial)) return null;
-    const parsed = (XLSX as unknown as { SSF?: { parse_date_code?: (input: number) => { y: number; m: number; d: number } | null } })
-      ?.SSF?.parse_date_code?.(serial);
-    if (parsed?.y && parsed?.m && parsed?.d) {
-      return `${parsed.y}-${toTwoDigits(parsed.m)}-${toTwoDigits(parsed.d)}`;
-    }
-  }
-
-  const slashDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (slashDate) {
-    const first = Number(slashDate[1]);
-    const second = Number(slashDate[2]);
-    const year = Number(slashDate[3]);
-    if (!first || !second || !year) return null;
-
-    let day = first;
-    let month = second;
-    if (second > 12 && first <= 12) {
-      month = first;
-      day = second;
-    }
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
-  }
-
-  const dashedDate = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (dashedDate) {
-    const day = Number(dashedDate[1]);
-    const month = Number(dashedDate[2]);
-    const year = Number(dashedDate[3]);
-    if (!day || !month || !year) return null;
-    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-    return `${year}-${toTwoDigits(month)}-${toTwoDigits(day)}`;
-  }
-
-  return null;
-}
-
-function isoDateToManausCreatedAt(isoDate: string) {
-  return `${isoDate}T12:00:00-04:00`;
-}
-
-function parseCadastroCompletoStatus(value: string | null | undefined): CadastroCompletoStatus {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "concluido" || normalized === "concluído") return "concluido";
-  if (normalized === "link_enviado" || normalized === "link enviado") return "link_enviado";
-  return "pendente";
-}
-
-function getCadastroCompletoLabel(status: CadastroCompletoStatus | null | undefined) {
-  if (status === "concluido") return "Cadastro completo";
-  if (status === "link_enviado") return "Link enviado";
-  return "Pendente de complementação";
-}
-
-function getCadastroCompletoClass(status: CadastroCompletoStatus | null | undefined) {
-  if (status === "concluido") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "link_enviado") return "border-sky-200 bg-sky-50 text-sky-700";
-  return "border-amber-200 bg-amber-50 text-amber-800";
-}
+const fieldClass =
+  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
 
 function CadastrosContent() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { isCadastradorOnly, canManageCadastrosDirectly, canGenerateCompletionLink } = useCadastrosPermissions();
+
   const [loading, setLoading] = useState(true);
   const [feedbackTone, setFeedbackTone] = useState<"error" | "success" | "info">("info");
   const [statusMessage, setStatusMessage] = useState("");
@@ -174,45 +38,11 @@ function CadastrosContent() {
   const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
-  const [canGenerateCompletionLink, setCanGenerateCompletionLink] = useState(false);
-  const [canManageCadastrosDirectly, setCanManageCadastrosDirectly] = useState(false);
-  const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
   const [hasCompletionStatusColumn, setHasCompletionStatusColumn] = useState(true);
   const [hasCultoColumn, setHasCultoColumn] = useState(true);
 
-  const [nome, setNome] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [dataCadastro, setDataCadastro] = useState(currentLocalDateInputValue());
-  const [cultoOrigem, setCultoOrigem] = useState<CultoOrigemCode | "">("");
-  const [igrejaOrigem, setIgrejaOrigem] = useState("");
-  const [bairro, setBairro] = useState("");
-  const [cpf, setCpf] = useState("");
-  const [rg, setRg] = useState("");
-  const [fotoUrl, setFotoUrl] = useState("");
-  const [dataNascimento, setDataNascimento] = useState("");
-  const [email, setEmail] = useState("");
-  const [endereco, setEndereco] = useState("");
-  const [observacoes, setObservacoes] = useState("");
-
-  const resetForm = useCallback(() => {
-    setNome("");
-    setTelefone("");
-    setDataCadastro(currentLocalDateInputValue());
-    setCultoOrigem("");
-    setIgrejaOrigem("");
-    setBairro("");
-    setCpf("");
-    setRg("");
-    setFotoUrl("");
-    setDataNascimento("");
-    setEmail("");
-    setEndereco("");
-    setObservacoes("");
-  }, []);
-
-  const loadPessoas = useCallback(async () => {
-    const client = supabaseClient;
-    if (!client) {
+  const reloadPessoas = useCallback(async () => {
+    if (!supabaseClient) {
       setFeedbackTone("error");
       setStatusMessage("Supabase não configurado.");
       setLoading(false);
@@ -222,104 +52,24 @@ function CadastrosContent() {
     setLoading(true);
     setStatusMessage("");
 
-    let usingLegacyCulto = false;
-    let usingLegacyCompletion = false;
+    const result = await loadPessoasFromApi(supabaseClient);
+    setHasCultoColumn(result.hasCultoColumn);
+    setHasCompletionStatusColumn(result.hasCompletionStatusColumn);
 
-    const loadPessoasQuery = async (columns: string): Promise<PessoasQueryResult> => {
-      const result = await client
-        .from("pessoas")
-        .select(columns)
-        .eq("cadastro_origem", "ccm")
-        .order("created_at", { ascending: false });
-
-      return {
-        data: Array.isArray(result.data) ? (result.data as unknown[]) : null,
-        error: result.error
-          ? {
-              message: result.error.message,
-              code: result.error.code
-            }
-          : null
-      };
-    };
-
-    let pessoasResult = await loadPessoasQuery(
-      "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at, cadastro_completo_status, cadastro_completo_at"
-    );
-
-    if (pessoasResult.error && isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "culto_origem")) {
-      usingLegacyCulto = true;
-      pessoasResult = await loadPessoasQuery(
-        "id, nome_completo, telefone_whatsapp, origem, data, created_at, cadastro_completo_status, cadastro_completo_at"
-      );
-    }
-
-    if (
-      pessoasResult.error &&
-      isMissingColumnError(pessoasResult.error.message, pessoasResult.error.code, "cadastro_completo_status")
-    ) {
-      usingLegacyCompletion = true;
-      pessoasResult = await loadPessoasQuery(
-        usingLegacyCulto
-          ? "id, nome_completo, telefone_whatsapp, origem, data, created_at"
-          : "id, nome_completo, telefone_whatsapp, origem, culto_origem, data, created_at"
-      );
-    }
-
-    if (pessoasResult.error) {
+    if (result.errorMessage) {
       setFeedbackTone("error");
-      setStatusMessage(`Não foi possível carregar os cadastros. ${pessoasResult.error.message}`);
+      setStatusMessage(result.errorMessage);
       setLoading(false);
       return;
     }
 
-    const rows = Array.isArray(pessoasResult.data) ? (pessoasResult.data as PessoaQueryRow[]) : [];
-    setHasCultoColumn(!usingLegacyCulto);
-    setHasCompletionStatusColumn(!usingLegacyCompletion);
-    setPessoas(
-      rows.map((row) => ({
-        id: String(row.id),
-        nome_completo: String(row.nome_completo ?? ""),
-        telefone_whatsapp: row.telefone_whatsapp ?? null,
-        origem: row.origem ?? null,
-        culto_origem: usingLegacyCulto ? null : row.culto_origem ?? null,
-        data: row.data ?? null,
-        created_at: String(row.created_at ?? ""),
-        cadastro_completo_status: usingLegacyCompletion ? null : row.cadastro_completo_status ?? "pendente",
-        cadastro_completo_at: usingLegacyCompletion ? null : row.cadastro_completo_at ?? null
-      }))
-    );
+    setPessoas(result.pessoas);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    loadPessoas();
-  }, [loadPessoas]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadPermissions() {
-      if (!supabaseClient) return;
-      const { data } = await supabaseClient.rpc("get_my_roles");
-      if (!active) return;
-      const roles = (data ?? []) as string[];
-      setIsCadastradorOnly(roles.length === 1 && roles.includes("CADASTRADOR"));
-      setCanManageCadastrosDirectly(
-        roles.some((role) => ["ADMIN_MASTER", "PASTOR", "SECRETARIA"].includes(role))
-      );
-      setCanGenerateCompletionLink(
-        roles.some((role) =>
-          ["ADMIN_MASTER", "PASTOR", "SECRETARIA", "NOVOS_CONVERTIDOS", "CADASTRADOR"].includes(role)
-        )
-      );
-    }
-
-    loadPermissions();
-    return () => {
-      active = false;
-    };
-  }, []);
+    reloadPessoas();
+  }, [reloadPessoas]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -358,159 +108,19 @@ function CadastrosContent() {
 
   function openCreate() {
     setEditingPessoa(null);
-    resetForm();
     setShowCreate(true);
     setStatusMessage("");
   }
 
   function openEdit(pessoa: PessoaItem) {
     setEditingPessoa(pessoa);
-    setNome(pessoa.nome_completo);
-    setTelefone(formatBrazilPhoneInput(pessoa.telefone_whatsapp ?? ""));
-    setDataCadastro(pessoa.data ?? currentLocalDateInputValue());
-    setCultoOrigem(parseCultoOrigemCode(pessoa.culto_origem ?? pessoa.origem) ?? "");
     setShowCreate(true);
     setStatusMessage("");
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!supabaseClient) return;
-
-    const nomeFinal = nome.trim();
-    if (nomeFinal.length < 3) {
-      setFeedbackTone("error");
-      setStatusMessage("Informe o nome com pelo menos 3 caracteres.");
-      return;
-    }
-
-    const telefoneParsed = parseBrazilPhone(telefone);
-    if (!telefoneParsed) {
-      setFeedbackTone("error");
-      setStatusMessage("Informe o contato com DDD. Ex: (92) 99227-0057.");
-      return;
-    }
-
-    if (!dataCadastro) {
-      setFeedbackTone("error");
-      setStatusMessage("A data do cadastro é obrigatória.");
-      return;
-    }
-
-    const cultoSelecionado = parseCultoOrigemCode(cultoOrigem);
-    if (!cultoSelecionado) {
-      setFeedbackTone("error");
-      setStatusMessage("Selecione o culto.");
-      return;
-    }
-
-    let payload: Record<string, unknown> = {
-      nome_completo: nomeFinal,
-      telefone_whatsapp: telefoneParsed.formatted,
-      origem: cultoOrigemToLegacyOrigem(cultoSelecionado),
-      data: dataCadastro
-    };
-
-    if (hasCultoColumn) {
-      payload.culto_origem = cultoSelecionado;
-    }
-
-    if (!editingPessoa && hasCompletionStatusColumn) {
-      payload.cadastro_completo_status = "pendente";
-    }
-
-    if (editingPessoa) {
-      const { error } = await supabaseClient.from("pessoas").update(payload).eq("id", editingPessoa.id);
-      if (error) {
-        setFeedbackTone("error");
-        setStatusMessage(error.message);
-        return;
-      }
-      setFeedbackTone("success");
-      setStatusMessage("Cadastro rápido atualizado com sucesso.");
-    } else {
-      if (isCadastradorOnly) {
-        const result = await createQuickCcmRegistration(supabaseClient, {
-          fullName: nomeFinal,
-          phoneWhatsapp: telefoneParsed.formatted,
-          registeredOn: dataCadastro,
-          cultoOrigem: cultoSelecionado,
-          requestId: crypto.randomUUID()
-        });
-
-        if (result.errorMessage) {
-          setFeedbackTone("error");
-          setStatusMessage(result.errorMessage);
-          return;
-        }
-
-        if (result.duplicate) {
-          setFeedbackTone("success");
-          setStatusMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
-          setShowCreate(false);
-          resetForm();
-          await loadPessoas();
-          return;
-        }
-
-        setFeedbackTone("success");
-        setStatusMessage("Cadastro rápido salvo. Os dados complementares ficam pendentes para depois.");
-      } else {
-        const cpfParsed = parseCpf(cpf);
-        if (!cpfParsed) {
-          setFeedbackTone("error");
-          setStatusMessage("Informe um CPF válido para o cadastro completo.");
-          return;
-        }
-
-        if (!rg.trim()) {
-          setFeedbackTone("error");
-          setStatusMessage("Informe o RG para o cadastro completo.");
-          return;
-        }
-
-        const result = await createFullCcmRegistration(supabaseClient, {
-          fullName: nomeFinal,
-          phoneWhatsapp: telefoneParsed.formatted,
-          registeredOn: dataCadastro,
-          cultoOrigem: cultoSelecionado,
-          cpfDigits: cpfParsed.digits,
-          rg,
-          originChurch: igrejaOrigem,
-          neighborhood: bairro,
-          photoUrl: fotoUrl,
-          birthDate: dataNascimento,
-          email,
-          address: endereco,
-          notes: observacoes,
-          requestId: crypto.randomUUID(),
-          allowDirectInsertFallback: canManageCadastrosDirectly
-        });
-
-        if (result.errorMessage) {
-          setFeedbackTone("error");
-          setStatusMessage(result.errorMessage);
-          return;
-        }
-
-        if (result.duplicate) {
-          setFeedbackTone("success");
-          setStatusMessage("Cadastro já recebido anteriormente. A duplicidade foi evitada.");
-          setShowCreate(false);
-          resetForm();
-          await loadPessoas();
-          return;
-        }
-
-        setFeedbackTone("success");
-        setStatusMessage("Cadastro completo salvo com sucesso.");
-      }
-    }
-
+  function closeForm() {
     setShowCreate(false);
     setEditingPessoa(null);
-    resetForm();
-    await loadPessoas();
   }
 
   function handleExport() {
@@ -535,168 +145,20 @@ function CadastrosContent() {
 
     setStatusMessage("");
 
-    const isExcel = file.name.toLowerCase().endsWith(".xlsx");
-    let parsed: { headers: string[]; rows: string[][] };
+    const result = await importCadastrosFile(supabaseClient, file, {
+      canManageCadastrosDirectly,
+      hasCultoColumn,
+      hasCompletionStatusColumn
+    });
 
-    if (isExcel) {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
-      if (!sheet) {
-        setFeedbackTone("error");
-        setStatusMessage("Arquivo Excel inválido.");
-        return;
-      }
-      const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
-      const rows = data
-        .map((row) => row.map((cell) => String(cell ?? "").trim()))
-        .filter((row) => row.some((cell) => cell.length > 0));
-      parsed = { headers: rows[0] ?? [], rows: rows.slice(1) };
-    } else {
-      parsed = parseCsv(await file.text());
-    }
-
-    if (!parsed.headers.length) {
-      setFeedbackTone("error");
-      setStatusMessage("Arquivo de importação vazio ou inválido.");
-      return;
-    }
-
-    const headerIndex = parsed.headers.reduce<Record<string, number>>((acc, header, index) => {
-      acc[String(header).toLowerCase()] = index;
-      return acc;
-    }, {});
-
-    const skippedRows: number[] = [];
-    const invalidPhoneRows: number[] = [];
-
-    const payload = parsed.rows
-      .map((row, index) => {
-        const line = index + 2;
-        const nomeValue = String(row[headerIndex.nome_completo] ?? row[headerIndex.nome] ?? "").trim();
-        const contatoValue = String(
-          row[headerIndex.contato] ?? row[headerIndex.telefone_whatsapp] ?? row[headerIndex.telefone] ?? ""
-        ).trim();
-        const cultoValue = String(
-          row[headerIndex.culto] ?? row[headerIndex.culto_origem] ?? row[headerIndex.origem] ?? row[headerIndex.turno] ?? ""
-        ).trim();
-        const rawDateValue = String(
-          row[headerIndex.data] ?? row[headerIndex.criado_em] ?? row[headerIndex.created_at] ?? ""
-        ).trim();
-
-        if (!nomeValue || !contatoValue || !cultoValue || !rawDateValue) {
-          skippedRows.push(line);
-          return null;
-        }
-
-        const telefoneParsed = parseBrazilPhone(contatoValue);
-        if (!telefoneParsed) {
-          invalidPhoneRows.push(line);
-          return null;
-        }
-
-        const cultoParsed = parseCultoOrigemCode(cultoValue);
-        if (!cultoParsed) {
-          skippedRows.push(line);
-          return null;
-        }
-
-        const isoDate = normalizeImportDate(rawDateValue);
-        if (!isoDate) {
-          skippedRows.push(line);
-          return null;
-        }
-
-        const item: ImportCadastroItem = {
-          sourceLine: line,
-          nome_completo: nomeValue,
-          telefone_whatsapp: telefoneParsed.formatted,
-          data: isoDate,
-          culto_origem: cultoParsed,
-          created_at: isoDateToManausCreatedAt(isoDate),
-          updated_at: isoDateToManausCreatedAt(isoDate),
-          request_id: crypto.randomUUID(),
-          cadastro_completo_status: parseCadastroCompletoStatus(
-            String(row[headerIndex.status_cadastro] ?? row[headerIndex.status] ?? "pendente")
-          )
-        };
-
-        return item;
-      })
-      .filter((item): item is ImportCadastroItem => item !== null);
-
-    if (!payload.length) {
-      setFeedbackTone("error");
-      setStatusMessage("Nenhuma linha válida para importar. Verifique nome, contato, data e culto.");
-      return;
-    }
-
-    if (canManageCadastrosDirectly) {
-      let insertPayload = payload.map((item) => {
-        const rowPayload: Record<string, unknown> = {
-          nome_completo: item.nome_completo,
-          telefone_whatsapp: item.telefone_whatsapp,
-          origem: cultoOrigemToLegacyOrigem(item.culto_origem),
-          data: item.data,
-          created_at: item.created_at,
-          updated_at: item.updated_at,
-          request_id: item.request_id
-        };
-
-        if (hasCultoColumn) {
-          rowPayload.culto_origem = item.culto_origem;
-        }
-
-        if (hasCompletionStatusColumn) {
-          rowPayload.cadastro_completo_status = item.cadastro_completo_status;
-        }
-
-        return rowPayload;
-      });
-
-      let { error } = await supabaseClient.from("pessoas").insert(insertPayload);
-      if (error && isMissingRequestIdColumnError(error.message, error.code)) {
-        insertPayload = insertPayload.map(({ request_id: _requestId, ...rest }) => rest);
-        ({ error } = await supabaseClient.from("pessoas").insert(insertPayload));
-      }
-
-      if (error) {
-        setFeedbackTone("error");
-        setStatusMessage(error.message);
-        return;
-      }
-    } else {
-      for (const item of payload) {
-        const result = await createQuickCcmRegistration(supabaseClient, {
-          fullName: item.nome_completo,
-          phoneWhatsapp: item.telefone_whatsapp,
-          registeredOn: item.data,
-          cultoOrigem: item.culto_origem,
-          requestId: item.request_id
-        });
-
-        if (result.errorMessage) {
-          setFeedbackTone("error");
-          setStatusMessage(`Falha na linha ${item.sourceLine}: ${result.errorMessage}`);
-          return;
-        }
-      }
-    }
-
-    const notes = [];
-    if (skippedRows.length) notes.push(`linhas ignoradas: ${skippedRows.slice(0, 8).join(", ")}`);
-    if (invalidPhoneRows.length) notes.push(`contatos inválidos: ${invalidPhoneRows.slice(0, 8).join(", ")}`);
-
-    setFeedbackTone("success");
-    setStatusMessage(
-      notes.length
-        ? `Importação concluída com avisos: ${notes.join(" | ")}.`
-        : "Importação concluída com sucesso."
-    );
+    setFeedbackTone(result.tone);
+    setStatusMessage(result.message);
 
     event.target.value = "";
-    await loadPessoas();
+
+    if (result.tone === "success") {
+      await reloadPessoas();
+    }
   }
 
   async function handleDelete(pessoa: PessoaItem) {
@@ -710,10 +172,10 @@ function CadastrosContent() {
     setDeletingId(pessoa.id);
     setStatusMessage("");
 
-    const { error } = await supabaseClient.from("pessoas").delete().eq("id", pessoa.id);
-    if (error) {
+    const { errorMessage } = await deletePessoa(supabaseClient, pessoa.id);
+    if (errorMessage) {
       setFeedbackTone("error");
-      setStatusMessage(error.message || "Não foi possível excluir o cadastro.");
+      setStatusMessage(errorMessage);
       setDeletingId(null);
       return;
     }
@@ -721,7 +183,7 @@ function CadastrosContent() {
     setFeedbackTone("success");
     setStatusMessage("Cadastro removido com sucesso.");
     setDeletingId(null);
-    await loadPessoas();
+    await reloadPessoas();
   }
 
   async function handleGenerateCompletionLink(pessoa: PessoaItem) {
@@ -730,20 +192,14 @@ function CadastrosContent() {
     setGeneratingLinkForId(pessoa.id);
     setStatusMessage("");
 
-    const { data, error } = await supabaseClient.rpc("generate_member_completion_token", {
-      target_member_id: pessoa.id,
-      ttl_hours: 168
-    });
+    const { link, errorMessage } = await generateCompletionLink(supabaseClient, pessoa.id, window.location.origin);
 
-    if (error || !data) {
+    if (errorMessage || !link) {
       setFeedbackTone("error");
-      setStatusMessage(error?.message ?? "Não foi possível gerar o link de cadastro completo.");
+      setStatusMessage(errorMessage ?? "Não foi possível gerar o link de cadastro completo.");
       setGeneratingLinkForId(null);
       return;
     }
-
-    const token = String(data);
-    const link = `${window.location.origin}/cadastro/completar?token=${encodeURIComponent(token)}`;
 
     try {
       await navigator.clipboard.writeText(link);
@@ -756,7 +212,7 @@ function CadastrosContent() {
     }
 
     setGeneratingLinkForId(null);
-    await loadPessoas();
+    await reloadPessoas();
   }
 
   return (
@@ -843,206 +299,23 @@ function CadastrosContent() {
       </div>
 
       {showCreate ? (
-        <form className="card grid gap-4 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          {!hasCultoColumn ? (
-            <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
-              A coluna `culto_origem` ainda não existe neste ambiente. Aplique a migração `0067_ccm_culto_rapido.sql`.
-            </p>
-          ) : null}
-          {!hasCompletionStatusColumn ? (
-            <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
-              O status de complementação ainda não existe neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
-            </p>
-          ) : null}
-
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span className={fieldLabelClass}>Nome</span>
-            <input
-              required
-              value={nome}
-              onChange={(event) => setNome(event.target.value)}
-              className={fieldClass}
-              placeholder="Digite o nome da pessoa"
-            />
-          </label>
-
-          <label className="space-y-1 text-sm">
-            <span className={fieldLabelClass}>Contato</span>
-            <input
-              required
-              value={telefone}
-              onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-              className={fieldClass}
-              placeholder="(92) 99227-0057"
-            />
-          </label>
-
-          <label className="min-w-0 space-y-1 text-sm">
-            <span className={fieldLabelClass}>Data</span>
-            <input
-              required
-              type="date"
-              value={dataCadastro}
-              onChange={(event) => setDataCadastro(event.target.value)}
-              className={fieldClass}
-            />
-          </label>
-
-          <label className="space-y-1 text-sm md:col-span-2">
-            <span className={fieldLabelClass}>Culto</span>
-              <select
-                value={cultoOrigem}
-                onChange={(event) => {
-                  const rawValue = event.target.value;
-                  setCultoOrigem(parseCultoOrigemCode(rawValue) ?? "");
-                }}
-                className={fieldClass}
-                required
-              >
-                <option value="">Selecione o culto</option>
-                {CULTO_ORIGEM_CCM_FORM_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-              ))}
-            </select>
-          </label>
-
-          {isCadastradorOnly ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
-              Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão
-              preenchidos posteriormente pela equipe ou pelo link de complementação.
-            </div>
-          ) : !editingPessoa ? (
-            <>
-              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 md:col-span-2">
-                Este é o <strong>formulário completo</strong> para perfis administrativos. Cadastros criados aqui já
-                entram com os dados complementares preenchidos.
-              </div>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>CPF</span>
-                <input
-                  required
-                  value={cpf}
-                  onChange={(event) => setCpf(formatCpfInput(event.target.value))}
-                  className={fieldClass}
-                  placeholder="000.000.000-00"
-                  inputMode="numeric"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>RG</span>
-                <input
-                  required
-                  value={rg}
-                  onChange={(event) => setRg(event.target.value)}
-                  className={fieldClass}
-                  placeholder="Digite o RG"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>Igreja de origem</span>
-                <input
-                  value={igrejaOrigem}
-                  onChange={(event) => setIgrejaOrigem(event.target.value)}
-                  className={fieldClass}
-                  placeholder="Opcional"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>Bairro</span>
-                <input
-                  value={bairro}
-                  onChange={(event) => setBairro(event.target.value)}
-                  className={fieldClass}
-                  placeholder="Opcional"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>Data de nascimento</span>
-                <input
-                  type="date"
-                  value={dataNascimento}
-                  onChange={(event) => setDataNascimento(event.target.value)}
-                  className={fieldClass}
-                />
-              </label>
-
-              <label className="space-y-1 text-sm">
-                <span className={fieldLabelClass}>E-mail</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={fieldClass}
-                  placeholder="voce@email.com"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm md:col-span-2">
-                <span className={fieldLabelClass}>Endereço</span>
-                <input
-                  value={endereco}
-                  onChange={(event) => setEndereco(event.target.value)}
-                  className={fieldClass}
-                  placeholder="Rua, número, complemento"
-                />
-              </label>
-
-              <label className="space-y-1 text-sm md:col-span-2">
-                <span className={fieldLabelClass}>Foto (URL)</span>
-                <input
-                  value={fotoUrl}
-                  onChange={(event) => setFotoUrl(event.target.value)}
-                  className={fieldClass}
-                  placeholder="https://..."
-                />
-              </label>
-
-              <label className="space-y-1 text-sm md:col-span-2">
-                <span className={fieldLabelClass}>Observações</span>
-                <textarea
-                  rows={4}
-                  value={observacoes}
-                  onChange={(event) => setObservacoes(event.target.value)}
-                  className={fieldClass}
-                  placeholder="Informações relevantes para o cadastro."
-                />
-              </label>
-            </>
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
-              A edição continua focada nos dados iniciais do cadastro. A complementação segue pelo fluxo de cadastro
-              completo.
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2 md:col-span-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <button className={primaryButtonClass}>
-              {editingPessoa
-                ? "Salvar alterações"
-                : isCadastradorOnly
-                  ? "Salvar rápido"
-                  : "Salvar cadastro completo"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShowCreate(false);
-                setEditingPessoa(null);
-                resetForm();
-              }}
-              className={secondaryButtonClass}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
+        <CadastroForm
+          key={editingPessoa?.id ?? "new"}
+          editingPessoa={editingPessoa}
+          isCadastradorOnly={isCadastradorOnly}
+          canManageCadastrosDirectly={canManageCadastrosDirectly}
+          hasCultoColumn={hasCultoColumn}
+          hasCompletionStatusColumn={hasCompletionStatusColumn}
+          onCancel={closeForm}
+          onResult={async (result) => {
+            setFeedbackTone(result.tone);
+            setStatusMessage(result.message);
+            if (result.shouldClose) {
+              closeForm();
+              await reloadPessoas();
+            }
+          }}
+        />
       ) : null}
 
       <div className="card p-4">
@@ -1065,7 +338,7 @@ function CadastrosContent() {
             <option value="concluido">Cadastro completo</option>
           </select>
           <button
-            onClick={loadPessoas}
+            onClick={reloadPessoas}
             className={`${toolbarButtonClass} bg-emerald-100 text-emerald-900`}
           >
             Atualizar

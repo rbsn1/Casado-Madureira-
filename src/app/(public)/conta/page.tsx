@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
-import { getAuthScope, getDiscipuladoHomePath, isDiscipuladoScopedAccount } from "@/lib/authScope";
+import { getAuthScope } from "@/lib/authScope";
 
 export default function ContaPage() {
   const router = useRouter();
@@ -16,12 +16,6 @@ export default function ContaPage() {
       const scope = await getAuthScope();
       if (!active) return;
       const roles = scope.roles;
-      const isGlobalAdmin = scope.isAdminMaster;
-      const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
-      if (isDiscipuladoAccount) {
-        router.replace(getDiscipuladoHomePath(roles));
-        return;
-      }
       if (roles.length === 1 && roles.includes("CADASTRADOR")) {
         router.replace("/cadastro");
       }

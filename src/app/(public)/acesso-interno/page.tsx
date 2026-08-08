@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
-import { getAuthScope, isDiscipuladoScopedAccount } from "@/lib/authScope";
+import { getAuthScope } from "@/lib/authScope";
 
 type LoginStatus = "idle" | "loading" | "error";
 
@@ -54,18 +54,6 @@ export default function AcessoInternoPage() {
     setStatus("idle");
     const scope = await getAuthScope();
     const roles = scope.roles;
-    const isGlobalAdmin = scope.isAdminMaster;
-    const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
-
-    if (isDiscipuladoAccount) {
-      await supabaseClient.auth.signOut();
-      setStatus("error");
-      setMessage(
-        "Seu perfil é de discipulado e não pode acessar o CCM. Use o login em /discipulado/login."
-      );
-      router.push("/discipulado/login");
-      return;
-    }
 
     if (nextPath) {
       router.push(nextPath);
@@ -136,13 +124,6 @@ export default function AcessoInternoPage() {
             <h1 className="mt-2 text-2xl font-semibold text-emerald-900">Entre no painel</h1>
             <p className="mt-2 text-sm text-slate-600">
               Utilize seu e-mail institucional para acompanhar cadastros, relatórios e times.
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Perfis de discipulado devem usar o acesso dedicado em{" "}
-              <Link href="/discipulado/login" className="font-semibold text-sky-700 hover:text-sky-900">
-                /discipulado/login
-              </Link>
-              .
             </p>
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">

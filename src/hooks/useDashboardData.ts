@@ -11,7 +11,6 @@ import {
     InsightEntry,
     GrowthEntry,
     MonthlyEntry,
-    DiscipleshipCards,
     Congregation
 } from "@/types/dashboard";
 
@@ -40,17 +39,9 @@ export function useDashboardData() {
     const [mensal, setMensal] = useState<MonthlyEntry[]>([]);
     const [checkingRoles, setCheckingRoles] = useState(true);
     const [isCadastradorOnly, setIsCadastradorOnly] = useState(false);
-    const [userRoles, setUserRoles] = useState<string[]>([]);
     const [isAdminMaster, setIsAdminMaster] = useState(false);
     const [congregationFilter, setCongregationFilter] = useState("");
     const [congregations, setCongregations] = useState<Congregation[]>([]);
-    const [discipleshipCards, setDiscipleshipCards] = useState<DiscipleshipCards>({
-        em_discipulado: 0,
-        concluidos: 0,
-        parados: 0,
-        pendentes_criticos: 0,
-        proximos_a_concluir: 0
-    });
 
     useEffect(() => {
         let active = true;
@@ -68,7 +59,6 @@ export function useDashboardData() {
             const isGlobalAdmin = scope.isAdminMaster || roles.includes("SUPER_ADMIN") || roles.includes("ADMIN_MASTER");
 
             setIsCadastradorOnly(onlyCadastrador);
-            setUserRoles(roles);
             setIsAdminMaster(isGlobalAdmin);
 
             if (isGlobalAdmin) {
@@ -116,15 +106,7 @@ export function useDashboardData() {
                 target_congregation_id: isAdminMaster ? congregationFilter || null : null
             };
 
-            const [casadosPrimary, discipleshipResult] = await Promise.all([
-                supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation),
-                userRoles.includes("DISCIPULADOR")
-                    ? supabaseClient.rpc("get_discipleship_dashboard", {
-                        stale_days: 14,
-                        target_congregation_id: null
-                    })
-                    : Promise.resolve({ data: null, error: null } as any)
-            ]);
+            const casadosPrimary = await supabaseClient.rpc("get_casados_dashboard", casadosWithCongregation);
 
             const casadosResult =
                 casadosPrimary.error && isMissingRpcSignature(casadosPrimary.error.message, "get_casados_dashboard")
@@ -193,10 +175,6 @@ export function useDashboardData() {
             }
 
             setMensal((data?.cadastros_mensais ?? []) as MonthlyEntry[]);
-
-            if (!discipleshipResult?.error && discipleshipResult?.data?.cards) {
-                setDiscipleshipCards(discipleshipResult.data.cards as DiscipleshipCards);
-            }
         }
 
         loadDashboard();
@@ -208,8 +186,7 @@ export function useDashboardData() {
         checkingRoles,
         isCadastradorOnly,
         congregationFilter,
-        isAdminMaster,
-        userRoles
+        isAdminMaster
     ]);
 
     return {
@@ -233,8 +210,6 @@ export function useDashboardData() {
         isAdminMaster,
         congregationFilter,
         setCongregationFilter,
-        congregations,
-        discipleshipCards,
-        userRoles
+        congregations
     };
 }

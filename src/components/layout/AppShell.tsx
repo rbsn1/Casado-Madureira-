@@ -1,17 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
-import {
-  getAuthScope,
-  getDiscipuladoHomePath,
-  hasDiscipuladoAccessRole,
-  isDiscipuladoScopedAccount
-} from "@/lib/authScope";
+import { getAuthScope } from "@/lib/authScope";
 
 type NavItem = {
   href: string;
@@ -27,8 +21,7 @@ type NavGlyphName =
   | "report"
   | "admin"
   | "manual"
-  | "fila"
-  | "discipulado";
+  | "fila";
 
 const navSections: { title: string; items: NavItem[] }[] = [
   {
@@ -37,7 +30,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
-      { href: "/escalas-domingo", label: "Escala", roles: ["ADMIN_MASTER","SUPER_ADMIN","PASTOR","SECRETARIA","LIDER_DEPTO"] },
       { href: "/admin/agenda-semanal", label: "Agenda semanal", roles: ["ADMIN_MASTER"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
       { href: "/admin/whatsapp", label: "WhatsApp", roles: ["ADMIN_MASTER","SUPER_ADMIN","SECRETARIA"] },
@@ -45,61 +37,11 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/manual/guia-pratico", label: "Manual do sistema" },
       { href: "/manual/jornada-completa", label: "Manual técnico" }
     ]
-  },
-  {
-    title: "Discipulado",
-    items: [
-      {
-        href: "/discipulado",
-        label: "Dashboard",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/fila",
-        label: "Em Acolhimento",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/discipulado",
-        label: "Discipulado",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/integracao-pos-discipulado",
-        label: "Integração pós-discipulado",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/convertidos/novo",
-        label: "Novo convertido",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/manual",
-        label: "Manual",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/convertidos",
-        label: "Vidas Acolhidas",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      {
-        href: "/discipulado/confraternizacao",
-        label: "Confraternização",
-        roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR", "SM_DISCIPULADO", "SECRETARIA_DISCIPULADO"]
-      },
-      { href: "/discipulado/departamentos", label: "Departamentos", roles: ["ADMIN_DISCIPULADO", "DISCIPULADOR"] },
-      { href: "/discipulado/admin", label: "Admin", roles: ["ADMIN_DISCIPULADO"] }
-    ]
   }
 ];
 
-const DISCIPULADO_SECTION_TITLE = "Discipulado";
-const DISCIPULADO_ORDER_STORAGE_KEY = "discipulado_nav_order_v1";
-
 function getNavGlyph(href: string): NavGlyphName {
-  if (href === "/" || href.endsWith("/dashboard") || href === "/discipulado") return "dashboard";
+  if (href === "/" || href.endsWith("/dashboard")) return "dashboard";
   if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
   if (href.includes("/cadastros") || href.includes("/convertidos")) return "list";
   if (href.includes("/confraternizacao")) return "agenda";
@@ -108,8 +50,7 @@ function getNavGlyph(href: string): NavGlyphName {
   if (href.includes("/relatorios")) return "report";
   if (href.includes("/admin")) return "admin";
   if (href.includes("/fila") || href.includes("/novos-convertidos")) return "fila";
-  if (href.includes("/manual")) return "manual";
-  return "discipulado";
+  return "manual";
 }
 
 function NavGlyph({ name, className }: { name: NavGlyphName; className?: string }) {
@@ -167,17 +108,11 @@ function NavGlyph({ name, className }: { name: NavGlyphName; className?: string 
         </svg>
       );
     case "fila":
+    default:
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
           <path d="M5 7h10M5 12h14M5 17h9" />
           <path d="m15 5 4 2-4 2" />
-        </svg>
-      );
-    case "discipulado":
-    default:
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
-          <path d="M12 3.4c1.7 3.2 5 5 5 9.3a5 5 0 0 1-10 0c0-2.5 1.3-4.4 2.6-6.2C10.4 5.5 11.1 4.5 12 3.4Z" />
         </svg>
       );
   }
@@ -195,75 +130,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   const [showMobileNav, setShowMobileNav] = useState(false);
   const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [authResolved, setAuthResolved] = useState(false);
-  const [discipuladoNavOrder, setDiscipuladoNavOrder] = useState<string[]>([]);
-  const [draggingDiscipuladoHref, setDraggingDiscipuladoHref] = useState<string | null>(null);
-  const [dragOverDiscipuladoHref, setDragOverDiscipuladoHref] = useState<string | null>(null);
-  const hasCadastroDiscipuladoRole =
-    roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO");
   const isCadastradorOnly = !isGlobalAdmin && roles.length === 1 && roles.includes("CADASTRADOR");
-  const isDiscipuladoAccount = isDiscipuladoScopedAccount(roles, isGlobalAdmin);
-  const hasDiscipuladoRole = hasDiscipuladoAccessRole(roles);
-  const isDiscipuladoConsole = current.startsWith("/discipulado");
-  const shouldMaskContent = !authResolved || (isDiscipuladoAccount && !isDiscipuladoConsole);
-  const accessRoleHint =
-    isDiscipuladoAccount && !isGlobalAdmin
-      ? "RBAC: ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO"
-      : "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR, ADMIN_DISCIPULADO, DISCIPULADOR, SM_DISCIPULADO, SECRETARIA_DISCIPULADO";
-
-  function reorderDiscipuladoItems(items: NavItem[]) {
-    if (!discipuladoNavOrder.length) return items;
-    const byHref = new Map(items.map((item) => [item.href, item]));
-    const ordered: NavItem[] = [];
-    for (const href of discipuladoNavOrder) {
-      const item = byHref.get(href);
-      if (!item) continue;
-      ordered.push(item);
-      byHref.delete(href);
-    }
-    return [...ordered, ...items.filter((item) => byHref.has(item.href))];
-  }
-
-  function persistDiscipuladoOrder(nextOrder: string[]) {
-    setDiscipuladoNavOrder(nextOrder);
-    try {
-      localStorage.setItem(DISCIPULADO_ORDER_STORAGE_KEY, JSON.stringify(nextOrder));
-    } catch {
-      // noop
-    }
-  }
-
-  function moveDiscipuladoItem(items: NavItem[], sourceHref: string, targetHref: string) {
-    const currentOrder = items.map((item) => item.href);
-    const sourceIndex = currentOrder.indexOf(sourceHref);
-    const targetIndex = currentOrder.indexOf(targetHref);
-    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return;
-    const nextOrder = [...currentOrder];
-    const [movedHref] = nextOrder.splice(sourceIndex, 1);
-    nextOrder.splice(targetIndex, 0, movedHref);
-    persistDiscipuladoOrder(nextOrder);
-  }
-
-  function resetDiscipuladoDragState() {
-    setDraggingDiscipuladoHref(null);
-    setDragOverDiscipuladoHref(null);
-  }
-
-  function handleDropDiscipuladoItem(items: NavItem[], targetHref: string) {
-    if (!draggingDiscipuladoHref || draggingDiscipuladoHref === targetHref) {
-      resetDiscipuladoDragState();
-      return;
-    }
-    moveDiscipuladoItem(items, draggingDiscipuladoHref, targetHref);
-    resetDiscipuladoDragState();
-  }
+  const accessRoleHint = "RBAC: ADMIN_MASTER, SUPER_ADMIN, PASTOR, SECRETARIA, NOVOS_CONVERTIDOS, LIDER_DEPTO, VOLUNTARIO, CADASTRADOR";
 
   const visibleSections = navSections
     .map((section) => ({
       ...section,
-      items:
-        section.title === DISCIPULADO_SECTION_TITLE
-          ? reorderDiscipuladoItems(section.items.filter((item) => canAccessItem(item)))
-          : section.items.filter((item) => canAccessItem(item))
+      items: section.items.filter((item) => canAccessItem(item))
     }))
     .filter((section) => section.items.length > 0);
   const mobileQuickItems = visibleSections
@@ -272,13 +145,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     .slice(0, 4);
 
   function canAccessItem(item: NavItem) {
-    if (item.href.startsWith("/discipulado")) {
-      if (!hasDiscipuladoRole) return false;
-      if (!item.roles?.length) return true;
-      return item.roles.some((role) => roles.includes(role));
-    }
     if (isGlobalAdmin) return true;
-    if (isDiscipuladoAccount) return item.href.startsWith("/discipulado");
     if (!item.roles?.length) return true;
     return item.roles.some((role) => roles.includes(role));
   }
@@ -288,19 +155,6 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
     if (href === "/") return current === "/";
     return current.startsWith(`${href}/`);
   }
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DISCIPULADO_ORDER_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      const normalized = parsed.filter((value): value is string => typeof value === "string");
-      if (normalized.length) setDiscipuladoNavOrder(normalized);
-    } catch {
-      // noop
-    }
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -314,9 +168,8 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       const { data } = await supabaseClient.auth.getUser();
       if (!active) return;
       if (!data.user) {
-        const loginPath = current.startsWith("/discipulado") ? "/discipulado/login" : "/acesso-interno";
         setAuthResolved(true);
-        router.replace(loginPath);
+        router.replace("/acesso-interno");
         return;
       }
       setUserEmail(data.user.email ?? null);
@@ -324,14 +177,9 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       if (!active) return;
       const nextRoles = scope.roles;
       const nextIsGlobalAdmin = scope.isAdminMaster;
-      const nextIsDiscipuladoAccount = isDiscipuladoScopedAccount(nextRoles, nextIsGlobalAdmin);
       setRoles(nextRoles);
       setIsGlobalAdmin(nextIsGlobalAdmin);
       setAuthResolved(true);
-      if (nextIsDiscipuladoAccount && !current.startsWith("/discipulado")) {
-        router.replace(getDiscipuladoHomePath(nextRoles));
-        return;
-      }
       if (nextRoles.length === 1 && nextRoles.includes("CADASTRADOR") && current === "/") {
         router.replace("/cadastro");
       }
@@ -356,8 +204,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   async function handleLogout() {
     if (!supabaseClient) return;
     await supabaseClient.auth.signOut();
-    const loginPath = current.startsWith("/discipulado") ? "/discipulado/login" : "/acesso-interno";
-    router.push(loginPath);
+    router.push("/acesso-interno");
   }
 
   async function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
@@ -390,87 +237,37 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
   }
 
   return (
-    <div className={clsx("app-shell", isDiscipuladoConsole && "discipulado-console-shell")}>
-      <aside
-        className={clsx(
-          "hidden lg:block border-r text-white",
-          isDiscipuladoConsole
-            ? "border-slate-900 bg-slate-950"
-            : "border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]"
-        )}
-      >
+    <div className="app-shell">
+      <aside className="hidden lg:block border-r text-white border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]">
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
-            <Link href={isDiscipuladoConsole ? "/discipulado" : "/"} className="flex items-center gap-3">
-              {isDiscipuladoConsole ? (
-                <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white/[0.05] shadow-[0_8px_20px_-12px_rgba(15,23,42,0.85)]">
-                  <Image
-                    src="/discipulado-mark.png"
-                    alt="Logo Discipulado Madureira"
-                    fill
-                    sizes="40px"
-                    className="object-cover object-center"
-                    priority
-                  />
-                </div>
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
-                  CM
-                </div>
-              )}
+            <Link href="/" className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
+                CM
+              </div>
               <div>
-                <p className={clsx("text-sm", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>SaaS</p>
-                <p className="text-lg font-semibold text-white">
-                  {isDiscipuladoConsole ? "Portal Discipulado" : "Casados com a Madureira"}
-                </p>
+                <p className="text-sm text-brand-100/90">SaaS</p>
+                <p className="text-lg font-semibold text-white">Casados com a Madureira</p>
               </div>
             </Link>
             <nav className="flex-1 space-y-5">
               {visibleSections.map((section) => (
                 <div key={section.title}>
-                  <p
-                    className={clsx(
-                      "mb-2 pl-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
-                      isDiscipuladoConsole ? "text-slate-300/90" : "text-brand-100/80"
-                    )}
-                  >
+                  <p className="mb-2 pl-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-brand-100/80">
                     {section.title}
                   </p>
                   <ul className="space-y-1">
                     {section.items.map((item) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
-                      const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
-                      const isDropTarget =
-                        isDiscipuladoSection &&
-                        dragOverDiscipuladoHref === item.href &&
-                        draggingDiscipuladoHref !== item.href;
                       return (
-                        <li
-                          key={item.href}
-                          className={clsx("flex items-center gap-1 rounded-full transition", isDropTarget && "bg-sky-800/25")}
-                          onDragOver={(event) => {
-                            if (!isDiscipuladoSection || !draggingDiscipuladoHref || draggingDiscipuladoHref === item.href) return;
-                            event.preventDefault();
-                            setDragOverDiscipuladoHref(item.href);
-                          }}
-                          onDrop={(event) => {
-                            if (!isDiscipuladoSection) return;
-                            event.preventDefault();
-                            handleDropDiscipuladoItem(section.items, item.href);
-                          }}
-                        >
+                        <li key={item.href} className="flex items-center gap-1 rounded-full transition">
                           <Link
                             href={item.href}
                             className={clsx(
-                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent hover:text-white",
-                              isDiscipuladoConsole ? "hover:bg-sky-800/65" : "hover:bg-white/10",
+                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent hover:text-white hover:bg-white/10",
                               active
-                                ? isDiscipuladoConsole
-                                  ? "bg-sky-700/90 text-white shadow-[0_12px_28px_rgba(14,116,144,0.35)] ring-1 ring-white/20"
-                                  : "bg-white/14 text-white shadow-[0_12px_28px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
-                                : isDiscipuladoConsole
-                                  ? "text-slate-200/90"
-                                  : "text-brand-100/90"
+                                ? "bg-white/14 text-white shadow-[0_12px_28px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
+                                : "text-brand-100/90"
                             )}
                           >
                             <span
@@ -486,37 +283,6 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             </span>
                             <span>{item.label}</span>
                           </Link>
-                          {isDiscipuladoSection ? (
-                            <div className="flex shrink-0 items-center gap-1">
-                              <button
-                                type="button"
-                                draggable
-                                onDragStart={(event) => {
-                                  setDraggingDiscipuladoHref(item.href);
-                                  setDragOverDiscipuladoHref(item.href);
-                                  event.dataTransfer.effectAllowed = "move";
-                                  event.dataTransfer.setData("text/plain", item.href);
-                                }}
-                                onDragEnd={resetDiscipuladoDragState}
-                                aria-label={`Arrastar ${item.label}`}
-                                className={clsx(
-                                  "inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border transition active:cursor-grabbing",
-                                  isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
-                                    : "border-white/20 bg-white/10 text-white hover:bg-white/20"
-                                )}
-                              >
-                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                                  <circle cx="8" cy="7" r="1.2" />
-                                  <circle cx="8" cy="12" r="1.2" />
-                                  <circle cx="8" cy="17" r="1.2" />
-                                  <circle cx="16" cy="7" r="1.2" />
-                                  <circle cx="16" cy="12" r="1.2" />
-                                  <circle cx="16" cy="17" r="1.2" />
-                                </svg>
-                              </button>
-                            </div>
-                          ) : null}
                         </li>
                       );
                     })}
@@ -524,56 +290,20 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </div>
               ))}
             </nav>
-            <div
-              className={clsx(
-                "rounded-xl p-4 shadow-sm ring-1",
-                isDiscipuladoConsole
-                  ? "bg-slate-900/60 ring-sky-800/60"
-                  : "bg-white/8 ring-white/15"
-              )}
-            >
+            <div className="rounded-xl p-4 shadow-sm ring-1 bg-white/8 ring-white/15">
               <p className="text-sm font-semibold text-white">Acesso interno</p>
-              <p className={clsx("text-xs", isDiscipuladoConsole ? "text-slate-300" : "text-brand-100/90")}>
-                {accessRoleHint}
-              </p>
+              <p className="text-xs text-brand-100/90">{accessRoleHint}</p>
             </div>
           </div>
       </aside>
-      <main
-        className={clsx(
-          "min-h-screen",
-          "pb-24 lg:pb-0",
-          isDiscipuladoConsole ? "bg-gradient-to-b from-slate-50 via-sky-50/35 to-white" : "bg-white"
-        )}
-      >
+      <main className="min-h-screen pb-24 lg:pb-0 bg-white">
         <div className="mx-auto max-w-[88rem] px-4 py-5 sm:px-5 sm:py-8 lg:px-10 xl:px-12">
           <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              {isDiscipuladoConsole ? (
-                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-white shadow-[0_12px_24px_-14px_rgba(15,23,42,0.4)] ring-1 ring-sky-100">
-                  <Image
-                    src="/discipulado-mark.png"
-                    alt="Logo Discipulado Madureira"
-                    fill
-                    sizes="48px"
-                    className="object-cover object-center"
-                  />
-                </div>
-              ) : null}
               <div>
-                {!isDiscipuladoConsole ? (
-                  <p className="text-sm text-text-muted">Casados com a Madureira</p>
-                ) : null}
-                <h1 className={clsx("text-xl font-semibold sm:text-2xl", isDiscipuladoConsole ? "text-sky-950" : "text-text")}>
-                  {isCadastradorOnly
-                    ? "Cadastro"
-                    : isDiscipuladoAccount
-                      ? "Painel Discipulado"
-                      : hasCadastroDiscipuladoRole
-                      ? "Cadastro de Vidas Acolhidas"
-                      : isDiscipuladoConsole
-                        ? "Painel Discipulado"
-                        : "Painel Interno"}
+                <p className="text-sm text-text-muted">Casados com a Madureira</p>
+                <h1 className="text-xl font-semibold sm:text-2xl text-text">
+                  {isCadastradorOnly ? "Cadastro" : "Painel Interno"}
                 </h1>
               </div>
             </div>
@@ -581,21 +311,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <button
                 type="button"
                 onClick={() => setShowMobileNav(true)}
-                className={clsx(
-                  "inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden",
-                  isDiscipuladoConsole
-                    ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
-                    : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
-                )}
+                className="inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
               >
                 Menu
               </button>
-              <div
-                className={clsx(
-                  "max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-3 py-2 text-xs font-medium sm:max-w-[22rem] sm:px-4 sm:text-sm",
-                  isDiscipuladoConsole ? "bg-sky-100 text-sky-900" : "bg-brand-100 text-brand-900"
-                )}
-              >
+              <div className="max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-3 py-2 text-xs font-medium sm:max-w-[22rem] sm:px-4 sm:text-sm bg-brand-100 text-brand-900">
                 <span className="truncate">{userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}</span>
               </div>
               <button
@@ -605,30 +325,20 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   setPasswordStatus("idle");
                   setPasswordMessage("");
                 }}
-                className={clsx(
-                  "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
-                  isDiscipuladoConsole
-                    ? "border-sky-100 text-sky-900 hover:border-sky-500 hover:text-sky-950"
-                    : "border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
-                )}
+                className="rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
               >
                 Alterar senha
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className={clsx(
-                  "rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm",
-                  isDiscipuladoConsole
-                    ? "border-slate-200 text-slate-600 hover:border-sky-200 hover:text-sky-900"
-                    : "border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
-                )}
+                className="rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
               >
                 Sair
               </button>
             </div>
           </header>
-          {shouldMaskContent ? (
+          {!authResolved ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
               Carregando ambiente...
             </div>
@@ -644,28 +354,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             onClick={() => setShowMobileNav(false)}
             aria-hidden="true"
           />
-          <div
-            className={clsx(
-              "absolute left-0 top-0 h-full w-[86vw] max-w-xs text-white shadow-xl",
-              isDiscipuladoConsole ? "bg-slate-950" : "bg-brand-900"
-            )}
-          >
-            <div
-              className={clsx(
-                "flex items-center justify-between border-b px-4 py-4",
-                isDiscipuladoConsole ? "border-slate-800" : "border-brand-800"
-              )}
-            >
-              <span className={clsx("text-sm font-semibold", isDiscipuladoConsole ? "text-slate-200" : "text-brand-100")}>Menu</span>
+          <div className="absolute left-0 top-0 h-full w-[86vw] max-w-xs text-white shadow-xl bg-brand-900">
+            <div className="flex items-center justify-between border-b px-4 py-4 border-brand-800">
+              <span className="text-sm font-semibold text-brand-100">Menu</span>
               <button
                 type="button"
                 onClick={() => setShowMobileNav(false)}
-                className={clsx(
-                  "rounded-full border px-3 py-1 text-xs hover:bg-opacity-100",
-                  isDiscipuladoConsole
-                    ? "border-slate-700/60 text-slate-200 hover:bg-slate-800"
-                    : "border-brand-700/60 text-brand-100 hover:bg-brand-800"
-                )}
+                className="rounded-full border px-3 py-1 text-xs hover:bg-opacity-100 border-brand-700/60 text-brand-100 hover:bg-brand-800"
               >
                 Fechar
               </button>
@@ -673,51 +368,23 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <nav className="space-y-6 px-4 py-5">
               {visibleSections.map((section) => (
                 <div key={section.title}>
-                  <p
-                    className={clsx(
-                      "mb-2 text-xs font-semibold uppercase tracking-wide",
-                      isDiscipuladoConsole ? "text-slate-300/90" : "text-brand-100/80"
-                    )}
-                  >
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-brand-100/80">
                     {section.title}
                   </p>
                   <ul className="space-y-1">
                     {section.items.map((item) => {
                       const active = isItemActive(item.href);
                       const icon = getNavGlyph(item.href);
-                      const isDiscipuladoSection = section.title === DISCIPULADO_SECTION_TITLE;
-                      const isDropTarget =
-                        isDiscipuladoSection &&
-                        dragOverDiscipuladoHref === item.href &&
-                        draggingDiscipuladoHref !== item.href;
                       return (
-                        <li
-                          key={item.href}
-                          className={clsx("flex items-center gap-1 rounded-full transition", isDropTarget && "bg-sky-800/30")}
-                          onDragOver={(event) => {
-                            if (!isDiscipuladoSection || !draggingDiscipuladoHref || draggingDiscipuladoHref === item.href) return;
-                            event.preventDefault();
-                            setDragOverDiscipuladoHref(item.href);
-                          }}
-                          onDrop={(event) => {
-                            if (!isDiscipuladoSection) return;
-                            event.preventDefault();
-                            handleDropDiscipuladoItem(section.items, item.href);
-                          }}
-                        >
+                        <li key={item.href} className="flex items-center gap-1 rounded-full transition">
                           <Link
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
                             className={clsx(
-                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white",
-                              isDiscipuladoConsole ? "hover:bg-sky-800/80" : "hover:bg-brand-700/80",
+                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white hover:bg-brand-700/80",
                               active
-                                ? isDiscipuladoConsole
-                                  ? "bg-sky-700 text-white shadow-[0_10px_24px_rgba(14,116,144,0.35)] ring-1 ring-white/20"
-                                  : "bg-brand-700 text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
-                                : isDiscipuladoConsole
-                                  ? "text-slate-200/90"
-                                  : "text-brand-100/90"
+                                ? "bg-brand-700 text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
+                                : "text-brand-100/90"
                             )}
                           >
                             <span
@@ -733,37 +400,6 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             </span>
                             <span>{item.label}</span>
                           </Link>
-                          {isDiscipuladoSection ? (
-                            <div className="flex shrink-0 items-center gap-1">
-                              <button
-                                type="button"
-                                draggable
-                                onDragStart={(event) => {
-                                  setDraggingDiscipuladoHref(item.href);
-                                  setDragOverDiscipuladoHref(item.href);
-                                  event.dataTransfer.effectAllowed = "move";
-                                  event.dataTransfer.setData("text/plain", item.href);
-                                }}
-                                onDragEnd={resetDiscipuladoDragState}
-                                aria-label={`Arrastar ${item.label}`}
-                                className={clsx(
-                                  "inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-full border transition active:cursor-grabbing",
-                                  isDiscipuladoConsole
-                                    ? "border-slate-700/80 bg-slate-900/70 text-slate-200 hover:bg-slate-800"
-                                    : "border-brand-700/80 bg-brand-800/70 text-brand-100 hover:bg-brand-700"
-                                )}
-                              >
-                                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5">
-                                  <circle cx="8" cy="7" r="1.2" />
-                                  <circle cx="8" cy="12" r="1.2" />
-                                  <circle cx="8" cy="17" r="1.2" />
-                                  <circle cx="16" cy="7" r="1.2" />
-                                  <circle cx="16" cy="12" r="1.2" />
-                                  <circle cx="16" cy="17" r="1.2" />
-                                </svg>
-                              </button>
-                            </div>
-                          ) : null}
                         </li>
                       );
                     })}
@@ -774,12 +410,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           </div>
         </div>
       ) : null}
-      <div
-        className={clsx(
-          "fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden",
-          isDiscipuladoConsole ? "border-sky-100" : "border-brand-100"
-        )}
-      >
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden border-brand-100">
           <nav
             className="mx-auto grid max-w-md grid-cols-5 gap-1 px-2 pt-2"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.45rem)" }}
@@ -793,21 +424,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   href={item.href}
                   className={clsx(
                     "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
-                    active
-                      ? isDiscipuladoConsole
-                        ? "bg-sky-100 text-sky-900"
-                        : "bg-brand-100 text-brand-900"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    active ? "bg-brand-100 text-brand-900" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                   )}
                 >
                   <span
                     className={clsx(
                       "inline-flex h-6 w-6 items-center justify-center rounded-full",
-                      active
-                        ? isDiscipuladoConsole
-                          ? "bg-sky-200 text-sky-900"
-                          : "bg-brand-200 text-brand-900"
-                        : "bg-slate-100 text-slate-500"
+                      active ? "bg-brand-200 text-brand-900" : "bg-slate-100 text-slate-500"
                     )}
                     aria-hidden="true"
                   >
@@ -820,18 +443,10 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             <button
               type="button"
               onClick={() => setShowMobileNav(true)}
-              className={clsx(
-                "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
-                isDiscipuladoConsole
-                  ? "text-sky-700 hover:bg-sky-50"
-                  : "text-brand-800 hover:bg-brand-50"
-              )}
+              className="flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition text-brand-800 hover:bg-brand-50"
             >
               <span
-                className={clsx(
-                  "inline-flex h-6 w-6 items-center justify-center rounded-full",
-                  isDiscipuladoConsole ? "bg-sky-100 text-sky-800" : "bg-brand-100 text-brand-800"
-                )}
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-800"
                 aria-hidden="true"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-3.5 w-3.5">
@@ -846,16 +461,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between">
-              <h2 className={clsx("text-lg font-semibold", isDiscipuladoConsole ? "text-sky-950" : "text-emerald-900")}>
-                Alterar senha
-              </h2>
+              <h2 className="text-lg font-semibold text-emerald-900">Alterar senha</h2>
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(false)}
-                className={clsx(
-                  "rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600",
-                  isDiscipuladoConsole ? "hover:border-sky-200 hover:text-sky-900" : "hover:border-emerald-200 hover:text-emerald-900"
-                )}
+                className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
               >
                 Fechar
               </button>
@@ -866,10 +476,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 <input
                   name="password"
                   type="password"
-                  className={clsx(
-                    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none",
-                    isDiscipuladoConsole ? "focus:border-sky-400" : "focus:border-emerald-400"
-                  )}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -877,18 +484,12 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 <input
                   name="confirm"
                   type="password"
-                  className={clsx(
-                    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none",
-                    isDiscipuladoConsole ? "focus:border-sky-400" : "focus:border-emerald-400"
-                  )}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
                 />
               </label>
               <button
                 type="submit"
-                className={clsx(
-                  "w-full rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70",
-                  isDiscipuladoConsole ? "bg-sky-700 hover:bg-sky-800" : "bg-emerald-600 hover:bg-emerald-700"
-                )}
+                className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 bg-emerald-600 hover:bg-emerald-700"
                 disabled={passwordStatus === "loading"}
               >
                 {passwordStatus === "loading" ? "Salvando..." : "Salvar nova senha"}
@@ -899,14 +500,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </p>
               ) : null}
               {passwordStatus === "success" ? (
-                <p
-                  className={clsx(
-                    "rounded-lg px-3 py-2 text-xs",
-                    isDiscipuladoConsole
-                      ? "border border-sky-200 bg-sky-50 text-sky-700"
-                      : "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                  )}
-                >
+                <p className="rounded-lg px-3 py-2 text-xs border border-emerald-200 bg-emerald-50 text-emerald-700">
                   {passwordMessage}
                 </p>
               ) : null}

@@ -11,34 +11,6 @@ let cachedScope: AuthScope | null = null;
 let cachedAt = 0;
 let inflightScopePromise: Promise<AuthScope> | null = null;
 
-export const DISCIPULADO_ACCOUNT_ROLES = [
-  "ADMIN_DISCIPULADO",
-  "DISCIPULADOR",
-  "SM_DISCIPULADO",
-  "SECRETARIA_DISCIPULADO"
-] as const;
-export const DISCIPULADO_ADMIN_ROLES = ["ADMIN_DISCIPULADO"] as const;
-
-export function hasDiscipuladoAccessRole(roles: string[]) {
-  return roles.some((role) => DISCIPULADO_ACCOUNT_ROLES.includes(role as (typeof DISCIPULADO_ACCOUNT_ROLES)[number]));
-}
-
-export function hasDiscipuladoAdminRole(roles: string[]) {
-  return roles.some((role) => DISCIPULADO_ADMIN_ROLES.includes(role as (typeof DISCIPULADO_ADMIN_ROLES)[number]));
-}
-
-export function isDiscipuladoScopedAccount(roles: string[], isGlobalAdmin: boolean) {
-  if (isGlobalAdmin) return false;
-  return roles.some((role) => DISCIPULADO_ACCOUNT_ROLES.includes(role as (typeof DISCIPULADO_ACCOUNT_ROLES)[number]));
-}
-
-export function getDiscipuladoHomePath(roles: string[]) {
-  const hasCadastroOnlyRole =
-    !roles.includes("DISCIPULADOR") &&
-    (roles.includes("SM_DISCIPULADO") || roles.includes("SECRETARIA_DISCIPULADO"));
-  return hasCadastroOnlyRole ? "/discipulado/convertidos/novo" : "/discipulado";
-}
-
 export async function getAuthScope(): Promise<AuthScope> {
   if (!supabaseClient) {
     return { roles: [], congregationId: null, isAdminMaster: false };

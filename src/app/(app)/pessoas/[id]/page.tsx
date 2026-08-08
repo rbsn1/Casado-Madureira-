@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -145,22 +144,11 @@ export default function PessoaPerfilPage() {
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/discipulado/convertidos"
-            className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-900 hover:bg-sky-100"
-          >
-            Operar no Discipulado
-          </Link>
           <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
             CCM: somente visualizacao
           </span>
         </div>
       </div>
-
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-        Fluxo atualizado: marcar integrado, registrar batismo e vincular departamento agora sao operacoes do
-        modulo Discipulado.
-      </p>
 
       {statusMessage ? (
         <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
