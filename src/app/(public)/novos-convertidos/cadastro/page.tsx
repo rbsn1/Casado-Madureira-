@@ -122,44 +122,44 @@ export default function NovoConvertidoCadastroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-white">
       <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-10">
         <div className="text-center">
-          <p className="text-sm font-semibold text-emerald-700">Casados com a Madureira</p>
-          <h1 className="mt-2 text-3xl font-bold text-emerald-900">Cadastro de Novos Convertidos</h1>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="text-sm font-semibold text-brand-700">Casados com a Madureira</p>
+          <h1 className="mt-2 text-3xl font-bold text-brand-900">Cadastro de Novos Convertidos</h1>
+          <p className="mt-2 text-sm text-text-muted">
             Preencha os dados para iniciar o acompanhamento da equipe.
           </p>
         </div>
 
         <form className="card space-y-4 p-5" onSubmit={handleSubmit}>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Nome completo</span>
+            <span className="text-text">Nome completo</span>
             <input
               required
               name="nome_completo"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Digite seu nome"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Telefone (WhatsApp)</span>
+            <span className="text-text">Telefone (WhatsApp)</span>
             <input
               required
               name="telefone_whatsapp"
               value={telefone}
               onChange={(event) => setTelefone(formatBrazilPhoneInput(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="(92) 99227-0057"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Igreja de origem / Congregação</span>
+            <span className="text-text">Igreja de origem / Congregação</span>
             <select
               name="igreja_origem"
               value={igreja}
               onChange={(event) => setIgreja(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               {igrejaOptions.map((option) => (
                 <option key={option} value={option}>
@@ -170,23 +170,23 @@ export default function NovoConvertidoCadastroPage() {
           </label>
           {igreja === "Outra" ? (
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Qual igreja?</span>
+              <span className="text-text">Qual igreja?</span>
               <input
                 name="igreja_origem_outra"
                 value={igrejaOutra}
                 onChange={(event) => setIgrejaOutra(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                 placeholder="Digite o nome da igreja"
               />
             </label>
           ) : null}
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Bairro</span>
+            <span className="text-text">Bairro</span>
             <select
               name="bairro"
               value={bairro}
               onChange={(event) => setBairro(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               {bairroOptions.map((option) => (
                 <option key={option} value={option}>
@@ -197,46 +197,46 @@ export default function NovoConvertidoCadastroPage() {
           </label>
           {bairro === "Outro" ? (
             <label className="space-y-1 text-sm">
-              <span className="text-slate-700">Qual bairro?</span>
+              <span className="text-text">Qual bairro?</span>
               <input
                 name="bairro_outro"
                 value={bairroOutro}
                 onChange={(event) => setBairroOutro(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                 placeholder="Digite o bairro"
               />
             </label>
           ) : null}
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data</span>
+            <span className="text-text">Data</span>
             <input
               name="data"
               type="date"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Observações</span>
+            <span className="text-text">Observações</span>
             <textarea
               name="observacoes"
               rows={3}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Compartilhe mais detalhes"
             />
           </label>
           <button
-            className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={status === "loading"}
           >
             {status === "loading" ? "Enviando..." : "Enviar cadastro"}
           </button>
           {status === "success" ? (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+            <p className="rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
               {message}
             </p>
           ) : null}
           {status === "error" ? (
-            <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
               {message || "Não foi possível enviar o cadastro. Tente novamente."}
             </p>
           ) : null}

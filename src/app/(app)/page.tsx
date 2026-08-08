@@ -86,26 +86,26 @@ export default function DashboardPage() {
 
   return (
     <div className="ccm-dashboard-surface space-y-6 sm:space-y-8 lg:space-y-10">
-      <section className="card relative overflow-hidden border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-4 sm:p-6 lg:p-7">
+      <section className="card relative overflow-hidden border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-100/40 p-4 sm:p-6 lg:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Visão geral</p>
-            <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold text-emerald-900 sm:text-2xl">
-              <span className="inline-flex h-5 w-5 items-center justify-center text-[#E6A756]/90" aria-hidden="true">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Visão geral</p>
+            <h2 className="mt-1 flex items-center gap-2 text-xl font-semibold text-text sm:text-2xl">
+              <span className="inline-flex h-5 w-5 items-center justify-center text-accent-500/90" aria-hidden="true">
                 <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                   <path d="M12 2.5c1.6 3.2 5 4.9 5 9.1 0 3-2.2 5.4-5 5.4s-5-2.4-5-5.4c0-2.4 1.2-4.2 2.4-5.9.7-1 1.3-2 2.6-3.2z" />
                 </svg>
               </span>
               Resumo do período
             </h2>
-            <p className="mt-1 text-sm text-slate-600">{periodSummary}</p>
+            <p className="mt-1 text-sm text-text-muted">{periodSummary}</p>
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
             {isAdminMaster ? (
               <select
                 value={congregationFilter}
                 onChange={(event) => setCongregationFilter(event.target.value)}
-                className="rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-medium text-brand-900 focus:border-emerald-300 focus:outline-none sm:text-sm"
+                className="rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-medium text-brand-900 focus:border-brand-500 focus:outline-none sm:text-sm"
               >
                 <option value="">Todas as congregações</option>
                 {congregations.map((item) => (
@@ -131,23 +131,23 @@ export default function DashboardPage() {
         </div>
 
         {period === "Personalizado" ? (
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-emerald-100 bg-white/80 p-4">
-            <label className="w-full space-y-1 text-xs text-slate-600 sm:w-auto">
+          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border border-brand-100 bg-white/80 p-4">
+            <label className="w-full space-y-1 text-xs text-text-muted sm:w-auto">
               <span>Início</span>
               <input
                 type="date"
                 value={customStart}
                 onChange={(event) => setCustomStart(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none sm:w-auto"
+                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none sm:w-auto"
               />
             </label>
-            <label className="w-full space-y-1 text-xs text-slate-600 sm:w-auto">
+            <label className="w-full space-y-1 text-xs text-text-muted sm:w-auto">
               <span>Fim</span>
               <input
                 type="date"
                 value={customEnd}
                 onChange={(event) => setCustomEnd(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none sm:w-auto"
+                className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none sm:w-auto"
               />
             </label>
           </div>
@@ -155,7 +155,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 overflow-x-auto pb-1">
           <div className="flex min-w-max items-center gap-2 text-xs">
-            <span className="pill bg-emerald-100 text-emerald-900">Atalhos</span>
+            <span className="pill bg-brand-100 text-brand-900">Atalhos</span>
             {[
               { label: "Cadastros do mês", href: `/cadastros?mes=${currentYear}-${currentMonth}` },
               { label: "Origem manhã", href: "/cadastros?origem_tipo=manha" },
@@ -165,7 +165,7 @@ export default function DashboardPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-full border border-emerald-100 bg-white px-3 py-1 text-xs font-medium text-emerald-900 transition hover:border-emerald-300 hover:bg-emerald-50"
+                className="rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-medium text-brand-900 transition hover:border-brand-300 hover:bg-brand-50"
               >
                 {item.label}
               </Link>
@@ -175,7 +175,7 @@ export default function DashboardPage() {
       </section>
 
       {showEmptyPeriodHint ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-xl border border-warning-100 bg-warning-100/60 px-4 py-3 text-sm text-warning-600">
           Este período não tem cadastros, mas existem <span className="font-semibold">{kpi.baseTotalCasados}</span> na base.
           Se você importou uma planilha com datas antigas, use <span className="font-semibold">Personalizado</span> ou selecione o{" "}
           <span className="font-semibold">ano</span> no gráfico mensal.
@@ -183,10 +183,10 @@ export default function DashboardPage() {
       ) : null}
 
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Cadastros no período" value={kpi.totalCasados} hint="No período selecionado" tone="emerald" />
-        <StatCard label="Base total" value={kpi.baseTotalCasados} hint="Todos os cadastros" tone="emerald" />
-        <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="sky" />
-        <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="amber" />
+        <StatCard label="Cadastros no período" value={kpi.totalCasados} hint="No período selecionado" tone="brand" />
+        <StatCard label="Base total" value={kpi.baseTotalCasados} hint="Todos os cadastros" tone="success" />
+        <StatCard label="Culto da manhã" value={kpi.cultoManha} hint="Origem: manhã" tone="info" />
+        <StatCard label="Culto da noite" value={kpi.cultoNoite} hint="Origem: noite" tone="warning" />
       </div>
 
 
@@ -232,28 +232,28 @@ export default function DashboardPage() {
 
         <div className="space-y-5">
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-emerald-900">Crescimento por bairro</h3>
+            <h3 className="text-sm font-semibold text-text">Crescimento por bairro</h3>
             <div className="mt-4 space-y-2">
               {crescimentoBairros.length ? (
                 crescimentoBairros.map((item) => (
                   <Link
                     key={item.label}
                     href={item.label === "Sem bairro" ? "/cadastros?bairro=__null" : `/cadastros?bairro=${encodeURIComponent(item.label)}`}
-                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm hover:bg-brand-50"
                   >
-                    <span className="font-medium text-slate-800">{item.label}</span>
-                    <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                    <span className="font-medium text-text">{item.label}</span>
+                    <span className={item.delta >= 0 ? "text-success-600" : "text-danger-600"}>
                       {formatDelta(item.delta, item.delta_pct)}
                     </span>
                   </Link>
                 ))
               ) : (
-                <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
+                <p className="text-xs text-text-muted">Sem dados no período selecionado.</p>
               )}
             </div>
           </div>
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-emerald-900">Crescimento por igreja de origem</h3>
+            <h3 className="text-sm font-semibold text-text">Crescimento por igreja de origem</h3>
             <div className="mt-4 space-y-2">
               {crescimentoIgrejas.length ? (
                 crescimentoIgrejas.map((item) => (
@@ -264,28 +264,28 @@ export default function DashboardPage() {
                         ? "/cadastros?igreja_origem=__null"
                         : `/cadastros?igreja_origem=${encodeURIComponent(item.label)}`
                     }
-                    className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 text-sm hover:bg-emerald-50"
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm hover:bg-brand-50"
                   >
-                    <span className="font-medium text-slate-800">{item.label}</span>
-                    <span className={item.delta >= 0 ? "text-emerald-700" : "text-rose-700"}>
+                    <span className="font-medium text-text">{item.label}</span>
+                    <span className={item.delta >= 0 ? "text-success-600" : "text-danger-600"}>
                       {formatDelta(item.delta, item.delta_pct)}
                     </span>
                   </Link>
                 ))
               ) : (
-                <p className="text-xs text-slate-500">Sem dados no período selecionado.</p>
+                <p className="text-xs text-text-muted">Sem dados no período selecionado.</p>
               )}
             </div>
           </div>
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-emerald-900">Ações sugeridas</h3>
-            <p className="mt-2 text-sm text-slate-600">{sugestao}</p>
+            <h3 className="text-sm font-semibold text-text">Ações sugeridas</h3>
+            <p className="mt-2 text-sm text-text-muted">{sugestao}</p>
           </div>
         </div>
       </div>
 
       {statusMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+        <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
           {statusMessage}
         </p>
       ) : null}

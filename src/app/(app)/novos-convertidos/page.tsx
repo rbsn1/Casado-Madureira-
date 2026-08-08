@@ -90,51 +90,51 @@ function NovosConvertidosContent() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-500">Integração</p>
-          <h2 className="text-xl font-semibold text-emerald-900">Fila de Novos Convertidos</h2>
+          <p className="text-sm text-text-muted">Integração</p>
+          <h2 className="text-xl font-semibold text-brand-900">Fila de Novos Convertidos</h2>
         </div>
         <button
           onClick={loadIntegracoes}
-          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           Atualizar fila
         </button>
       </div>
 
       {statusMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+        <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
           {statusMessage}
         </p>
       ) : null}
 
-      <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+      <p className="rounded-lg border border-warning-100 bg-warning-100 px-3 py-2 text-xs text-warning-600">
         Esta tela do CCM é somente leitura.
       </p>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {loading ? (
-          <div className="card p-4 text-sm text-slate-500">Carregando fila...</div>
+          <div className="card p-4 text-sm text-text-muted">Carregando fila...</div>
         ) : null}
         {!loading && !filteredItems.length ? (
-          <div className="card p-4 text-sm text-slate-500">Nenhum registro na fila.</div>
+          <div className="card p-4 text-sm text-text-muted">Nenhum registro na fila.</div>
         ) : null}
         {filteredItems.map((item) => (
           <div key={item.id} className="card p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-slate-900">{item.nome_completo}</p>
-                <p className="text-xs text-slate-600">
+                <p className="text-sm font-semibold text-text">{item.nome_completo}</p>
+                <p className="text-xs text-text-muted">
                   Última atualização:{" "}
                   {item.ultima_interacao ? formatDateBR(item.ultima_interacao) : "-"}
                 </p>
               </div>
               <StatusBadge value={item.status} />
             </div>
-            <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <div className="mt-3 space-y-2 text-sm text-text">
               <p>Responsável: {item.responsavel_id ?? "A definir"}</p>
               <p>Telefone: {item.telefone_whatsapp ?? "-"}</p>
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                <span className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-text-muted">
                   Somente leitura no CCM
                 </span>
               </div>
@@ -148,7 +148,7 @@ function NovosConvertidosContent() {
 
 export default function NovosConvertidosPage() {
   return (
-    <Suspense fallback={<div className="card p-4 text-sm text-slate-500">Carregando...</div>}>
+    <Suspense fallback={<div className="card p-4 text-sm text-text-muted">Carregando...</div>}>
       <NovosConvertidosContent />
     </Suspense>
   );

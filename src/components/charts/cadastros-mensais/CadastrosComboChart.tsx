@@ -167,8 +167,8 @@ export function CadastrosComboChart({
         >
           <defs>
             <linearGradient id={`cadastrosLineArea-${gradientId}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.03" />
+              <stop offset="0%" stopColor="#4C7BA3" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#4C7BA3" stopOpacity="0.03" />
             </linearGradient>
           </defs>
 
@@ -203,7 +203,7 @@ export function CadastrosComboChart({
               <path
                 key={`bar-${entry.month}`}
                 d={entry.path}
-                fill="#10b981"
+                fill="#4C7BA3"
                 fillOpacity={opacity}
               />
             );
@@ -238,7 +238,7 @@ export function CadastrosComboChart({
           <path
             d={linePath}
             fill="none"
-            stroke="#059669"
+            stroke="#35638C"
             strokeWidth="4"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -247,8 +247,8 @@ export function CadastrosComboChart({
 
           {peakPoint ? (
             <>
-              <circle cx={peakPoint.x} cy={peakPoint.y} r={1.8} fill="#059669" fillOpacity="0.18" />
-              <circle cx={peakPoint.x} cy={peakPoint.y} r={1} fill="#047857" />
+              <circle cx={peakPoint.x} cy={peakPoint.y} r={1.8} fill="#35638C" fillOpacity="0.18" />
+              <circle cx={peakPoint.x} cy={peakPoint.y} r={1} fill="#2E5E8A" />
             </>
           ) : null}
 
@@ -258,7 +258,7 @@ export function CadastrosComboChart({
               cy={activePoint.y}
               r={1.45}
               fill="#ffffff"
-              stroke="#047857"
+              stroke="#2E5E8A"
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"
             />
@@ -319,8 +319,8 @@ export function CadastrosComboChart({
                 if (!point.isFuture) onMonthSelect?.(isSelected ? null : point.month);
               }}
               className={`rounded-md py-1 text-center transition ${isSelected
-                ? "bg-emerald-50 font-semibold text-emerald-900"
-                : "text-slate-500 hover:bg-emerald-50/70 hover:text-slate-700"
+                ? "bg-brand-50 font-semibold text-brand-900"
+                : "text-text-muted hover:bg-brand-50/70 hover:text-text"
                 }`}
               disabled={point.isFuture}
             >

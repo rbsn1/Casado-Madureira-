@@ -116,19 +116,19 @@ export default function AgendaPage() {
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
         <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600/90 text-xs font-semibold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-600/90 text-xs font-semibold text-white">
               CCM
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">
                 Portal CCM
               </p>
-              <p className="text-sm font-semibold text-emerald-900">Agenda semanal</p>
+              <p className="text-sm font-semibold text-brand-900">Agenda semanal</p>
             </div>
           </div>
           <Link
             href="/acesso-interno"
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-600/20 transition hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-brand-600/20 transition hover:bg-brand-700"
           >
             Acesso interno
           </Link>
@@ -137,31 +137,31 @@ export default function AgendaPage() {
         <section className="pt-10">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-700">
                 Programação
               </p>
-              <h1 className="mt-2 text-3xl font-semibold text-emerald-900 sm:text-4xl">
+              <h1 className="mt-2 text-3xl font-semibold text-brand-900 sm:text-4xl">
                 Agenda da semana
               </h1>
-              <p className="mt-2 max-w-xl text-sm text-slate-600">
+              <p className="mt-2 max-w-xl text-sm text-text-muted">
                 Programação completa da igreja, organizada por dia da semana.
               </p>
             </div>
             <Link
               href="/"
-              className="text-sm font-semibold text-emerald-800 transition hover:text-emerald-900"
+              className="text-sm font-semibold text-brand-800 transition hover:text-brand-900"
             >
               Voltar ao portal →
             </Link>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-600">
+            <label className="flex items-center gap-2 text-sm text-text-muted">
               <input
                 type="checkbox"
                 checked={onlyActive}
                 onChange={(event) => setOnlyActive(event.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-border"
               />
               Mostrar apenas eventos ativos
             </label>
@@ -169,40 +169,40 @@ export default function AgendaPage() {
               placeholder="Buscar por título"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              className="w-full max-w-sm rounded-lg border border-slate-200 bg-white/80 px-3 py-2 text-sm focus:border-emerald-300 focus:outline-none"
+              className="w-full max-w-sm rounded-lg border border-border bg-white/80 px-3 py-2 text-sm focus:border-brand-300 focus:outline-none"
             />
           </div>
 
           <div className="mt-8 space-y-6">
             {grouped.every((group) => group.events.length === 0) ? (
               <div className={cardClass}>
-                <p className="text-sm text-slate-500">{emptyMessage}</p>
+                <p className="text-sm text-text-muted">{emptyMessage}</p>
               </div>
             ) : (
               grouped.map((group) => (
                 <div
                   key={group.weekday}
                   className={`${cardClass} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/10 ${
-                    group.weekday === todayIndex ? "border-emerald-200 bg-emerald-50/40" : ""
+                    group.weekday === todayIndex ? "border-brand-200 bg-brand-50/40" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between border-b border-emerald-100/70 pb-3">
+                  <div className="flex items-center justify-between border-b border-brand-100/70 pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-base font-semibold text-emerald-900">{group.label}</p>
+                        <p className="text-base font-semibold text-brand-900">{group.label}</p>
                         {group.weekday === todayIndex ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-700">
                             Hoje
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-xs text-slate-500">
+                      <p className="mt-1 text-xs text-text-muted">
                         {group.events.length
                           ? `${group.events.length} evento(s)`
                           : "Sem eventos programados"}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-400">{group.weekday === todayIndex ? "Destaque" : ""}</span>
+                    <span className="text-xs text-text-muted">{group.weekday === todayIndex ? "Destaque" : ""}</span>
                   </div>
                   <div className="mt-4 space-y-3">
                     {group.events.length ? (
@@ -210,22 +210,22 @@ export default function AgendaPage() {
                         <div key={event.id} className="rounded-xl bg-white/80 px-3 py-3">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <p className="text-sm font-semibold text-slate-900">{event.title}</p>
-                          <p className="text-xs text-slate-500">
+                              <p className="text-sm font-semibold text-text">{event.title}</p>
+                          <p className="text-xs text-text-muted">
                             {event.location ? event.location : "Local a confirmar"}
                           </p>
                             </div>
-                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                            <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-800">
                               {formatTime(event.start_time)}
                             </span>
                           </div>
                           {event.notes ? (
-                            <p className="mt-2 text-xs text-slate-500">{event.notes}</p>
+                            <p className="mt-2 text-xs text-text-muted">{event.notes}</p>
                           ) : null}
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-text-muted">
                         Ainda não temos encontros definidos para este dia.
                       </p>
                     )}
@@ -236,7 +236,7 @@ export default function AgendaPage() {
           </div>
         </section>
 
-        <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-slate-500">
+        <footer className="mt-16 border-t border-black/5 pb-10 pt-6 text-sm text-text-muted">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p>Portal CCM • Casados com a Madureira</p>
             <p>Agenda semanal para apoio dos departamentos.</p>

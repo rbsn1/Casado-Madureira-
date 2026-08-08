@@ -57,9 +57,9 @@ function normalizeDigits(value: string) {
 }
 
 function statusClass(status: MessageJob["status"]) {
-  if (status === "ENVIADO") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "ERRO") return "border-rose-200 bg-rose-50 text-rose-700";
-  return "border-amber-200 bg-amber-50 text-amber-700";
+  if (status === "ENVIADO") return "border-brand-200 bg-brand-50 text-brand-700";
+  if (status === "ERRO") return "border-danger-100 bg-danger-100 text-danger-600";
+  return "border-warning-100 bg-warning-100 text-warning-600";
 }
 
 function isInvalidJwtErrorMessage(message: string) {
@@ -364,13 +364,13 @@ export default function AdminWhatsAppPage() {
   }, [dispatchMode, testPhoneE164]);
 
   if (hasAccess === null) {
-    return <p className="text-sm text-slate-500">Carregando configuração de WhatsApp...</p>;
+    return <p className="text-sm text-text-muted">Carregando configuração de WhatsApp...</p>;
   }
 
   if (!hasAccess) {
     return (
       <div className="card p-4">
-        <p className="text-sm text-rose-700">{pageMessage || "Acesso não autorizado."}</p>
+        <p className="text-sm text-danger-600">{pageMessage || "Acesso não autorizado."}</p>
       </div>
     );
   }
@@ -378,25 +378,25 @@ export default function AdminWhatsAppPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm text-slate-500">Administração</p>
-        <h2 className="text-xl font-semibold text-emerald-900">WhatsApp</h2>
+        <p className="text-sm text-text-muted">Administração</p>
+        <h2 className="text-xl font-semibold text-brand-900">WhatsApp</h2>
       </div>
 
       <form className="card space-y-4 p-4" onSubmit={handleSaveSettings}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Configurações por tenant</p>
-            <p className="text-xs text-slate-500">Link do grupo e template padrão de boas-vindas.</p>
+            <p className="text-sm font-semibold text-brand-900">Configurações por tenant</p>
+            <p className="text-xs text-text-muted">Link do grupo e template padrão de boas-vindas.</p>
           </div>
         </div>
 
         {isGlobalAdmin ? (
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Congregação</span>
+            <span className="text-text">Congregação</span>
             <select
               value={tenantId}
               onChange={(event) => setTenantId(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               {congregations.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -409,42 +409,42 @@ export default function AdminWhatsAppPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Link do grupo WhatsApp</span>
+            <span className="text-text">Link do grupo WhatsApp</span>
             <input
               value={settings.whatsapp_group_link}
               onChange={(event) =>
                 setSettings((prev) => ({ ...prev, whatsapp_group_link: event.target.value }))
               }
               placeholder="https://chat.whatsapp.com/..."
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Template de boas-vindas</span>
+            <span className="text-text">Template de boas-vindas</span>
             <input
               value={settings.welcome_template_name}
               onChange={(event) =>
                 setSettings((prev) => ({ ...prev, welcome_template_name: event.target.value }))
               }
               placeholder="welcome_ccm"
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-text">
             <input
               type="checkbox"
               checked={settings.welcome_enabled}
               onChange={(event) =>
                 setSettings((prev) => ({ ...prev, welcome_enabled: event.target.checked }))
               }
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-border"
             />
             Boas-vindas habilitadas
           </label>
         </div>
 
         <button
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           disabled={saveStatus === "loading"}
         >
           {saveStatus === "loading" ? "Salvando..." : "Salvar configurações"}
@@ -453,46 +453,46 @@ export default function AdminWhatsAppPage() {
 
       <form className="card space-y-4 p-4" onSubmit={handleEnqueue}>
         <div>
-          <p className="text-sm font-semibold text-emerald-900">Enfileirar boas-vindas</p>
-          <p className="text-xs text-slate-500">Cria jobs para contatos com opt-in no período selecionado.</p>
+          <p className="text-sm font-semibold text-brand-900">Enfileirar boas-vindas</p>
+          <p className="text-xs text-text-muted">Cria jobs para contatos com opt-in no período selecionado.</p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data inicial</span>
+            <span className="text-text">Data inicial</span>
             <input
               type="date"
               value={dateFrom}
               onChange={(event) => setDateFrom(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data final</span>
+            <span className="text-text">Data final</span>
             <input
               type="date"
               value={dateTo}
               onChange={(event) => setDateTo(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Formato</span>
+            <span className="text-text">Formato</span>
             <select
               value={messageMode}
               onChange={(event) => setMessageMode(event.target.value as "template" | "text")}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               <option value="template">Template</option>
               <option value="text">Texto simples</option>
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Modo de envio</span>
+            <span className="text-text">Modo de envio</span>
             <select
               value={dispatchMode}
               onChange={(event) => setDispatchMode(event.target.value as "TESTE" | "PRODUCAO")}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               <option value="TESTE">TESTE (sandbox)</option>
               <option value="PRODUCAO">PRODUÇÃO</option>
@@ -500,12 +500,12 @@ export default function AdminWhatsAppPage() {
           </label>
           {dispatchMode === "TESTE" ? (
             <label className="space-y-1 text-sm md:col-span-2 lg:col-span-2">
-              <span className="text-slate-700">Telefone de teste (E.164 com DDI)</span>
+              <span className="text-text">Telefone de teste (E.164 com DDI)</span>
               <input
                 value={testPhoneE164}
                 onChange={(event) => setTestPhoneE164(event.target.value)}
                 placeholder="5592992270057"
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               />
             </label>
           ) : null}
@@ -522,8 +522,8 @@ export default function AdminWhatsAppPage() {
       <div className="card space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Jobs recentes</p>
-            <p className="text-xs text-slate-500">Acompanhe status de entrega (PENDENTE/ENVIADO/ERRO).</p>
+            <p className="text-sm font-semibold text-brand-900">Jobs recentes</p>
+            <p className="text-xs text-text-muted">Acompanhe status de entrega (PENDENTE/ENVIADO/ERRO).</p>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -533,7 +533,7 @@ export default function AdminWhatsAppPage() {
                 setJobStatusFilter(next);
                 if (tenantId) await loadJobs(tenantId, next);
               }}
-              className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+              className="rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
             >
               <option value="TODOS">Todos</option>
               <option value="PENDENTE">Pendente</option>
@@ -543,7 +543,7 @@ export default function AdminWhatsAppPage() {
             <button
               type="button"
               onClick={() => tenantId && loadJobs(tenantId)}
-              className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+              className="rounded-lg border border-brand-200 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-50"
             >
               Atualizar
             </button>
@@ -551,13 +551,13 @@ export default function AdminWhatsAppPage() {
         </div>
 
         {jobsLoading ? (
-          <p className="text-sm text-slate-500">Carregando jobs...</p>
+          <p className="text-sm text-text-muted">Carregando jobs...</p>
         ) : !jobs.length ? (
-          <p className="text-sm text-slate-500">Nenhum job encontrado para o filtro atual.</p>
+          <p className="text-sm text-text-muted">Nenhum job encontrado para o filtro atual.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-surface">
                 <tr>
                   {[
                     "Contato",
@@ -567,32 +567,32 @@ export default function AdminWhatsAppPage() {
                     "Tentativas",
                     "Erro"
                   ].map((label) => (
-                    <th key={label} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    <th key={label} className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-text-muted">
                       {label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-surface">
                 {jobs.map((job) => {
                   const contact = contactsById[job.contact_id];
                   const mode = String((job.payload?.mode as string | undefined) ?? "text");
                   const dispatch = String((job.payload?.dispatchMode as string | undefined) ?? "PRODUCAO");
                   return (
                     <tr key={job.id}>
-                      <td className="px-3 py-2 text-slate-700">
+                      <td className="px-3 py-2 text-text">
                         <p className="font-medium">{contact?.name ?? "Contato"}</p>
-                        <p className="text-xs text-slate-500">{contact?.phone_e164 ?? "—"}</p>
+                        <p className="text-xs text-text-muted">{contact?.phone_e164 ?? "—"}</p>
                       </td>
-                      <td className="px-3 py-2 text-slate-700">{formatDateBR(job.created_at)}</td>
-                      <td className="px-3 py-2 text-xs text-slate-600">{mode} / {dispatch}</td>
+                      <td className="px-3 py-2 text-text">{formatDateBR(job.created_at)}</td>
+                      <td className="px-3 py-2 text-xs text-text-muted">{mode} / {dispatch}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${statusClass(job.status)}`}>
                           {job.status}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-700">{job.attempts}</td>
-                      <td className="px-3 py-2 text-xs text-slate-600">{job.last_error ?? "—"}</td>
+                      <td className="px-3 py-2 text-text">{job.attempts}</td>
+                      <td className="px-3 py-2 text-xs text-text-muted">{job.last_error ?? "—"}</td>
                     </tr>
                   );
                 })}
@@ -603,7 +603,7 @@ export default function AdminWhatsAppPage() {
       </div>
 
       {pageMessage ? (
-        <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+        <p className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-text">
           {pageMessage}
         </p>
       ) : null}

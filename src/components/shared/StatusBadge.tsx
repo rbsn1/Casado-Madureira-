@@ -5,8 +5,8 @@ const variants: Record<string, string> = {
   ATRIBUIDO: "bg-success-100 text-success-600",
   EM_ANDAMENTO: "bg-info-100 text-info-600",
   EM_DISCIPULADO: "bg-info-100 text-info-600",
-  PAUSADO: "bg-amber-100 text-amber-700",
-  NAO_INICIADO: "bg-slate-100 text-slate-700",
+  PAUSADO: "bg-warning-100 text-warning-600",
+  NAO_INICIADO: "bg-surface text-text",
   ENCAMINHADO: "bg-accent-100 text-accent-600",
   CONTATO: "bg-brand-100 text-brand-900",
   CHAMADA: "bg-info-100 text-info-600",
@@ -17,10 +17,10 @@ const variants: Record<string, string> = {
   CADASTRO: "bg-brand-100 text-brand-900",
   ENCAMINHADO_EVENTO: "bg-accent-100 text-accent-600",
   DEPTO_VINCULO: "bg-tea-100 text-tea-600",
-  BAIXA: "bg-slate-100 text-slate-700",
-  MEDIA: "bg-amber-100 text-amber-800",
+  BAIXA: "bg-surface text-text",
+  MEDIA: "bg-warning-100 text-warning-600",
   ALTA: "bg-orange-100 text-orange-700",
-  CRITICA: "bg-rose-100 text-rose-700",
+  CRITICA: "bg-danger-100 text-danger-600",
   ATIVO: "bg-success-100 text-success-600",
   INATIVO: "bg-surface text-text-muted"
 };
@@ -28,7 +28,7 @@ const variants: Record<string, string> = {
 export function StatusBadge({ value }: { value: string }) {
   const normalized = value.toUpperCase();
   return (
-    <span className={clsx("pill", variants[normalized] ?? "bg-slate-100 text-slate-700")}>
+    <span className={clsx("pill", variants[normalized] ?? "bg-surface text-text")}>
       {value}
     </span>
   );

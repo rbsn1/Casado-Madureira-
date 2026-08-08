@@ -22,7 +22,7 @@ import { CadastroForm } from "@/components/cadastros/CadastroForm";
 const toolbarButtonClass = "w-full rounded-xl px-3 py-3 text-sm font-semibold sm:w-auto";
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
 const fieldClass =
-  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
+  "block min-w-0 w-full max-w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none sm:text-base";
 
 function CadastrosContent() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -219,11 +219,11 @@ function CadastrosContent() {
     <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-          <h2 className="text-xl font-semibold text-emerald-900">
+          <p className="text-sm text-text-muted">Gestão de Pessoas</p>
+          <h2 className="text-xl font-semibold text-brand-900">
             {isCadastradorOnly ? "Cadastros rápidos" : "Cadastros"}
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-text-muted">
             {isCadastradorOnly ? (
               <>
                 Visualize o cadastro inicial resumido do perfil <strong>CADASTRADOR</strong>, com foco em nome,
@@ -241,25 +241,25 @@ function CadastrosContent() {
         <div className="grid gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={openCreate}
-            className={`${toolbarButtonClass} bg-emerald-600 text-white hover:bg-emerald-700`}
+            className={`${toolbarButtonClass} bg-brand-600 text-white hover:bg-brand-700`}
           >
             {isCadastradorOnly ? "Novo cadastro rápido (Cadastrador)" : "Novo cadastro completo"}
           </button>
           <button
             onClick={handleExport}
-            className={`${toolbarButtonClass} border border-emerald-300 text-emerald-900 hover:bg-emerald-50`}
+            className={`${toolbarButtonClass} border border-brand-300 text-brand-900 hover:bg-brand-50`}
           >
             Exportar CSV
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className={`${toolbarButtonClass} border border-dashed border-emerald-300 text-emerald-900 hover:bg-emerald-50`}
+            className={`${toolbarButtonClass} border border-dashed border-brand-300 text-brand-900 hover:bg-brand-50`}
           >
             Importar CSV/XLSX
           </button>
           <Link
             href="/cadastros_import_modelo.csv"
-            className={`${toolbarButtonClass} block text-center border border-emerald-200 text-emerald-900 hover:bg-emerald-50`}
+            className={`${toolbarButtonClass} block text-center border border-brand-200 text-brand-900 hover:bg-brand-50`}
           >
             Baixar modelo CSV
           </Link>
@@ -275,15 +275,15 @@ function CadastrosContent() {
 
       <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Cadastros feitos hoje</p>
-          <p className="mt-1 text-3xl font-semibold text-emerald-900">{todayCount}</p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Cadastros feitos hoje</p>
+          <p className="mt-1 text-3xl font-semibold text-brand-900">{todayCount}</p>
+          <p className="mt-1 text-xs text-text-muted">
             {isCadastradorOnly
               ? "Fluxo pensado para operação rápida em culto."
               : "Perfis administrativos usam o formulário completo no CCM."}
           </p>
         </div>
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 sm:max-w-md">
+        <div className="rounded-xl border border-warning-100 bg-warning-100 px-4 py-3 text-sm leading-6 text-warning-600 sm:max-w-md">
           {isCadastradorOnly ? (
             <>
               O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como{" "}
@@ -339,7 +339,7 @@ function CadastrosContent() {
           </select>
           <button
             onClick={reloadPessoas}
-            className={`${toolbarButtonClass} bg-emerald-100 text-emerald-900`}
+            className={`${toolbarButtonClass} bg-brand-100 text-brand-900`}
           >
             Atualizar
           </button>
@@ -349,10 +349,10 @@ function CadastrosContent() {
           <p
             className={`mt-3 ${feedbackClass} ${
               feedbackTone === "error"
-                ? "border border-rose-200 bg-rose-50 text-rose-700"
+                ? "border border-danger-100 bg-danger-100 text-danger-600"
                 : feedbackTone === "success"
-                  ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border border-slate-200 bg-slate-50 text-slate-700"
+                  ? "border border-brand-200 bg-brand-50 text-brand-700"
+                  : "border border-border bg-surface text-text"
             }`}
           >
             {statusMessage}
@@ -361,26 +361,26 @@ function CadastrosContent() {
 
         <div className="mt-4 space-y-3 md:hidden">
           {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-text-muted">
               Carregando cadastros...
             </div>
           ) : null}
 
           {!loading && !filtered.length ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-border bg-surface px-4 py-6 text-center text-sm text-text-muted">
               Nenhum cadastro encontrado.
             </div>
           ) : null}
 
           {!loading
             ? filtered.map((pessoa) => (
-                <article key={pessoa.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <article key={pessoa.id} className="rounded-2xl border border-border bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <Link href={`/pessoas/${pessoa.id}`} className="block text-sm font-semibold text-slate-900">
+                      <Link href={`/pessoas/${pessoa.id}`} className="block text-sm font-semibold text-text">
                         {pessoa.nome_completo}
                       </Link>
-                      <p className="mt-1 text-xs text-slate-500">{pessoa.telefone_whatsapp ?? "Sem contato"}</p>
+                      <p className="mt-1 text-xs text-text-muted">{pessoa.telefone_whatsapp ?? "Sem contato"}</p>
                     </div>
                     <span
                       className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${getCadastroCompletoClass(
@@ -393,19 +393,19 @@ function CadastrosContent() {
 
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-xs text-slate-500">Data</dt>
-                      <dd className="font-medium text-slate-800">{pessoa.data ? formatDateBR(pessoa.data) : "-"}</dd>
+                      <dt className="text-xs text-text-muted">Data</dt>
+                      <dd className="font-medium text-text">{pessoa.data ? formatDateBR(pessoa.data) : "-"}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Culto</dt>
-                      <dd className="font-medium text-slate-800">{cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}</dd>
+                      <dt className="text-xs text-text-muted">Culto</dt>
+                      <dd className="font-medium text-text">{cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}</dd>
                     </div>
                   </dl>
 
                   <div className="mt-4 grid gap-2">
                     <Link
                       href={`/pessoas/${pessoa.id}`}
-                      className="rounded-xl bg-emerald-600 px-3 py-3 text-center text-xs font-semibold text-white hover:bg-emerald-700"
+                      className="rounded-xl bg-brand-600 px-3 py-3 text-center text-xs font-semibold text-white hover:bg-brand-700"
                     >
                       Abrir
                     </Link>
@@ -413,7 +413,7 @@ function CadastrosContent() {
                       <button
                         type="button"
                         onClick={() => openEdit(pessoa)}
-                        className="rounded-xl border border-emerald-200 px-3 py-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                        className="rounded-xl border border-brand-200 px-3 py-3 text-xs font-semibold text-brand-700 hover:bg-brand-50"
                       >
                         Editar
                       </button>
@@ -426,7 +426,7 @@ function CadastrosContent() {
                           generatingLinkForId === pessoa.id ||
                           pessoa.cadastro_completo_status === "concluido"
                         }
-                        className="rounded-xl border border-sky-200 px-3 py-3 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="rounded-xl border border-info-100 px-3 py-3 text-xs font-semibold text-info-600 hover:bg-info-100 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {pessoa.cadastro_completo_status === "concluido"
                           ? "Cadastro completo"
@@ -440,7 +440,7 @@ function CadastrosContent() {
                         type="button"
                         onClick={() => handleDelete(pessoa)}
                         disabled={deletingId === pessoa.id}
-                        className="rounded-xl border border-rose-200 px-3 py-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                        className="rounded-xl border border-danger-100 px-3 py-3 text-xs font-semibold text-danger-600 hover:bg-danger-100 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         Excluir
                       </button>
@@ -452,20 +452,20 @@ function CadastrosContent() {
         </div>
 
         <div className="mt-4 hidden overflow-x-auto md:block">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-surface">
               <tr>
                 {["Nome", "Contato", "Data", "Culto", "Status do cadastro", "Ações"].map((col) => (
-                  <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th key={col} className="px-4 py-2 text-left font-semibold text-text-muted">
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-surface">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
                     Carregando cadastros...
                   </td>
                 </tr>
@@ -473,24 +473,24 @@ function CadastrosContent() {
 
               {!loading && !filtered.length ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
                     Nenhum cadastro encontrado.
                   </td>
                 </tr>
               ) : null}
 
               {filtered.map((pessoa) => (
-                <tr key={pessoa.id} className="hover:bg-emerald-50/50">
-                  <td className="px-4 py-3 font-semibold text-slate-900">
+                <tr key={pessoa.id} className="hover:bg-brand-50/50">
+                  <td className="px-4 py-3 font-semibold text-text">
                     <Link href={`/pessoas/${pessoa.id}`} className="hover:underline">
                       {pessoa.nome_completo}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{pessoa.telefone_whatsapp ?? "-"}</td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">{pessoa.telefone_whatsapp ?? "-"}</td>
+                  <td className="px-4 py-3 text-text">
                     {pessoa.data ? formatDateBR(pessoa.data) : "-"}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}
                   </td>
                   <td className="px-4 py-3">
@@ -506,7 +506,7 @@ function CadastrosContent() {
                     <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/pessoas/${pessoa.id}`}
-                        className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                        className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         Abrir
                       </Link>
@@ -514,7 +514,7 @@ function CadastrosContent() {
                         <button
                           type="button"
                           onClick={() => openEdit(pessoa)}
-                          className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                          className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
                         >
                           Editar
                         </button>
@@ -527,7 +527,7 @@ function CadastrosContent() {
                             generatingLinkForId === pessoa.id ||
                             pessoa.cadastro_completo_status === "concluido"
                           }
-                          className="rounded-lg border border-sky-200 px-3 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-70"
+                          className="rounded-lg border border-info-100 px-3 py-1 text-xs font-semibold text-info-600 hover:bg-info-100 disabled:cursor-not-allowed disabled:opacity-70"
                         >
                           {pessoa.cadastro_completo_status === "concluido"
                             ? "Completo"
@@ -541,7 +541,7 @@ function CadastrosContent() {
                           type="button"
                           onClick={() => handleDelete(pessoa)}
                           disabled={deletingId === pessoa.id}
-                          className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-70"
+                          className="rounded-lg border border-danger-100 px-3 py-1 text-xs font-semibold text-danger-600 hover:bg-danger-100 disabled:cursor-not-allowed disabled:opacity-70"
                         >
                           Excluir
                         </button>
@@ -560,7 +560,7 @@ function CadastrosContent() {
 
 export default function CadastrosPage() {
   return (
-    <Suspense fallback={<div className="card p-4 text-sm text-slate-500">Carregando...</div>}>
+    <Suspense fallback={<div className="card p-4 text-sm text-text-muted">Carregando...</div>}>
       <CadastrosContent />
     </Suspense>
   );

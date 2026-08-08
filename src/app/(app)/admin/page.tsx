@@ -402,44 +402,44 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-sm text-slate-500">Administração</p>
-        <h2 className="text-xl font-semibold text-emerald-900">Usuários e Permissões</h2>
+        <p className="text-sm text-text-muted">Administração</p>
+        <h2 className="text-xl font-semibold text-brand-900">Usuários e Permissões</h2>
       </div>
 
       <form className="card grid gap-3 p-4 md:grid-cols-4" onSubmit={handleCreateUser}>
         <label className="space-y-1 text-sm">
-          <span className="text-slate-700">E-mail</span>
+          <span className="text-text">E-mail</span>
           <input
             name="email"
             type="email"
             required
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Senha inicial</span>
+          <span className="text-text">Senha inicial</span>
           <input
             name="password"
             type="password"
             required
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-slate-700">WhatsApp</span>
+          <span className="text-text">WhatsApp</span>
           <input
             name="whatsapp"
             type="text"
             placeholder="(99) 99999-9999"
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
           />
         </label>
         <label className="space-y-1 text-sm">
-          <span className="text-slate-700">Role</span>
+          <span className="text-text">Role</span>
           <select
             name="role"
             defaultValue={roleOptions[0]}
-            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
           >
             {roleOptions.map((role) => (
               <option key={role} value={role}>
@@ -449,7 +449,7 @@ export default function AdminPage() {
           </select>
         </label>
         <div className="md:col-span-4">
-          <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+          <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
             Criar usuário
           </button>
         </div>
@@ -458,15 +458,15 @@ export default function AdminPage() {
       <form className="card space-y-3 p-4" onSubmit={handleUploadBackground}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Papel de parede do login</p>
-            <p className="text-xs text-slate-500">Recomendado: imagem horizontal em alta resolução.</p>
+            <p className="text-sm font-semibold text-brand-900">Papel de parede do login</p>
+            <p className="text-xs text-text-muted">Recomendado: imagem horizontal em alta resolução.</p>
           </div>
           {bgUrl ? (
             <a
               href={bgUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-semibold text-emerald-800 hover:text-emerald-900"
+              className="text-xs font-semibold text-brand-800 hover:text-brand-900"
             >
               Ver imagem atual
             </a>
@@ -476,21 +476,21 @@ export default function AdminPage() {
           name="background"
           type="file"
           accept="image/*"
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-border px-3 py-2 text-sm"
         />
         <button
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           disabled={bgStatus === "loading"}
         >
           {bgStatus === "loading" ? "Enviando..." : "Atualizar imagem"}
         </button>
         {bgStatus === "error" ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
             {bgMessage || "Não foi possível atualizar a imagem."}
           </p>
         ) : null}
         {bgStatus === "success" ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          <p className="rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
             {bgMessage}
           </p>
         ) : null}
@@ -499,29 +499,29 @@ export default function AdminPage() {
       <form className="card space-y-4 p-4" onSubmit={handleSaveSpecialEvent}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Evento especial</p>
-            <p className="text-xs text-slate-500">Destaque eventos anuais como o Conjadem na home.</p>
+            <p className="text-sm font-semibold text-brand-900">Evento especial</p>
+            <p className="text-xs text-text-muted">Destaque eventos anuais como o Conjadem na home.</p>
           </div>
           <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-text">
               <input
                 type="checkbox"
                 checked={specialEvent.is_active}
                 onChange={(event) =>
                   setSpecialEvent((prev) => ({ ...prev, is_active: event.target.checked }))
                 }
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-border"
               />
               Ativo
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
+            <label className="flex items-center gap-2 text-sm text-text">
               <input
                 type="checkbox"
                 checked={specialEvent.is_non_recurring}
                 onChange={(event) =>
                   setSpecialEvent((prev) => ({ ...prev, is_non_recurring: event.target.checked }))
                 }
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-border"
               />
               Não recorrente
             </label>
@@ -529,91 +529,91 @@ export default function AdminPage() {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Título</span>
+            <span className="text-text">Título</span>
             <input
               value={specialEvent.title}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Conjadem 2026"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Tag</span>
+            <span className="text-text">Tag</span>
             <input
               value={specialEvent.tag}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, tag: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Evento anual"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Subtítulo</span>
+            <span className="text-text">Subtítulo</span>
             <input
               value={specialEvent.subtitle}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, subtitle: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Congresso de Jovens"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Data</span>
+            <span className="text-text">Data</span>
             <input
               value={specialDateInput}
               onChange={(event) => setSpecialDateInput(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="dd/MM/aaaa"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Local</span>
+            <span className="text-text">Local</span>
             <input
               value={specialEvent.location}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, location: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Templo Sede"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Imagem (URL)</span>
+            <span className="text-text">Imagem (URL)</span>
             <input
               value={specialEvent.image_url}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, image_url: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="https://..."
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">CTA (texto)</span>
+            <span className="text-text">CTA (texto)</span>
             <input
               value={specialEvent.cta_label}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, cta_label: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="Saiba mais"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">CTA (link)</span>
+            <span className="text-text">CTA (link)</span>
             <input
               value={specialEvent.cta_url}
               onChange={(event) => setSpecialEvent((prev) => ({ ...prev, cta_url: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
               placeholder="https://..."
             />
           </label>
         </div>
         <button
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           disabled={specialStatus === "loading"}
         >
           {specialStatus === "loading" ? "Salvando..." : "Salvar evento"}
         </button>
         {specialStatus === "error" ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
             {specialMessage || "Não foi possível salvar o evento."}
           </p>
         ) : null}
         {specialStatus === "success" ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+          <p className="rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
             {specialMessage}
           </p>
         ) : null}
@@ -622,13 +622,13 @@ export default function AdminPage() {
       <div className="card space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-semibold text-emerald-900">Agenda semanal</p>
-            <p className="text-xs text-slate-500">Gerencie os eventos que aparecem no portal.</p>
+            <p className="text-sm font-semibold text-brand-900">Agenda semanal</p>
+            <p className="text-xs text-text-muted">Gerencie os eventos que aparecem no portal.</p>
           </div>
           <button
             type="button"
             onClick={loadAgendaEvents}
-            className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+            className="rounded-lg border border-brand-200 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-50"
           >
             Atualizar agenda
           </button>
@@ -636,24 +636,24 @@ export default function AdminPage() {
 
         <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-3" onSubmit={handleCreateAgendaEvent}>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Título</span>
+            <span className="text-text">Título</span>
             <input
               name="title"
               required
               value={agendaForm.title}
               onChange={(event) => setAgendaForm((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Dia da semana</span>
+            <span className="text-text">Dia da semana</span>
             <select
               name="weekday"
               value={agendaForm.weekday}
               onChange={(event) =>
                 setAgendaForm((prev) => ({ ...prev, weekday: Number(event.target.value) }))
               }
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               {weekdayOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -663,96 +663,96 @@ export default function AdminPage() {
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Horário</span>
+            <span className="text-text">Horário</span>
             <input
               name="start_time"
               type="time"
               required
               value={agendaForm.start_time}
               onChange={(event) => setAgendaForm((prev) => ({ ...prev, start_time: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Local</span>
+            <span className="text-text">Local</span>
             <input
               name="location"
               value={agendaForm.location}
               onChange={(event) => setAgendaForm((prev) => ({ ...prev, location: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm md:col-span-2">
-            <span className="text-slate-700">Observações</span>
+            <span className="text-text">Observações</span>
             <input
               name="notes"
               value={agendaForm.notes}
               onChange={(event) => setAgendaForm((prev) => ({ ...prev, notes: event.target.value }))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-text">
             <input
               type="checkbox"
               checked={agendaForm.is_active}
               onChange={(event) => setAgendaForm((prev) => ({ ...prev, is_active: event.target.checked }))}
-              className="h-4 w-4 rounded border-slate-300"
+              className="h-4 w-4 rounded border-border"
             />
             Ativo
           </label>
           <div className="md:col-span-2 lg:col-span-3">
-            <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+            <button className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
               Adicionar evento
             </button>
           </div>
         </form>
 
         {agendaMessage ? (
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
             {agendaMessage}
           </p>
         ) : null}
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-surface">
               <tr>
                 {["Evento", "Dia/Horário", "Local", "Observações", "Status", "Ações"].map((col) => (
-                  <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th key={col} className="px-4 py-2 text-left font-semibold text-text-muted">
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-surface">
               {agendaStatus === "loading" ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
                     Carregando agenda...
                   </td>
                 </tr>
               ) : null}
               {agendaStatus !== "loading" && !agendaEvents.length ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
                     Nenhum evento cadastrado.
                   </td>
                 </tr>
               ) : null}
               {agendaEvents.map((event) => (
                 <tr key={event.id}>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {editingId === event.id ? (
                       <input
                         value={editForm.title}
                         onChange={(ev) => setEditForm((prev) => ({ ...prev, title: ev.target.value }))}
-                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                       />
                     ) : (
                       event.title
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {editingId === event.id ? (
                       <div className="flex flex-wrap gap-2">
                         <select
@@ -760,7 +760,7 @@ export default function AdminPage() {
                           onChange={(ev) =>
                             setEditForm((prev) => ({ ...prev, weekday: Number(ev.target.value) }))
                           }
-                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                          className="rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                         >
                           {weekdayOptions.map((option) => (
                             <option key={option.value} value={option.value}>
@@ -772,43 +772,43 @@ export default function AdminPage() {
                           type="time"
                           value={editForm.start_time}
                           onChange={(ev) => setEditForm((prev) => ({ ...prev, start_time: ev.target.value }))}
-                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                          className="rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                         />
                       </div>
                     ) : (
                       `${weekdayOptions.find((option) => option.value === event.weekday)?.label ?? "Dia"} • ${event.start_time.slice(0, 5)}`
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {editingId === event.id ? (
                       <input
                         value={editForm.location}
                         onChange={(ev) => setEditForm((prev) => ({ ...prev, location: ev.target.value }))}
-                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                       />
                     ) : (
                       event.location || "-"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {editingId === event.id ? (
                       <input
                         value={editForm.notes}
                         onChange={(ev) => setEditForm((prev) => ({ ...prev, notes: ev.target.value }))}
-                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                       />
                     ) : (
                       event.notes || "-"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {editingId === event.id ? (
                       <label className="flex items-center gap-2 text-xs">
                         <input
                           type="checkbox"
                           checked={editForm.is_active}
                           onChange={(ev) => setEditForm((prev) => ({ ...prev, is_active: ev.target.checked }))}
-                          className="h-4 w-4 rounded border-slate-300"
+                          className="h-4 w-4 rounded border-border"
                         />
                         {editForm.is_active ? "Ativo" : "Inativo"}
                       </label>
@@ -825,14 +825,14 @@ export default function AdminPage() {
                           <button
                             type="button"
                             onClick={() => handleUpdateAgendaEvent(event.id)}
-                            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                            className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
                           >
                             Salvar
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingId(null)}
-                            className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            className="rounded-lg border border-border px-3 py-1 text-xs font-semibold text-text-muted hover:bg-surface"
                           >
                             Cancelar
                           </button>
@@ -842,14 +842,14 @@ export default function AdminPage() {
                           <button
                             type="button"
                             onClick={() => startEdit(event)}
-                            className="rounded-lg border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+                            className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-900 hover:bg-brand-50"
                           >
                             Editar
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteAgendaEvent(event.id)}
-                            className="rounded-lg border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                            className="rounded-lg border border-danger-100 px-3 py-1 text-xs font-semibold text-danger-600 hover:bg-danger-100"
                           >
                             Excluir
                           </button>
@@ -865,56 +865,56 @@ export default function AdminPage() {
       </div>
 
       {statusMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+        <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
           {statusMessage}
         </p>
       ) : null}
 
       <div className="card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-emerald-900">Usuários cadastrados</h3>
+          <h3 className="text-sm font-semibold text-brand-900">Usuários cadastrados</h3>
           <button
             type="button"
             onClick={loadUsers}
-            className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-50"
+            className="rounded-lg border border-brand-200 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-50"
           >
             Atualizar
           </button>
         </div>
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+          <table className="min-w-full divide-y divide-border text-sm">
+            <thead className="bg-surface">
               <tr>
                 {["E-mail", "WhatsApp", "Criado em", "Roles", "Ações"].map((col) => (
-                  <th key={col} className="px-4 py-2 text-left font-semibold text-slate-600">
+                  <th key={col} className="px-4 py-2 text-left font-semibold text-text-muted">
                     {col}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-surface">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-muted">
                     Carregando usuários...
                   </td>
                 </tr>
               ) : null}
               {!loading && !users.length ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-muted">
                     Nenhum usuário encontrado.
                   </td>
                 </tr>
               ) : null}
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-4 py-3 text-slate-700">{user.email ?? "Sem e-mail"}</td>
-                  <td className="px-4 py-3 text-slate-700">{user.whatsapp ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">{user.email ?? "Sem e-mail"}</td>
+                  <td className="px-4 py-3 text-text">{user.whatsapp ?? "—"}</td>
+                  <td className="px-4 py-3 text-text">
                     {formatDateBR(user.created_at)}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">
+                  <td className="px-4 py-3 text-text">
                     {user.roles.length
                       ? user.roles.map((role) => `${role.role}${role.active ? "" : " (inativo)"}`).join(", ")
                       : "Sem roles"}
@@ -926,7 +926,7 @@ export default function AdminPage() {
                         onChange={(event) =>
                           setRoleByUser((prev) => ({ ...prev, [user.id]: event.target.value }))
                         }
-                        className="rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-emerald-400 focus:outline-none"
+                        className="rounded-lg border border-border px-2 py-1 text-xs focus:border-brand-400 focus:outline-none"
                       >
                         {roleOptions.map((role) => (
                           <option key={role} value={role}>
@@ -937,7 +937,7 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => handleAddRole(user.id)}
-                        className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                        className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700"
                       >
                         Atribuir role
                       </button>

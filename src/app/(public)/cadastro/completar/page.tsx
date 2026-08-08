@@ -127,15 +127,15 @@ function CadastroCompletoPageContent() {
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600/90 text-xs font-semibold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-600/90 text-xs font-semibold text-white">
               CCM
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Portal CCM</p>
-              <p className="text-sm font-semibold text-emerald-900">Cadastro completo de membro</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">Portal CCM</p>
+              <p className="text-sm font-semibold text-brand-900">Cadastro completo de membro</p>
             </div>
           </div>
-          <Link href="/login" className="text-sm font-semibold text-emerald-800 transition hover:text-emerald-900">
+          <Link href="/login" className="text-sm font-semibold text-brand-800 transition hover:text-brand-900">
             Voltar ao portal →
           </Link>
         </header>
@@ -143,117 +143,117 @@ function CadastroCompletoPageContent() {
         <section className="flex flex-1 items-center justify-center py-10">
           <div className={cardClass}>
             {loadState === "loading" ? (
-              <p className="text-sm text-slate-600">Validando link...</p>
+              <p className="text-sm text-text-muted">Validando link...</p>
             ) : null}
 
             {loadState === "invalid" ? (
-              <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p className="rounded-lg border border-danger-100 bg-danger-100 px-3 py-2 text-sm text-danger-600">
                 {message || "Link inválido. Solicite um novo link."}
               </p>
             ) : null}
 
             {loadState === "ready" && payload ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cadastro completo</p>
-                <h1 className="mt-2 text-2xl font-semibold text-emerald-900">Finalize seus dados</h1>
-                <p className="mt-2 text-sm text-slate-600">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Cadastro completo</p>
+                <h1 className="mt-2 text-2xl font-semibold text-brand-900">Finalize seus dados</h1>
+                <p className="mt-2 text-sm text-text-muted">
                   Confirme as informações abaixo e complete seu perfil de membro.
                 </p>
 
-                <div className="mt-4 grid gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm text-slate-700 md:grid-cols-2">
+                <div className="mt-4 grid gap-3 rounded-xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-text md:grid-cols-2">
                   <p>
-                    <span className="font-semibold text-slate-800">Nome:</span> {payload.nome_completo}
+                    <span className="font-semibold text-text">Nome:</span> {payload.nome_completo}
                   </p>
                   <p>
-                    <span className="font-semibold text-slate-800">Telefone:</span>{" "}
+                    <span className="font-semibold text-text">Telefone:</span>{" "}
                     {payload.telefone_whatsapp ?? "Não informado"}
                   </p>
                   <p>
-                    <span className="font-semibold text-slate-800">Igreja:</span> {payload.igreja_origem ?? "Não informada"}
+                    <span className="font-semibold text-text">Igreja:</span> {payload.igreja_origem ?? "Não informada"}
                   </p>
                   <p>
-                    <span className="font-semibold text-slate-800">Bairro:</span> {payload.bairro ?? "Não informado"}
+                    <span className="font-semibold text-text">Bairro:</span> {payload.bairro ?? "Não informado"}
                   </p>
                 </div>
 
                 <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
                   <label className="space-y-1 text-sm">
-                    <span className="text-slate-700">CPF *</span>
+                    <span className="text-text">CPF *</span>
                     <input
                       required
                       name="cpf"
                       value={cpf}
                       onChange={(event) => setCpf(formatCpfInput(event.target.value))}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="000.000.000-00"
                     />
                   </label>
 
                   <label className="space-y-1 text-sm">
-                    <span className="text-slate-700">RG *</span>
+                    <span className="text-text">RG *</span>
                     <input
                       required
                       name="rg"
                       value={rg}
                       onChange={(event) => setRg(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Digite seu RG"
                     />
                   </label>
 
                   <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="text-slate-700">Foto (URL)</span>
+                    <span className="text-text">Foto (URL)</span>
                     <input
                       name="foto_url"
                       value={fotoUrl}
                       onChange={(event) => setFotoUrl(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="https://..."
                     />
                   </label>
 
                   <label className="space-y-1 text-sm">
-                    <span className="text-slate-700">Data de nascimento</span>
+                    <span className="text-text">Data de nascimento</span>
                     <input
                       name="data_nascimento"
                       type="date"
                       value={dataNascimento}
                       onChange={(event) => setDataNascimento(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                     />
                   </label>
 
                   <label className="space-y-1 text-sm">
-                    <span className="text-slate-700">E-mail</span>
+                    <span className="text-text">E-mail</span>
                     <input
                       name="email"
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="voce@email.com"
                     />
                   </label>
 
                   <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="text-slate-700">Endereço</span>
+                    <span className="text-text">Endereço</span>
                     <input
                       name="endereco"
                       value={endereco}
                       onChange={(event) => setEndereco(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Rua, número, complemento"
                     />
                   </label>
 
                   <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="text-slate-700">Observações adicionais</span>
+                    <span className="text-text">Observações adicionais</span>
                     <textarea
                       name="observacoes"
                       rows={3}
                       value={observacoes}
                       onChange={(event) => setObservacoes(event.target.value)}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Compartilhe informações relevantes para seu acompanhamento."
                     />
                   </label>
@@ -262,7 +262,7 @@ function CadastroCompletoPageContent() {
                     <button
                       type="submit"
                       disabled={submitState === "saving" || submitState === "success"}
-                      className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {submitState === "saving" ? "Enviando..." : "Concluir cadastro completo"}
                     </button>
@@ -270,12 +270,12 @@ function CadastroCompletoPageContent() {
                 </form>
 
                 {message && submitState === "error" ? (
-                  <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                  <p className="mt-3 rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
                     {message}
                   </p>
                 ) : null}
                 {message && submitState === "success" ? (
-                  <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                  <p className="mt-3 rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
                     {message}
                   </p>
                 ) : null}
@@ -294,7 +294,7 @@ function CadastroCompletoFallback() {
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <section className="flex flex-1 items-center justify-center py-10">
           <div className={cardClass}>
-            <p className="text-sm text-slate-600">Carregando cadastro completo...</p>
+            <p className="text-sm text-text-muted">Carregando cadastro completo...</p>
           </div>
         </section>
       </div>

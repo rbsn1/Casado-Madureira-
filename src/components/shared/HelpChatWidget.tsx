@@ -543,27 +543,27 @@ export function HelpChatWidget() {
     <div className="fixed bottom-5 left-4 right-4 z-50 flex flex-col items-stretch gap-2 sm:left-auto sm:right-5 sm:items-end">
       {open ? (
         <div className="w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-black/10 bg-white/90 shadow-2xl shadow-black/10 backdrop-blur-lg sm:w-[320px]">
-          <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-brand-100 bg-brand-50/70 px-4 py-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Ajuda CCM</p>
-              <p className="text-sm font-semibold text-emerald-900">Chat de departamentos</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Ajuda CCM</p>
+              <p className="text-sm font-semibold text-brand-900">Chat de departamentos</p>
             </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-full border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+              className="rounded-full border border-brand-200 px-2 py-1 text-xs font-semibold text-brand-800 hover:bg-brand-100"
             >
               Fechar
             </button>
           </div>
-          <div className="max-h-64 space-y-3 overflow-y-auto px-4 py-3 text-sm text-slate-700 sm:max-h-72">
+          <div className="max-h-64 space-y-3 overflow-y-auto px-4 py-3 text-sm text-text sm:max-h-72">
             {messages.map((message) => (
               <div
                 key={message.id}
                 className={`rounded-xl px-3 py-2 leading-relaxed ${
                   message.from === "bot"
-                    ? "bg-emerald-50 text-emerald-900"
-                    : "bg-white text-slate-800 shadow-sm"
+                    ? "bg-brand-50 text-brand-900"
+                    : "bg-white text-text shadow-sm"
                 }`}
               >
                 {message.text.split("\n").map((line, index) => (
@@ -571,7 +571,7 @@ export function HelpChatWidget() {
                 ))}
               </div>
             ))}
-            {typing ? <p className="text-xs text-slate-400">Digitando...</p> : null}
+            {typing ? <p className="text-xs text-text-muted">Digitando...</p> : null}
             {chips.length ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {chips.map((chip) => (
@@ -581,7 +581,7 @@ export function HelpChatWidget() {
                     onClick={() => {
                       processMessage(chip, "chip");
                     }}
-                    className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-50"
+                    className="rounded-full border border-brand-200 bg-white px-3 py-1 text-xs font-semibold text-brand-800 hover:bg-brand-50"
                   >
                     {chip}
                   </button>
@@ -590,23 +590,23 @@ export function HelpChatWidget() {
             ) : null}
             <div ref={endRef} />
           </div>
-          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-emerald-100 bg-white/80 px-3 py-3">
+          <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-brand-100 bg-white/80 px-3 py-3">
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder={visitorName ? "Use os botões abaixo" : "Ex: Louvor, Casais, Intercessão..."}
               disabled={!!visitorName}
-              className="flex-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-base sm:text-xs focus:border-emerald-300 focus:outline-none"
+              className="flex-1 rounded-full border border-border bg-white px-3 py-2 text-base sm:text-xs focus:border-brand-300 focus:outline-none"
             />
             <button
               type="submit"
               disabled={!canSend || loading}
-              className="rounded-full bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+              className="rounded-full bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               Enviar
             </button>
           </form>
-          <div className="border-t border-emerald-100 px-4 py-2 text-[11px] text-slate-500">
+          <div className="border-t border-brand-100 px-4 py-2 text-[11px] text-text-muted">
             Este chat informa apenas sobre departamentos e contatos.
           </div>
         </div>
@@ -615,7 +615,7 @@ export function HelpChatWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/30 transition hover:bg-emerald-700 sm:w-auto"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-600/30 transition hover:bg-brand-700 sm:w-auto"
       >
         Tirar dúvidas
       </button>

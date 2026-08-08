@@ -9,25 +9,25 @@ export function FunnelChart({ stages }: { stages: Stage[] }) {
   return (
     <div className="card p-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-emerald-900">Funil de Integração</h3>
-        <span className="pill bg-emerald-100 text-emerald-900">Hoje/Semana/Mês</span>
+        <h3 className="text-sm font-semibold text-text">Funil de Integração</h3>
+        <span className="pill bg-brand-100 text-brand-900">Hoje/Semana/Mês</span>
       </div>
       <div className="mt-4 space-y-3">
         {stages.map((stage, idx) => (
           <div key={stage.label}>
-            <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+            <div className="flex items-center justify-between text-xs font-medium text-text-muted">
               <span>{idx + 1}. {stage.label}</span>
               <span>{stage.value}</span>
             </div>
-            <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
+            <div className="mt-1 h-2 w-full rounded-full bg-surface">
               <div
-                className="h-2 rounded-full bg-emerald-400"
+                className="h-2 rounded-full bg-brand-400"
                 style={{ width: `${(stage.value / max) * 100}%` }}
               />
             </div>
           </div>
         ))}
-        {!stages.length ? <p className="text-xs text-slate-500">Sem dados no período.</p> : null}
+        {!stages.length ? <p className="text-xs text-text-muted">Sem dados no período.</p> : null}
       </div>
     </div>
   );

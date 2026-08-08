@@ -13,13 +13,13 @@ import {
 import { formatBrazilPhoneInput, parseBrazilPhone } from "@/lib/phone";
 import type { PessoaItem } from "@/lib/cadastrosApi";
 
-const fieldLabelClass = "text-slate-700";
+const fieldLabelClass = "text-text";
 const fieldClass =
-  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
+  "block min-w-0 w-full max-w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none sm:text-base";
 const primaryButtonClass =
-  "w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto";
+  "w-full rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 sm:w-auto";
 const secondaryButtonClass =
-  "w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:border-emerald-200 hover:text-emerald-900 sm:w-auto";
+  "w-full rounded-xl border border-border px-4 py-3 text-sm font-semibold text-text-muted hover:border-brand-200 hover:text-brand-900 sm:w-auto";
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
 
 function currentLocalDateInputValue() {
@@ -204,17 +204,17 @@ export function CadastroForm({
   return (
     <form className="card grid gap-4 p-4 md:grid-cols-2" onSubmit={handleSubmit}>
       {!hasCultoColumn ? (
-        <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
+        <p className={`${feedbackClass} border border-warning-100 bg-warning-100 text-warning-600 md:col-span-2`}>
           A coluna `culto_origem` ainda não existe neste ambiente. Aplique a migração `0067_ccm_culto_rapido.sql`.
         </p>
       ) : null}
       {!hasCompletionStatusColumn ? (
-        <p className={`${feedbackClass} border border-amber-200 bg-amber-50 text-amber-700 md:col-span-2`}>
+        <p className={`${feedbackClass} border border-warning-100 bg-warning-100 text-warning-600 md:col-span-2`}>
           O status de complementação ainda não existe neste ambiente. Aplique a migração `0020_member_profile_completion.sql`.
         </p>
       ) : null}
       {validationMessage ? (
-        <p className={`${feedbackClass} border border-rose-200 bg-rose-50 text-rose-700 md:col-span-2`}>
+        <p className={`${feedbackClass} border border-danger-100 bg-danger-100 text-danger-600 md:col-span-2`}>
           {validationMessage}
         </p>
       ) : null}
@@ -273,13 +273,13 @@ export function CadastroForm({
       </label>
 
       {isCadastradorOnly ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
+        <div className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-muted md:col-span-2">
           Este cadastro resumido é o fluxo do perfil <strong>CADASTRADOR</strong>. Os demais dados serão
           preenchidos posteriormente pela equipe ou pelo link de complementação.
         </div>
       ) : !editingPessoa ? (
         <>
-          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 md:col-span-2">
+          <div className="rounded-xl border border-info-100 bg-info-100 px-4 py-3 text-sm text-info-600 md:col-span-2">
             Este é o <strong>formulário completo</strong> para perfis administrativos. Cadastros criados aqui já
             entram com os dados complementares preenchidos.
           </div>
@@ -380,7 +380,7 @@ export function CadastroForm({
           </label>
         </>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 md:col-span-2">
+        <div className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-muted md:col-span-2">
           A edição continua focada nos dados iniciais do cadastro. A complementação segue pelo fluxo de cadastro
           completo.
         </div>

@@ -223,10 +223,10 @@ export default function RelatoriosPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-500">Relatórios e Exportações</p>
-          <h2 className="text-xl font-semibold text-emerald-900">Relatórios</h2>
+          <p className="text-sm text-text-muted">Relatórios e Exportações</p>
+          <h2 className="text-xl font-semibold text-brand-900">Relatórios</h2>
         </div>
-        <div className="pill bg-emerald-100 text-emerald-900">
+        <div className="pill bg-brand-100 text-brand-900">
           Consolidado anual somente ao gerar relatório
         </div>
       </div>
@@ -234,11 +234,11 @@ export default function RelatoriosPage() {
       <div className="card p-5">
         <form className="grid gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Tipo de relatório</span>
+            <span className="text-text">Tipo de relatório</span>
             <select
               value={reportType}
               onChange={(event) => setReportType(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               <option>Integração & Batismo</option>
               <option>Voluntariado por departamento</option>
@@ -247,11 +247,11 @@ export default function RelatoriosPage() {
             </select>
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Período</span>
+            <span className="text-text">Período</span>
             <select
               value={period}
               onChange={(event) => setPeriod(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             >
               <option>Hoje</option>
               <option>Semana</option>
@@ -262,42 +262,42 @@ export default function RelatoriosPage() {
           {period === "Personalizado" ? (
             <>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Início</span>
+                <span className="text-text">Início</span>
                 <input
                   type="date"
                   value={customStart}
                   onChange={(event) => setCustomStart(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                 />
               </label>
               <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Fim</span>
+                <span className="text-text">Fim</span>
                 <input
                   type="date"
                   value={customEnd}
                   onChange={(event) => setCustomEnd(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
                 />
               </label>
             </>
           ) : null}
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Ano (para consolidado anual)</span>
+            <span className="text-text">Ano (para consolidado anual)</span>
             <input
               type="number"
               min={2020}
               value={year}
               onChange={(event) => setYear(Number(event.target.value))}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none"
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="text-slate-700">Formato</span>
+            <span className="text-text">Formato</span>
             <div className="flex gap-3">
-              <label className="flex items-center gap-1 text-slate-700">
+              <label className="flex items-center gap-1 text-text">
                 <input type="checkbox" defaultChecked /> PDF
               </label>
-              <label className="flex items-center gap-1 text-slate-700">
+              <label className="flex items-center gap-1 text-text">
                 <input type="checkbox" defaultChecked /> Excel/CSV
               </label>
             </div>
@@ -306,33 +306,33 @@ export default function RelatoriosPage() {
             <button
               type="button"
               onClick={handleGenerate}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Gerar Relatório
             </button>
             <button
               type="button"
               onClick={handleExportPdf}
-              className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+              className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50"
             >
               Exportar PDF
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-900 hover:bg-emerald-50"
+              className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50"
             >
               Exportar Excel/CSV
             </button>
           </div>
         </form>
         {statusMessage ? (
-          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p className="mt-4 rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
             {statusMessage}
           </p>
         ) : null}
         {reportData ? (
-          <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-900">
+          <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/50 px-4 py-3 text-sm text-brand-900">
             Relatório pronto com {reportData.rows.length} linhas.
           </div>
         ) : null}

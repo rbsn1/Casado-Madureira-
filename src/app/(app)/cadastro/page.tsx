@@ -18,11 +18,11 @@ function currentLocalDateInputValue() {
   return new Date(now.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
 }
 
-const fieldLabelClass = "text-slate-700";
+const fieldLabelClass = "text-text";
 const fieldClass =
-  "block min-w-0 w-full max-w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-emerald-400 focus:outline-none sm:text-base";
+  "block min-w-0 w-full max-w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none sm:text-base";
 const primaryButtonClass =
-  "w-full rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto";
+  "w-full rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto";
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
 
 export default function CadastroInternoPage() {
@@ -65,7 +65,7 @@ export default function CadastroInternoPage() {
   if (checkingAccess) {
     return (
       <div className="mx-auto w-full max-w-4xl">
-        <div className="card p-4 text-sm text-slate-500">Validando perfil...</div>
+        <div className="card p-4 text-sm text-text-muted">Validando perfil...</div>
       </div>
     );
   }
@@ -139,29 +139,29 @@ export default function CadastroInternoPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
       <div>
-        <p className="text-sm text-slate-500">Gestão de Pessoas</p>
-        <h2 className="text-xl font-semibold text-emerald-900 md:text-2xl">Cadastro rápido no culto</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="text-sm text-text-muted">Gestão de Pessoas</p>
+        <h2 className="text-xl font-semibold text-brand-900 md:text-2xl">Cadastro rápido no culto</h2>
+        <p className="mt-1 text-sm text-text-muted">
           Fluxo resumido do perfil <strong>CADASTRADOR</strong>: registre só o essencial agora e deixe a complementação para depois.
         </p>
       </div>
 
       <div className="grid gap-3 sm:hidden">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">Operação</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-950">4 campos</p>
+          <div className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700">Operação</p>
+            <p className="mt-1 text-sm font-semibold text-brand-950">4 campos</p>
           </div>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">Depois</p>
-            <p className="mt-1 text-sm font-semibold text-amber-950">Completar cadastro</p>
+          <div className="rounded-2xl border border-warning-100 bg-warning-100 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning-600">Depois</p>
+            <p className="mt-1 text-sm font-semibold text-warning-600">Completar cadastro</p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
         <form className="card min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 md:p-6" onSubmit={handleSubmit}>
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-2xl border border-warning-100 bg-warning-100 px-4 py-3 text-sm text-warning-600">
             Formulário resumido exclusivo para o perfil <strong>CADASTRADOR</strong>: <strong>nome, contato, data e culto</strong>. Os demais dados serão completados depois.
           </div>
 
@@ -234,17 +234,17 @@ export default function CadastroInternoPage() {
             >
               {status === "loading" ? "Salvando..." : "Salvar rápido"}
             </button>
-            <p className="text-xs leading-5 text-slate-500">Ideal para uso no celular durante o culto, sem filas e sem demora.</p>
+            <p className="text-xs leading-5 text-text-muted">Ideal para uso no celular durante o culto, sem filas e sem demora.</p>
           </div>
 
           {status === "success" ? (
-            <p className={`${feedbackClass} border border-emerald-200 bg-emerald-50 text-emerald-700`}>
+            <p className={`${feedbackClass} border border-brand-200 bg-brand-50 text-brand-700`}>
               {message}
             </p>
           ) : null}
 
           {status === "error" ? (
-            <p className={`${feedbackClass} border border-rose-200 bg-rose-50 text-rose-700`}>
+            <p className={`${feedbackClass} border border-danger-100 bg-danger-100 text-danger-600`}>
               {message || "Não foi possível salvar o cadastro rápido."}
             </p>
           ) : null}
@@ -252,11 +252,11 @@ export default function CadastroInternoPage() {
 
         <aside className="order-last card space-y-4 p-4 sm:p-5 lg:order-none">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Fluxo</p>
-            <h3 className="mt-2 text-lg font-semibold text-emerald-900">Depois do culto</h3>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">Fluxo</p>
+            <h3 className="mt-2 text-lg font-semibold text-brand-900">Depois do culto</h3>
           </div>
 
-          <ul className="space-y-3 text-sm leading-6 text-slate-600">
+          <ul className="space-y-3 text-sm leading-6 text-text-muted">
             <li>Este formato reduzido é o fluxo operacional do perfil <strong>CADASTRADOR</strong>.</li>
             <li>O registro entra como <strong>pendente de complementação</strong>.</li>
             <li>A equipe pode enviar o link de cadastro completo depois.</li>

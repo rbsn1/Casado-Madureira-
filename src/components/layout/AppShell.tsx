@@ -6,6 +6,9 @@ import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
+import { Modal } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type NavItem = {
   href: string;
@@ -241,7 +244,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
       <aside className="hidden lg:block border-r text-white border-brand-900 bg-gradient-to-b from-brand-900 via-brand-900 to-[#243f61]">
           <div className="sticky top-0 flex h-screen flex-col gap-6 p-5">
             <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-600 font-bold text-white shadow-inner">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 font-bold text-white shadow-inner">
                 CM
               </div>
               <div>
@@ -339,7 +342,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             </div>
           </header>
           {!authResolved ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <div className="rounded-2xl border border-border bg-bg p-4 text-sm text-text-muted">
               Carregando ambiente...
             </div>
           ) : (
@@ -424,13 +427,13 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   href={item.href}
                   className={clsx(
                     "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
-                    active ? "bg-brand-100 text-brand-900" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    active ? "bg-brand-100 text-brand-900" : "text-text-muted hover:bg-surface hover:text-text"
                   )}
                 >
                   <span
                     className={clsx(
                       "inline-flex h-6 w-6 items-center justify-center rounded-full",
-                      active ? "bg-brand-200 text-brand-900" : "bg-slate-100 text-slate-500"
+                      active ? "bg-brand-200 text-brand-900" : "bg-surface text-text-muted"
                     )}
                     aria-hidden="true"
                   >
@@ -457,57 +460,31 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             </button>
           </nav>
       </div>
-      {showPasswordModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-emerald-900">Alterar senha</h2>
-              <button
-                type="button"
-                onClick={() => setShowPasswordModal(false)}
-                className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-emerald-200 hover:text-emerald-900"
-              >
-                Fechar
-              </button>
-            </div>
-            <form className="mt-4 space-y-3" onSubmit={handlePasswordChange}>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Nova senha</span>
-                <input
-                  name="password"
-                  type="password"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
-                />
-              </label>
-              <label className="space-y-1 text-sm">
-                <span className="text-slate-700">Confirmar senha</span>
-                <input
-                  name="confirm"
-                  type="password"
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
-                />
-              </label>
-              <button
-                type="submit"
-                className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-70 bg-emerald-600 hover:bg-emerald-700"
-                disabled={passwordStatus === "loading"}
-              >
-                {passwordStatus === "loading" ? "Salvando..." : "Salvar nova senha"}
-              </button>
-              {passwordStatus === "error" ? (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-                  {passwordMessage || "Não foi possível atualizar a senha."}
-                </p>
-              ) : null}
-              {passwordStatus === "success" ? (
-                <p className="rounded-lg px-3 py-2 text-xs border border-emerald-200 bg-emerald-50 text-emerald-700">
-                  {passwordMessage}
-                </p>
-              ) : null}
-            </form>
-          </div>
-        </div>
-      ) : null}
+      <Modal open={showPasswordModal} onClose={() => setShowPasswordModal(false)} title="Alterar senha">
+        <form className="space-y-3" onSubmit={handlePasswordChange}>
+          <label className="space-y-1 text-sm">
+            <span className="text-text">Nova senha</span>
+            <Input name="password" type="password" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-text">Confirmar senha</span>
+            <Input name="confirm" type="password" />
+          </label>
+          <Button type="submit" className="w-full" disabled={passwordStatus === "loading"}>
+            {passwordStatus === "loading" ? "Salvando..." : "Salvar nova senha"}
+          </Button>
+          {passwordStatus === "error" ? (
+            <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
+              {passwordMessage || "Não foi possível atualizar a senha."}
+            </p>
+          ) : null}
+          {passwordStatus === "success" ? (
+            <p className="rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
+              {passwordMessage}
+            </p>
+          ) : null}
+        </form>
+      </Modal>
     </div>
   );
 }

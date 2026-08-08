@@ -138,83 +138,83 @@ export default function PessoaPerfilPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm text-slate-500">Perfil da Pessoa</p>
-          <h2 className="text-xl font-semibold text-emerald-900">
+          <p className="text-sm text-text-muted">Perfil da Pessoa</p>
+          <h2 className="text-xl font-semibold text-brand-900">
             {pessoa?.nome_completo ?? "Pessoa"}
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+          <span className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-text-muted">
             CCM: somente visualizacao
           </span>
         </div>
       </div>
 
       {statusMessage ? (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+        <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
           {statusMessage}
         </p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="card p-4 lg:col-span-2">
-          <h3 className="text-sm font-semibold text-emerald-900">Dados gerais</h3>
+          <h3 className="text-sm font-semibold text-brand-900">Dados gerais</h3>
           <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Telefone (WhatsApp)</dt>
-              <dd className="text-sm font-semibold text-slate-900">{pessoa?.telefone_whatsapp ?? "-"}</dd>
+            <div className="rounded-lg border border-surface bg-surface/60 p-3">
+              <dt className="text-xs text-text-muted">Telefone (WhatsApp)</dt>
+              <dd className="text-sm font-semibold text-text">{pessoa?.telefone_whatsapp ?? "-"}</dd>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Culto</dt>
-              <dd className="text-sm font-semibold text-slate-900">
+            <div className="rounded-lg border border-surface bg-surface/60 p-3">
+              <dt className="text-xs text-text-muted">Culto</dt>
+              <dd className="text-sm font-semibold text-text">
                 {cultoOrigemLabelFromValue(pessoa?.culto_origem ?? pessoa?.origem)}
               </dd>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Status do cadastro</dt>
-              <dd className="text-sm font-semibold text-slate-900">
+            <div className="rounded-lg border border-surface bg-surface/60 p-3">
+              <dt className="text-xs text-text-muted">Status do cadastro</dt>
+              <dd className="text-sm font-semibold text-text">
                 {cadastroCompletoLabel(pessoa?.cadastro_completo_status ?? "pendente")}
               </dd>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Data</dt>
-              <dd className="text-sm font-semibold text-slate-900">
+            <div className="rounded-lg border border-surface bg-surface/60 p-3">
+              <dt className="text-xs text-text-muted">Data</dt>
+              <dd className="text-sm font-semibold text-text">
                 {pessoa?.data ? formatDateBR(pessoa.data) : "-"}
               </dd>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-              <dt className="text-xs text-slate-500">Status integracao</dt>
-              <dd className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <div className="rounded-lg border border-surface bg-surface/60 p-3">
+              <dt className="text-xs text-text-muted">Status integracao</dt>
+              <dd className="flex items-center gap-2 text-sm font-semibold text-text">
                 <StatusBadge value={integracao?.status ?? "PENDENTE"} />
-                <span className="text-xs text-slate-600">
+                <span className="text-xs text-text-muted">
                   Responsavel: {integracao?.responsavel_id ?? "A definir"}
                 </span>
               </dd>
             </div>
-            <div className="rounded-lg border border-slate-100 bg-slate-50/60 p-3 sm:col-span-2">
-              <dt className="text-xs text-slate-500">Observações</dt>
-              <dd className="text-sm font-semibold text-slate-900">{pessoa?.observacoes ?? "-"}</dd>
+            <div className="rounded-lg border border-surface bg-surface/60 p-3 sm:col-span-2">
+              <dt className="text-xs text-text-muted">Observações</dt>
+              <dd className="text-sm font-semibold text-text">{pessoa?.observacoes ?? "-"}</dd>
             </div>
           </dl>
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div className="card-muted card p-3">
-              <p className="text-xs font-semibold text-emerald-900">Integracao</p>
-              <p className="text-sm text-slate-700">Responsavel: {integracao?.responsavel_id ?? "A definir"}</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs font-semibold text-brand-900">Integracao</p>
+              <p className="text-sm text-text">Responsavel: {integracao?.responsavel_id ?? "A definir"}</p>
+              <p className="text-xs text-text-muted">
                 Ultima interacao: {integracao?.ultima_interacao ? formatDateBR(integracao.ultima_interacao) : "-"}
               </p>
             </div>
             <div className="card-muted card p-3">
-              <p className="text-xs font-semibold text-emerald-900">Batismo</p>
-              <p className="text-sm text-slate-700">
+              <p className="text-xs font-semibold text-brand-900">Batismo</p>
+              <p className="text-sm text-text">
                 {batismos[0]?.data ? formatDateBR(batismos[0].data) : "Sem registro"}
               </p>
-              <p className="text-xs text-slate-500">{batismos[0]?.responsavel_id ?? "Secretaria"}</p>
+              <p className="text-xs text-text-muted">{batismos[0]?.responsavel_id ?? "Secretaria"}</p>
             </div>
             <div className="card-muted card p-3">
-              <p className="text-xs font-semibold text-emerald-900">Departamentos</p>
-              <p className="text-sm text-slate-700">
+              <p className="text-xs font-semibold text-brand-900">Departamentos</p>
+              <p className="text-sm text-text">
                 {pessoaDepto.length
                   ? pessoaDepto
                       .map((item) => `${deptoMap.get(item.departamento_id) ?? "Depto"} (${item.funcao ?? "voluntario"})`)
@@ -227,23 +227,23 @@ export default function PessoaPerfilPage() {
 
         <div className="card p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-emerald-900">Timeline</h3>
-            <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">
+            <h3 className="text-sm font-semibold text-brand-900">Timeline</h3>
+            <span className="rounded-lg border border-border bg-surface px-3 py-1 text-xs text-text-muted">
               Somente leitura
             </span>
           </div>
           <ol className="mt-3 space-y-3">
-            {loading ? <li className="text-sm text-slate-500">Carregando timeline...</li> : null}
+            {loading ? <li className="text-sm text-text-muted">Carregando timeline...</li> : null}
             {!loading && !timeline.length ? (
-              <li className="text-sm text-slate-500">Nenhum evento registrado.</li>
+              <li className="text-sm text-text-muted">Nenhum evento registrado.</li>
             ) : null}
             {timeline.map((event) => (
-              <li key={event.id} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                <div className="flex items-center justify-between text-xs text-slate-600">
+              <li key={event.id} className="rounded-lg border border-surface bg-surface p-3">
+                <div className="flex items-center justify-between text-xs text-text-muted">
                   <span>{formatDateBR(event.created_at)}</span>
                   <StatusBadge value={event.tipo} />
                 </div>
-                <p className="mt-1 text-sm font-semibold text-slate-900">{event.descricao}</p>
+                <p className="mt-1 text-sm font-semibold text-text">{event.descricao}</p>
               </li>
             ))}
           </ol>

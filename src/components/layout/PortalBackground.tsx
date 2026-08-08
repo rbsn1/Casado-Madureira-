@@ -11,18 +11,18 @@ export function PortalBackground({
   heroImageSrc,
   heroHeight = "520px"
 }: PortalBackgroundProps) {
-  const rootClass = "relative min-h-screen overflow-hidden bg-[#F7FBF7] text-slate-900";
+  const rootClass = "relative min-h-screen overflow-hidden bg-[#F6F8FB] text-text";
   const ambientClass =
-    "absolute inset-0 bg-gradient-to-b from-[#f9fbfa] via-emerald-100/60 to-emerald-200/40 portal-ambient-glow";
+    "absolute inset-0 bg-gradient-to-b from-[#f7f9fc] via-brand-100/60 to-brand-200/40 portal-ambient-glow";
   const heroOverlayClass =
-    "absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.9)_0%,_rgba(244,250,246,0.62)_45%,_rgba(210,234,222,0.42)_75%)]";
-  const heroGradientClass = "absolute inset-0 bg-gradient-to-b from-white/85 via-emerald-50/45 to-emerald-100/30";
+    "absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.9)_0%,_rgba(243,247,251,0.62)_45%,_rgba(201,219,234,0.42)_75%)]";
+  const heroGradientClass = "absolute inset-0 bg-gradient-to-b from-white/85 via-brand-50/45 to-brand-100/30";
   const glowMainClass =
-    "absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-emerald-200/40 blur-[150px] portal-glow-main";
+    "absolute left-1/2 top-8 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-brand-200/40 blur-[150px] portal-glow-main";
   const glowSideClass =
-    "absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-sky-200/25 blur-[140px] portal-glow-side";
+    "absolute right-[-120px] top-[220px] h-[320px] w-[320px] rounded-full bg-info-100/25 blur-[140px] portal-glow-side";
   const glowLowerClass =
-    "absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-emerald-200/25 blur-[140px] portal-glow-lower";
+    "absolute bottom-[-120px] left-[-40px] h-[300px] w-[300px] rounded-full bg-brand-200/25 blur-[140px] portal-glow-lower";
 
   return (
     <div className={rootClass}>
@@ -61,7 +61,7 @@ export function PortalBackground({
       <div className={glowLowerClass} />
 
       {/* Vignette */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0)_45%,_rgba(12,20,14,0.06)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0)_45%,_rgba(15,23,42,0.06)_100%)]" />
 
       {/* Noise overlay */}
       <div
