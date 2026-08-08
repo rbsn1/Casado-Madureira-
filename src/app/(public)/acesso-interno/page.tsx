@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { getAuthScope } from "@/lib/authScope";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 
 type LoginStatus = "idle" | "loading" | "error";
-
-const cardClass =
-  "rounded-2xl border border-black/5 bg-white/85 p-6 shadow-lg shadow-black/5 backdrop-blur";
 
 export default function AcessoInternoPage() {
   const router = useRouter();
@@ -98,92 +99,81 @@ export default function AcessoInternoPage() {
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600/90 text-xs font-semibold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-700 text-xs font-semibold text-white">
               CCM
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-700">
                 Portal CCM
               </p>
-              <p className="text-sm font-semibold text-emerald-900">Acesso interno</p>
+              <p className="text-sm font-semibold text-text">Acesso interno</p>
             </div>
           </div>
           <Link
             href="/login"
-            className="text-sm font-semibold text-emerald-800 transition hover:text-emerald-900"
+            className="text-sm font-semibold text-brand-700 transition hover:text-brand-900"
           >
             Voltar ao portal →
           </Link>
         </header>
 
         <section className="flex flex-1 items-center justify-center pt-10">
-          <div className={`${cardClass} w-full max-w-md`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          <Card className="w-full max-w-md p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
               Acesso interno
             </p>
-            <h1 className="mt-2 text-2xl font-semibold text-emerald-900">Entre no painel</h1>
-            <p className="mt-2 text-sm text-slate-600">
+            <h1 className="mt-2 text-2xl font-semibold text-text">Entre no painel</h1>
+            <p className="mt-2 text-sm text-text-muted">
               Utilize seu e-mail institucional para acompanhar cadastros, relatórios e times.
             </p>
             <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="email">
+                <label className="text-sm font-medium text-text" htmlFor="email">
                   E-mail
                 </label>
-                <input
+                <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="voce@casados.com"
                   value={emailValue}
                   onChange={(event) => setEmailValue(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700" htmlFor="password">
+                <label className="text-sm font-medium text-text" htmlFor="password">
                   Senha
                 </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"
-                />
+                <Input id="password" name="password" type="password" placeholder="••••••••" />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-text-muted">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-4 w-4 rounded border-slate-300" />
+                  <Checkbox />
                   Manter conectado
                 </label>
                 <button
                   type="button"
                   onClick={handlePasswordReset}
-                  className="font-semibold text-emerald-800 hover:text-emerald-900"
+                  className="font-semibold text-brand-700 hover:text-brand-900"
                 >
                   Esqueci minha senha
                 </button>
               </div>
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                disabled={status === "loading"}
-              >
+              <Button type="submit" className="w-full" disabled={status === "loading"}>
                 {status === "loading" ? "Entrando..." : "Entrar"}
-              </button>
+              </Button>
               {status === "error" ? (
-                <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                <p className="rounded-lg border border-danger-100 bg-danger-100/60 px-3 py-2 text-xs text-danger-600">
                   {message || "Nao foi possivel entrar. Verifique suas credenciais."}
                 </p>
               ) : null}
               {status === "idle" && message ? (
-                <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                <p className="rounded-lg border border-success-100 bg-success-100/60 px-3 py-2 text-xs text-success-600">
                   {message}
                 </p>
               ) : null}
             </form>
-          </div>
+          </Card>
         </section>
       </div>
     </PortalBackground>

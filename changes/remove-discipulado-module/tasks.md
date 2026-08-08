@@ -58,6 +58,25 @@
   `pessoas_delete_discipulado_bridge`, desativação soft de `usuarios_perfis`
   com role de discipulado, ~29 funções/RPCs exclusivas, e as 12 tabelas
   exclusivas de discipulado (com CASCADE)
+- [x] **`0074`, `0075` e `0076` aplicadas no banco de produção**
+      (`db.uquhgeunncbjgiqljhgw.supabase.co`) via `supabase db push`.
+- [x] `supabase/migrations/0076_remove_discipulado_draft_and_leftover_bridges.sql`
+      criada e aplicada — cobre 3 achados que só apareceram depois de aplicar
+      0075 e o usuário reportar que ainda via tabela de discipulado no banco:
+      (a) 6 funções-ponte do módulo antigo que sobraram por assinatura errada
+      em 0075; (b) um **rascunho vazio e sem migration neste repo** do app
+      independente de discipulado (`disciples`, `discipleship_cases`,
+      `post_discipleship`, `classes`, `profiles`, `user_role` e mais 11
+      tabelas/tipos — confirmado com o usuário como abandonado, 0 linhas em
+      tudo); (c) 4 policies da tabela **compartilhada** `congregations`
+      (`select`/`insert`/`update`/`delete`) que dependiam da autenticação
+      desse rascunho e por isso eram inalcançáveis — confirmado com o
+      usuário que era seguro remover, já que `congregations_read` e
+      `congregations_manage_admin` cobrem o acesso real do CCM.
+- [x] Duas tentativas de push falharam por erro de `DROP` (ordem/CASCADE
+      faltando) — como o CLI aplica cada migration em transação, ambas
+      reverteram por completo antes de eu corrigir e tentar de novo
+      (confirmado via query direta ao banco em cada caso).
 
 ## Verificação
 - [x] Grep final por discipulado/discipleship/roles — só restam

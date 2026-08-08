@@ -10,7 +10,7 @@ export function Separator({
       role="separator"
       aria-orientation={orientation}
       className={clsx(
-        "bg-slate-200/90",
+        "bg-border",
         orientation === "horizontal" ? "h-px w-full" : "h-full w-px",
         className
       )}
