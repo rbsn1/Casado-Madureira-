@@ -1,0 +1,68 @@
+<h2>Como o painel de marca se comporta no celular?</h2>
+<p class="subtitle">No desktop é split-screen (metade imagem, metade form). No mobile não cabem as duas colunas — o painel de marca precisa virar outra coisa. Três formas de resolver:</p>
+
+<div class="cards">
+  <div class="card" data-choice="compact-band" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;display:flex;justify-content:center;background:#e9edf2;">
+      <div style="width:180px;border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:white;font-family:system-ui,sans-serif;">
+        <div style="height:88px;background:linear-gradient(160deg,#1E3A5F 0%,#16304e 70%,#0f1e31 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;">
+          <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-bottom:6px;">CM</div>
+          <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin:0;opacity:.85;">Portal CCM</p>
+        </div>
+        <div style="padding:14px;">
+          <div style="height:8px;width:60%;background:#e2e8f0;border-radius:4px;margin-bottom:10px;"></div>
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:24px;background:#2E5E8A;border-radius:6px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Faixa compacta no topo</h3>
+      <p>O painel de marca vira uma faixa de ~90px no topo (mesmo gradiente/estilo do desktop, só achatado), form embaixo ocupando o resto da tela.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="logo-only" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;display:flex;justify-content:center;background:#e9edf2;">
+      <div style="width:180px;border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:white;font-family:system-ui,sans-serif;">
+        <div style="padding:24px 14px 10px;display:flex;flex-direction:column;align-items:center;">
+          <div style="width:32px;height:32px;border-radius:9px;background:#2E5E8A;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:white;margin-bottom:8px;">CM</div>
+          <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#2E5E8A;margin:0;">Portal CCM</p>
+        </div>
+        <div style="padding:10px 14px 14px;">
+          <div style="height:8px;width:60%;background:#e2e8f0;border-radius:4px;margin-bottom:10px;"></div>
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:24px;background:#2E5E8A;border-radius:6px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Só o logo, sem gradiente</h3>
+      <p>No mobile o painel de marca desaparece por completo — sobra só um logo/wordmark simples no topo, fundo branco direto. Mais rápido, mais "app".</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="fullscreen-hero" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:0;overflow:hidden;display:flex;justify-content:center;background:#e9edf2;">
+      <div style="width:180px;border:1px solid #cbd5e1;border-radius:14px;overflow:hidden;background:white;font-family:system-ui,sans-serif;">
+        <div style="height:150px;background:linear-gradient(160deg,rgba(30,58,95,.2) 0%,rgba(30,58,95,.85) 70%,#0f1e31 100%),url('https://images.unsplash.com/photo-1511632765486-a01980e01a18?q=80&w=400&auto=format&fit=crop') center/cover;display:flex;flex-direction:column;justify-content:flex-end;padding:12px;color:white;">
+          <div style="width:26px;height:26px;border-radius:7px;background:#2E5E8A;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;margin-bottom:6px;">CM</div>
+          <p style="font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin:0;opacity:.85;">Portal CCM</p>
+        </div>
+        <div style="padding:12px;">
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:22px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px;"></div>
+          <div style="height:24px;background:#2E5E8A;border-radius:6px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Hero grande, form embaixo (rolagem)</h3>
+      <p>Painel de marca ocupa boa parte da tela inicial (~40%) com foto, form fica visível já sem precisar rolar muito. Mais imersivo, ocupa mais espaço de tela útil.</p>
+    </div>
+  </div>
+</div>
+
+<p class="section" style="margin-top:20px;font-size:13px;opacity:.75;">A imagem/gradiente do painel desktop (foto, abstrato ou editorial) se adapta a qualquer uma dessas 3 — essa escolha é só sobre o quanto de espaço ele ocupa no celular.</p>

@@ -1,5 +1,5 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
-import * as XLSX from "xlsx";
+import { readSheet } from "read-excel-file/browser";
 import { parseCsv } from "@/lib/csv";
 import {
   CultoOrigemCode,
@@ -41,20 +41,30 @@ function toTwoDigits(value: number) {
   return String(value).padStart(2, "0");
 }
 
-function normalizeImportDate(value: string) {
+function normalizeImportDate(value: string | number | Date | null | undefined) {
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return `${value.getFullYear()}-${toTwoDigits(value.getMonth() + 1)}-${toTwoDigits(value.getDate())}`;
+  }
+
+  if (typeof value === "number") {
+    // Serial de data do Excel (dias desde 1899-12-30). Caso raro hoje em dia
+    // com read-excel-file, que já devolve Date para células formatadas como
+    // data — mantido para números "crus" digitados em célula de texto.
+    if (!Number.isFinite(value)) return null;
+    const excelEpochMs = Date.UTC(1899, 11, 30);
+    const date = new Date(excelEpochMs + Math.round(value) * 86_400_000);
+    if (Number.isNaN(date.getTime())) return null;
+    return `${date.getUTCFullYear()}-${toTwoDigits(date.getUTCMonth() + 1)}-${toTwoDigits(date.getUTCDate())}`;
+  }
+
   const raw = String(value ?? "").trim();
   if (!raw) return null;
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
 
   if (/^\d+(?:\.\d+)?$/.test(raw)) {
-    const serial = Number(raw);
-    if (!Number.isFinite(serial)) return null;
-    const parsed = (XLSX as unknown as { SSF?: { parse_date_code?: (input: number) => { y: number; m: number; d: number } | null } })
-      ?.SSF?.parse_date_code?.(serial);
-    if (parsed?.y && parsed?.m && parsed?.d) {
-      return `${parsed.y}-${toTwoDigits(parsed.m)}-${toTwoDigits(parsed.d)}`;
-    }
+    return normalizeImportDate(Number(raw));
   }
 
   const slashDate = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -98,28 +108,27 @@ function parseCadastroCompletoStatus(value: string | null | undefined): Cadastro
   return "pendente";
 }
 
-async function parseImportFile(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+type ImportCell = string | number | boolean | Date | null;
+
+async function parseImportFile(file: File): Promise<{ headers: string[]; rows: ImportCell[][] }> {
   const isExcel = file.name.toLowerCase().endsWith(".xlsx");
 
   if (isExcel) {
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = sheetName ? workbook.Sheets[sheetName] : undefined;
-    if (!sheet) {
-      throw new Error("Arquivo Excel inválido.");
-    }
-    const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false }) as string[][];
-    const rows = data
-      .map((row) => row.map((cell) => String(cell ?? "").trim()))
-      .filter((row) => row.some((cell) => cell.length > 0));
-    return { headers: rows[0] ?? [], rows: rows.slice(1) };
+    const data = await readSheet(file);
+    const rows = (data as unknown as ImportCell[][])
+      .map((row) => row.map((cell) => (cell === undefined ? null : cell)))
+      .filter((row) => row.some((cell) => cell !== null && String(cell).trim().length > 0));
+    const headerRow = rows[0] ?? [];
+    return {
+      headers: headerRow.map((cell) => String(cell ?? "").trim()),
+      rows: rows.slice(1)
+    };
   }
 
   return parseCsv(await file.text());
 }
 
-function buildImportPayload(headers: string[], rows: string[][]) {
+function buildImportPayload(headers: string[], rows: ImportCell[][]) {
   const headerIndex = headers.reduce<Record<string, number>>((acc, header, index) => {
     acc[String(header).toLowerCase()] = index;
     return acc;
@@ -138,11 +147,9 @@ function buildImportPayload(headers: string[], rows: string[][]) {
       const cultoValue = String(
         row[headerIndex.culto] ?? row[headerIndex.culto_origem] ?? row[headerIndex.origem] ?? row[headerIndex.turno] ?? ""
       ).trim();
-      const rawDateValue = String(
-        row[headerIndex.data] ?? row[headerIndex.criado_em] ?? row[headerIndex.created_at] ?? ""
-      ).trim();
+      const rawDateCell = row[headerIndex.data] ?? row[headerIndex.criado_em] ?? row[headerIndex.created_at] ?? null;
 
-      if (!nomeValue || !contatoValue || !cultoValue || !rawDateValue) {
+      if (!nomeValue || !contatoValue || !cultoValue || !rawDateCell) {
         skippedRows.push(line);
         return null;
       }
@@ -159,7 +166,7 @@ function buildImportPayload(headers: string[], rows: string[][]) {
         return null;
       }
 
-      const isoDate = normalizeImportDate(rawDateValue);
+      const isoDate = normalizeImportDate(rawDateCell as string | number | Date | null);
       if (!isoDate) {
         skippedRows.push(line);
         return null;
@@ -248,7 +255,7 @@ export async function importCadastrosFile(
   file: File,
   options: ImportCadastrosOptions
 ): Promise<ImportCadastrosResult> {
-  let parsed: { headers: string[]; rows: string[][] };
+  let parsed: { headers: string[]; rows: ImportCell[][] };
   try {
     parsed = await parseImportFile(file);
   } catch (error) {
