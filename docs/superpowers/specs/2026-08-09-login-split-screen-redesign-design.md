@@ -4,10 +4,11 @@ Status: approved, ready for implementation plan.
 
 ## Why
 
-`/login` e `/acesso-interno` usam hoje um card centralizado sobre um fundo
-ambiente (`PortalBackground`), com glow azul sutil e um padrão decorativo de
-anéis/cruzes quase invisível. Pedido do usuário: deixar essas duas telas com
-visual mais profissional e "premium".
+`/acesso-interno` (a única tela de login real — `/login` é um redirect puro
+para ela, consolidação feita à parte, fora do escopo desta mudança) usa hoje
+um card centralizado sobre um fundo ambiente (`PortalBackground`), com glow
+azul sutil e um padrão decorativo de anéis/cruzes quase invisível. Pedido do
+usuário: deixar essa tela com visual mais profissional e "premium".
 
 Restrição levantada durante o brainstorm: o app é acessado majoritariamente
 via smartphone, então qualquer decisão de layout precisa funcionar em tela
@@ -25,15 +26,17 @@ pequena, não só em desktop.
    tipografia editorial pura (as outras duas opções mostradas e descartadas).
    Gradiente `brand-900 → #16304e → #0f1e31`, glow radial azul claro no
    topo-esquerda, glow dourado sutil (`accent-500`) no canto inferior-direito.
-4. **Escopo: as duas páginas** (`/login` e `/acesso-interno`) recebem o novo
-   shell — elas compartilham a mesma experiência de entrada em dois pontos
-   diferentes do fluxo (ver "Papéis distintos" abaixo).
+4. **Escopo: `/acesso-interno` apenas.** `/login` é hoje só
+   `redirect("/acesso-interno")` (`src/app/(public)/login/page.tsx`) — não
+   renderiza nada, então não há o que redesenhar lá.
 
 ## Componentes
 
 ### `AuthSplitLayout` (novo — `src/components/layout/AuthSplitLayout.tsx`)
 
-Shell dedicado só para `/login` e `/acesso-interno`. **Não** estende nem
+Shell dedicado a `/acesso-interno` (escrito como componente reutilizável, não
+inline na página, caso uma segunda tela de auth precise dele no futuro — mas
+hoje só `/acesso-interno` o usa). **Não** estende nem
 substitui `PortalBackground` — esse continua exatamente como está, usado sem
 nenhuma mudança por `/agenda`, `/conta`, `/cadastro/completar`. Motivo de
 separar: `PortalBackground` foi desenhado para o padrão "card centralizado
@@ -72,27 +75,27 @@ via `className` passado pelas páginas que renderizam `LoginForm`, sem alterar
 o componente em si — ele já aceita customização de estilo nos elementos
 internos através dos componentes do kit (`Button`, `Input`).
 
-## Conteúdo por página
+## Conteúdo
 
-Papéis distintos, preservados (ver contexto: `/acesso-interno` já linka de
-volta para `/login` como "o portal"):
-
-| | `/login` | `/acesso-interno` |
-|---|---|---|
-| `label` | "Portal CCM" | "Acesso interno" |
-| `tagline` | "Gestão de integração, batismo e voluntariado da comunidade." | "Acompanhe cadastros, relatórios e times em um só lugar." |
-| `showRememberMe` (já existe no `LoginForm`) | `false` | `true` |
-| Extra na coluna direita | Links "Ver agenda · Cadastro" abaixo do form (como hoje, mas dentro da coluna branca, não mais sobre fundo ambiente) | Link "Voltar ao portal →" — desce do header (que deixa de existir nesse formato) para um link discreto abaixo do botão "Entrar" |
+- `label`: "Acesso interno"
+- `tagline`: "Acompanhe cadastros, relatórios e times em um só lugar."
+- `showRememberMe` (já existe no `LoginForm`): `true`
+- Extra na coluna direita: nenhum link de retorno é necessário (não há mais
+  uma segunda tela "portal" para voltar) — a coluna direita tem só o título,
+  a descrição atual ("Utilize seu e-mail institucional...") e o `LoginForm`.
 
 ## Impact
 
-- `src/app/(public)/login/page.tsx` e `src/app/(public)/acesso-interno/page.tsx`
-  trocam `PortalBackground` por `AuthSplitLayout`. Nenhuma mudança de
-  comportamento (`LoginForm` continua idêntico).
+- `src/app/(public)/acesso-interno/page.tsx` troca `PortalBackground` por
+  `AuthSplitLayout`. Nenhuma mudança de comportamento (`LoginForm` continua
+  idêntico).
+- `src/app/(public)/login/page.tsx` não é tocado — continua sendo só o
+  redirect.
 - Nenhuma outra página é afetada — `PortalBackground` continua servindo
   `/agenda`, `/conta`, `/cadastro/completar` exatamente como hoje.
-- Fora de escopo: mudar `PortalBackground` em si, mudar a navegação entre as
-  duas rotas, adicionar dark mode (decisão de fase anterior: só tema claro).
+- Fora de escopo: mudar `PortalBackground` em si, adicionar dark mode
+  (decisão de fase anterior: só tema claro).
 - Verificação: screenshot em pelo menos 2 larguras (mobile ~375px, desktop
-  ~1440px) das duas páginas antes de considerar concluído, já que a restrição
-  que motivou o redesign foi justamente uso predominante em smartphone.
+  ~1440px) de `/acesso-interno` antes de considerar concluído, já que a
+  restrição que motivou o redesign foi justamente uso predominante em
+  smartphone.
