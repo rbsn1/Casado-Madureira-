@@ -135,7 +135,7 @@ function CadastroCompletoPageContent() {
               <p className="text-sm font-semibold text-brand-900">Cadastro completo de membro</p>
             </div>
           </div>
-          <Link href="/login" className="text-sm font-semibold text-brand-800 transition hover:text-brand-900">
+          <Link href="/acesso-interno" className="text-sm font-semibold text-brand-800 transition hover:text-brand-900">
             Voltar ao portal →
           </Link>
         </header>

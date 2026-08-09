@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { PortalBackground } from "@/components/layout/PortalBackground";
 import { Card } from "@/components/ui/card";
 import { LoginForm } from "@/components/auth/LoginForm";
@@ -21,12 +20,6 @@ export default function AcessoInternoPage() {
               <p className="text-sm font-semibold text-text">Acesso interno</p>
             </div>
           </div>
-          <Link
-            href="/login"
-            className="text-sm font-semibold text-brand-700 transition hover:text-brand-900"
-          >
-            Voltar ao portal →
-          </Link>
         </header>
 
         <section className="flex flex-1 items-center justify-center pt-10">
