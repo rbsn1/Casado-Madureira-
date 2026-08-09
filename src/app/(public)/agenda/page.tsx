@@ -112,7 +112,7 @@ export default function AgendaPage() {
   const todayIndex = getNowInTimeZone(MANAUS_TIMEZONE).getDay();
 
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
+    <PortalBackground heroHeight="420px">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-16">
         <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
           <div className="flex items-center gap-3">

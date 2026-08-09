@@ -80,7 +80,7 @@ export async function requireAdmin(request: Request) {
   return { user: authUser.user };
 }
 
-export async function requireDiscipuladoAdmin(request: Request) {
+export async function requireUserManagementAdmin(request: Request) {
   const authUser = await requireAuthenticatedUser(request);
   if ("error" in authUser) return authUser;
 
@@ -109,6 +109,11 @@ export async function requireDiscipuladoAdmin(request: Request) {
   const roles = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).map(
     (item) => item.role
   );
+
+  if (roles.includes("ADMIN_MASTER") || roles.includes("SUPER_ADMIN")) {
+    return { user: authUser.user, isGlobalAdmin: true, congregationId: null };
+  }
+
   const adminDiscipuladoRole = ((activeRoles ?? []) as { role: string; congregation_id?: string | null }[]).find(
     (item) => item.role === "ADMIN_DISCIPULADO" && Boolean(item.congregation_id)
   );
@@ -116,7 +121,7 @@ export async function requireDiscipuladoAdmin(request: Request) {
   if (!roles.includes("ADMIN_DISCIPULADO")) {
     return {
       error: NextResponse.json(
-        { error: "Acesso restrito ao perfil ADMIN_DISCIPULADO." },
+        { error: "Acesso restrito a administradores." },
         { status: 403 }
       )
     };

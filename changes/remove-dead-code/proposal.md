@@ -1,38 +1,51 @@
-# Remover código morto e consolidar slugify duplicado
+# Remover código morto
 
 ## Why
 
-Uma varredura cruzada (grep de cada componente/lib contra todo `src`, checando
-imports por nome de arquivo, inclusive imports "de diretório" via `index.ts`)
-encontrou 5 arquivos que não são referenciados em lugar nenhum do projeto — 1076
-linhas de código morto — e uma função `slugify` duplicada inline em dois lugares
-apesar de já existir uma versão compartilhada não usada.
+A varredura original (cross-referência de cada componente/lib contra todo `src`,
+por nome de arquivo e por símbolo exportado) encontrou 5 arquivos sem nenhum
+importador. Desde então, 2 desses 5 já foram removidos como efeito colateral da
+remoção do módulo Discipulado. Uma nova varredura (parte da auditoria
+`streamline-app`, 2026-08-09) confirmou os 3 restantes e encontrou 2 arquivos
+mortos novos que a varredura original não pegou.
 
-Remover isso agora, antes de seguir com refactors maiores no resto do app, evita
-que alguém gaste tempo lendo/mantendo código que nunca roda.
+Lista final, todos com zero importadores confirmados (grep por especificador de
+import e por símbolo exportado; não há nenhum `index.ts`/barrel no projeto, então
+não há indireção a considerar):
+
+- `src/components/LoginPage.tsx` (215 linhas) — não relacionado ao componente
+  `LoginPage` local de `(public)/login/page.tsx` (mesmo nome, arquivo diferente).
+- `src/components/StarfieldCanvas.tsx` (211 linhas).
+- `src/lib/demoData.ts` (81 linhas).
+- `src/lib/slugify.ts` (9 linhas) — seus dois únicos chamadores eram as rotas
+  `api/admin/congregations/*`, removidas junto com o Discipulado.
+- `src/components/shared/HelpChatWidget.tsx` (624 linhas) — o maior achado desta
+  rodada; exporta `HelpChatWidget`, também sem nenhuma referência em `src`.
+- `src/lib/lucide-react.tsx` (79 linhas) — shim que reimplementa 5 ícones no
+  formato da API do pacote `lucide-react`, que **não está instalado**
+  (`package.json` não lista `lucide-react` como dependência).
+
+Total: ~1.219 linhas removidas, nenhuma mudança de comportamento visível.
 
 ## What Changes
 
-- Excluir `src/components/LoginPage.tsx` (215 linhas) — não importado por nenhuma
-  rota; `(public)/login/page.tsx` tem seu próprio componente `LoginPage` inline,
-  sem relação com este arquivo.
-- Excluir `src/components/LoginDiscipuladoPremium.tsx` (317 linhas) — não importado.
-- Excluir `src/components/LoginPortalDiscipulado.tsx` (252 linhas) — não importado.
-- Excluir `src/components/StarfieldCanvas.tsx` (211 linhas) — não importado.
-- Excluir `src/lib/demoData.ts` (81 linhas) — não importado.
-- Consolidar a função `slugify` duplicada em
-  `src/app/api/admin/congregations/route.ts` e
-  `src/app/api/admin/congregations/[id]/route.ts`: remover as duas implementações
-  inline e importar de `src/lib/slugify.ts` (mesma lógica, mantém as duas
-  variações de normalização unificadas na versão do lib).
+- Excluir os 6 arquivos listados acima.
+- Nenhum outro arquivo referencia nenhum deles — não há import a atualizar em
+  nenhuma outra parte do código.
 
 ## Impact
 
-- Nenhuma rota, componente ou API é afetada — os arquivos removidos não têm
-  nenhum importador. Nenhuma mudança de comportamento visível.
-- As duas rotas de congregations passam a depender de `lib/slugify.ts`; a
-  implementação do lib usa `\p{Diacritic}` (regex unicode) em vez de
-  `[̀-ͯ]` — funcionalmente equivalente para remoção de acentos, mas
-  vale conferir com um slug real (ex.: "Congregação São José") após a mudança.
-- Fora de escopo: os módulos monolíticos de discipulado/admin, admin geral etc.
-  (tratados em mudanças futuras separadas), vulnerabilidades de dependências.
+- Nenhuma rota, componente ou API é afetada. Nenhuma mudança de comportamento
+  visível para o usuário final.
+- Fora de escopo (tratados em propostas separadas, também saídas da auditoria
+  `streamline-app`):
+  - O bug de `requireDiscipuladoAdmin()` sem bypass para `ADMIN_MASTER`/
+    `SUPER_ADMIN` (403 real em `/api/admin/users` e `/api/admin/roles`).
+  - As 4 roles órfãs do Discipulado ainda listadas no dropdown de
+    `admin/page.tsx`.
+  - Unificação das telas `/login` e `/acesso-interno`.
+  - Lógica duplicada (`toTwoDigits`, parsing de data, normalização de telefone)
+    entre `cadastrosImport.ts` e `enqueue/route.ts`.
+  - Arquivos monolíticos (`admin/page.tsx`, `admin/whatsapp/page.tsx`).
+  - Vulnerabilidades de dependências (`next`, `xlsx`, `ws`) — usuário decidiu não
+    tratar agora.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireDiscipuladoAdmin } from "@/lib/serverAuth";
+import { requireUserManagementAdmin } from "@/lib/serverAuth";
 import { syncLegacyProfileRoleForUser } from "@/lib/userProfileSync";
 
 export const runtime = "nodejs";
@@ -46,7 +46,7 @@ async function resolveDefaultCongregationId() {
 }
 
 export async function GET(request: Request) {
-  const auth = await requireDiscipuladoAdmin(request);
+  const auth = await requireUserManagementAdmin(request);
   if ("error" in auth) return auth.error;
 
   const { searchParams } = new URL(request.url);
@@ -173,7 +173,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireDiscipuladoAdmin(request);
+  const auth = await requireUserManagementAdmin(request);
   if ("error" in auth) return auth.error;
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -279,7 +279,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requireDiscipuladoAdmin(request);
+  const auth = await requireUserManagementAdmin(request);
   if ("error" in auth) return auth.error;
 
   const supabaseAdmin = getSupabaseAdmin();

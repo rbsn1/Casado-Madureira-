@@ -29,8 +29,7 @@ export default function ContaPage() {
   }, [router]);
 
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="360px">
-      {/* Substitua /public/hero-community.jpg pela imagem final do mock. */}
+    <PortalBackground heroHeight="360px">
       <div className="mx-auto flex min-h-screen max-w-4xl flex-col px-4 pb-16">
         <header className="flex flex-wrap items-center justify-between gap-4 pt-6">
           <div className="flex items-center gap-3">

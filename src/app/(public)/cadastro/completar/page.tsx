@@ -123,7 +123,7 @@ function CadastroCompletoPageContent() {
   }
 
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
+    <PortalBackground heroHeight="420px">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <header className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ function CadastroCompletoPageContent() {
 
 function CadastroCompletoFallback() {
   return (
-    <PortalBackground heroImageSrc="/hero-community.jpg" heroHeight="420px">
+    <PortalBackground heroHeight="420px">
       <div className="mx-auto flex min-h-screen max-w-5xl flex-col px-4 pb-16">
         <section className="flex flex-1 items-center justify-center py-10">
           <div className={cardClass}>
