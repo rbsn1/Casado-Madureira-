@@ -91,7 +91,7 @@ export function LoginForm({ showRememberMe = false }: { showRememberMe?: boolean
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-2">
         <label className="text-sm font-medium text-text" htmlFor="email">
           E-mail
@@ -129,7 +129,7 @@ export function LoginForm({ showRememberMe = false }: { showRememberMe?: boolean
           Esqueci minha senha
         </button>
       </div>
-      <Button type="submit" className="w-full" disabled={status === "loading"}>
+      <Button type="submit" className="w-full h-12 shadow-lg shadow-brand-900/10" disabled={status === "loading"}>
         {status === "loading" ? "Entrando..." : "Entrar"}
       </Button>
       {status === "error" ? (
