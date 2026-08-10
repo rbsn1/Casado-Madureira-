@@ -182,6 +182,9 @@ Sem suíte automatizada no projeto. Verificação prevista:
 
 ## Pendências antes da implementação
 
-1. Link do grupo do WhatsApp, para configurar `church_settings`.
+1. ~~Link do grupo do WhatsApp, para configurar `church_settings`.~~
+   **Resolvido**: `church_settings` já configurado para a congregação
+   "Sede" com o link fornecido e `welcome_template_name = 'welcome_ccm'`.
 2. Texto final do template de departamentos, para submissão no Meta
-   Business Manager pelo usuário (aprovação fora do meu controle).
+   Business Manager pelo usuário (aprovação fora do meu controle) — o
+   rascunho sugerido está na seção Componentes, item 7.
