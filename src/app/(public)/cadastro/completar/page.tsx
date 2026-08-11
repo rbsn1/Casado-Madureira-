@@ -184,7 +184,9 @@ function CadastroCompletoPageContent() {
                       name="cpf"
                       value={cpf}
                       onChange={(event) => setCpf(formatCpfInput(event.target.value))}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="000.000.000-00"
                     />
                   </label>
@@ -196,7 +198,7 @@ function CadastroCompletoPageContent() {
                       name="rg"
                       value={rg}
                       onChange={(event) => setRg(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Digite seu RG"
                     />
                   </label>
@@ -207,7 +209,7 @@ function CadastroCompletoPageContent() {
                       name="foto_url"
                       value={fotoUrl}
                       onChange={(event) => setFotoUrl(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="https://..."
                     />
                   </label>
@@ -219,7 +221,7 @@ function CadastroCompletoPageContent() {
                       type="date"
                       value={dataNascimento}
                       onChange={(event) => setDataNascimento(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                     />
                   </label>
 
@@ -230,7 +232,9 @@ function CadastroCompletoPageContent() {
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      autoComplete="email"
+                      inputMode="email"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="voce@email.com"
                     />
                   </label>
@@ -241,7 +245,8 @@ function CadastroCompletoPageContent() {
                       name="endereco"
                       value={endereco}
                       onChange={(event) => setEndereco(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      autoComplete="street-address"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Rua, número, complemento"
                     />
                   </label>
@@ -253,7 +258,7 @@ function CadastroCompletoPageContent() {
                       rows={3}
                       value={observacoes}
                       onChange={(event) => setObservacoes(event.target.value)}
-                      className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                      className="w-full rounded-lg border border-border px-4 py-3 text-sm focus:border-brand-400 focus:outline-none"
                       placeholder="Compartilhe informações relevantes para seu acompanhamento."
                     />
                   </label>
@@ -262,7 +267,7 @@ function CadastroCompletoPageContent() {
                     <button
                       type="submit"
                       disabled={submitState === "saving" || submitState === "success"}
-                      className="w-full rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      className="w-full rounded-lg bg-brand-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       {submitState === "saving" ? "Enviando..." : "Concluir cadastro completo"}
                     </button>
