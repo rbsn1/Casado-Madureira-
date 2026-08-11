@@ -37,6 +37,7 @@ function CadastrosContent() {
   const [statusFilter, setStatusFilter] = useState<"TODOS" | CadastroCompletoStatus>("TODOS");
   const [showCreate, setShowCreate] = useState(false);
   const [showGroupAdd, setShowGroupAdd] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
@@ -254,23 +255,34 @@ function CadastrosContent() {
             Adicionar do grupo
           </button>
           <button
-            onClick={handleExport}
-            className={`${toolbarButtonClass} border border-brand-300 text-brand-900 hover:bg-brand-50`}
+            type="button"
+            onClick={() => setShowMoreActions((prev) => !prev)}
+            className={`${toolbarButtonClass} border border-border text-text-muted hover:border-brand-200 hover:text-brand-900 sm:hidden`}
           >
-            Exportar CSV
+            {showMoreActions ? "Menos ações" : "Mais ações"}
           </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className={`${toolbarButtonClass} border border-dashed border-brand-300 text-brand-900 hover:bg-brand-50`}
+          <div
+            className={`${showMoreActions ? "flex" : "hidden"} w-full flex-col gap-2 sm:flex sm:w-auto sm:flex-row sm:flex-wrap`}
           >
-            Importar CSV/XLSX
-          </button>
-          <Link
-            href="/cadastros_import_modelo.csv"
-            className={`${toolbarButtonClass} block text-center border border-brand-200 text-brand-900 hover:bg-brand-50`}
-          >
-            Baixar modelo CSV
-          </Link>
+            <button
+              onClick={handleExport}
+              className={`${toolbarButtonClass} border border-brand-300 text-brand-900 hover:bg-brand-50`}
+            >
+              Exportar CSV
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className={`${toolbarButtonClass} border border-dashed border-brand-300 text-brand-900 hover:bg-brand-50`}
+            >
+              Importar CSV/XLSX
+            </button>
+            <Link
+              href="/cadastros_import_modelo.csv"
+              className={`${toolbarButtonClass} block text-center border border-brand-200 text-brand-900 hover:bg-brand-50`}
+            >
+              Baixar modelo CSV
+            </Link>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
