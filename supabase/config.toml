@@ -380,3 +380,11 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# smooth-worker é chamada por pg_net (trigger de dispatch + pg_cron sweep,
+# ver supabase/migrations/0078-0081) sem um JWT do Supabase Auth — só com
+# o header X-WORKER-TOKEN, validado dentro da própria function. Sem
+# verify_jwt = false aqui, "supabase functions deploy" volta a exigir o
+# gateway JWT por padrão e todo disparo automático passa a levar 401.
+[functions.smooth-worker]
+verify_jwt = false
