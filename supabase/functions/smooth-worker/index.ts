@@ -26,6 +26,7 @@ type JobPayload = {
   text?: string;
   groupLink?: string;
   templateName?: string;
+  templateParams?: string[];
   mode?: MessageMode;
   dispatchMode?: DispatchMode;
   testPhoneE164?: string;
@@ -157,6 +158,9 @@ serve(async (req) => {
         const templateName = String(payload.templateName ?? "welcome_ccm").trim() || "welcome_ccm";
         const fallbackText = `Olá ${name}! Seja bem-vindo(a) ao CCM. ${groupLink ? `Entre no grupo: ${groupLink}` : ""}`.trim();
         const textBody = String(payload.text ?? fallbackText).trim() || fallbackText;
+        const templateParams: string[] = Array.isArray(payload.templateParams)
+          ? payload.templateParams.map((value: unknown) => String(value ?? ""))
+          : [name, groupLink];
 
         // Template and text share the same provider endpoint; only body shape changes.
         const providerPayload = mode === "template"
@@ -170,10 +174,7 @@ serve(async (req) => {
                 components: [
                   {
                     type: "body",
-                    parameters: [
-                      { type: "text", text: name },
-                      { type: "text", text: groupLink }
-                    ]
+                    parameters: templateParams.map((value) => ({ type: "text", text: value }))
                   }
                 ]
               }
