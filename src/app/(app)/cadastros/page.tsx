@@ -18,6 +18,7 @@ import {
   loadPessoas as loadPessoasFromApi
 } from "@/lib/cadastrosApi";
 import { CadastroForm } from "@/components/cadastros/CadastroForm";
+import { AdicionarDoGrupoModal } from "@/components/cadastros/AdicionarDoGrupoModal";
 
 const toolbarButtonClass = "w-full rounded-xl px-3 py-3 text-sm font-semibold sm:w-auto";
 const feedbackClass = "rounded-xl px-4 py-3 text-sm";
@@ -35,6 +36,7 @@ function CadastrosContent() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"TODOS" | CadastroCompletoStatus>("TODOS");
   const [showCreate, setShowCreate] = useState(false);
+  const [showGroupAdd, setShowGroupAdd] = useState(false);
   const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
@@ -246,6 +248,12 @@ function CadastrosContent() {
             {isCadastradorOnly ? "Novo cadastro rápido (Cadastrador)" : "Novo cadastro completo"}
           </button>
           <button
+            onClick={() => setShowGroupAdd(true)}
+            className={`${toolbarButtonClass} border border-emerald-300 text-emerald-900 hover:bg-emerald-50`}
+          >
+            Adicionar do grupo
+          </button>
+          <button
             onClick={handleExport}
             className={`${toolbarButtonClass} border border-brand-300 text-brand-900 hover:bg-brand-50`}
           >
@@ -317,6 +325,17 @@ function CadastrosContent() {
           }}
         />
       ) : null}
+
+      <AdicionarDoGrupoModal
+        open={showGroupAdd}
+        onClose={() => setShowGroupAdd(false)}
+        onSaved={async (message) => {
+          setShowGroupAdd(false);
+          setFeedbackTone("success");
+          setStatusMessage(message);
+          await reloadPessoas();
+        }}
+      />
 
       <div className="card p-4">
         <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
