@@ -257,11 +257,14 @@ function CadastrosContent() {
           <button
             type="button"
             onClick={() => setShowMoreActions((prev) => !prev)}
+            aria-expanded={showMoreActions}
+            aria-controls="cadastros-secondary-actions"
             className={`${toolbarButtonClass} border border-border text-text-muted hover:border-brand-200 hover:text-brand-900 sm:hidden`}
           >
             {showMoreActions ? "Menos ações" : "Mais ações"}
           </button>
           <div
+            id="cadastros-secondary-actions"
             className={`${showMoreActions ? "flex" : "hidden"} w-full flex-col gap-2 sm:flex sm:w-auto sm:flex-row sm:flex-wrap`}
           >
             <button
