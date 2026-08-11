@@ -53,7 +53,7 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         className={clsx(
-          "w-full max-w-md rounded-2xl border border-border bg-bg p-6 shadow-xl focus:outline-none",
+          "flex max-h-[85vh] w-full max-w-md flex-col overflow-y-auto rounded-2xl border border-border bg-bg p-6 shadow-xl focus:outline-none",
           className
         )}
       >
