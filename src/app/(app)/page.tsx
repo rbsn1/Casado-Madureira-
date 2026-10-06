@@ -105,7 +105,7 @@ export default function DashboardPage() {
               <select
                 value={congregationFilter}
                 onChange={(event) => setCongregationFilter(event.target.value)}
-                className="rounded-full border border-brand-100 bg-white px-3 py-1 text-xs font-medium text-brand-900 focus:border-brand-500 focus:outline-none sm:text-sm"
+                className="min-h-[44px] w-full rounded-xl border border-brand-100 bg-white px-4 py-2 text-base font-medium text-brand-900 focus:border-brand-500 focus:outline-none sm:w-auto sm:text-sm"
               >
                 <option value="">Todas as congregações</option>
                 {congregations.map((item) => (
@@ -115,18 +115,20 @@ export default function DashboardPage() {
                 ))}
               </select>
             ) : null}
-            {["Hoje", "Semana", "Mês", "Personalizado"].map((label) => (
-              <button
-                key={label}
-                onClick={() => setPeriod(label)}
-                className={`rounded-full border border-brand-100 px-3 py-1 text-xs font-medium transition sm:text-sm ${period === label
-                    ? "bg-brand-900 text-white shadow-sm"
-                    : "bg-white text-brand-900 hover:bg-brand-100/70"
-                  }`}
-              >
-                {label}
-              </button>
-            ))}
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+              {["Hoje", "Semana", "Mês", "Personalizado"].map((label) => (
+                <button
+                  key={label}
+                  onClick={() => setPeriod(label)}
+                  className={`min-h-[44px] flex-1 rounded-xl border border-brand-100 px-4 py-2 text-sm font-medium transition sm:flex-none ${period === label
+                      ? "bg-brand-900 text-white shadow-sm"
+                      : "bg-white text-brand-900 hover:bg-brand-100/70"
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -287,7 +287,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
             </div>
           </div>
       </aside>
-      <main className="min-h-screen pb-24 lg:pb-0 bg-white">
+      <main className="min-h-screen pb-[72px] lg:pb-0 bg-white">
         <div className="mx-auto max-w-[88rem] px-4 py-5 sm:px-5 sm:py-8 lg:px-10 xl:px-12">
           <header className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -302,11 +302,11 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
               <button
                 type="button"
                 onClick={() => setShowMobileNav(true)}
-                className="inline-flex items-center justify-center rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm lg:hidden border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full border bg-white px-4 py-2 text-sm font-semibold transition lg:hidden border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
               >
                 Menu
               </button>
-              <div className="max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full px-3 py-2 text-xs font-medium sm:max-w-[22rem] sm:px-4 sm:text-sm bg-brand-100 text-brand-900">
+              <div className="hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-medium sm:flex sm:max-w-[22rem] bg-brand-100 text-brand-900">
                 <span className="truncate">{userEmail ? `Conectado: ${userEmail}` : "Sessão ativa"}</span>
               </div>
               <button
@@ -316,14 +316,14 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   setPasswordStatus("idle");
                   setPasswordMessage("");
                 }}
-                className="rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
+                className="hidden min-h-[44px] rounded-full border bg-white px-4 py-2 text-sm font-semibold transition sm:inline-flex border-brand-100 text-brand-900 hover:border-brand-700 hover:text-brand-900"
               >
                 Alterar senha
               </button>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-full border bg-white px-3 py-2 text-xs font-semibold transition sm:px-4 sm:text-sm border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
+                className="hidden min-h-[44px] rounded-full border bg-white px-4 py-2 text-sm font-semibold transition sm:inline-flex border-border text-text-muted hover:border-brand-100 hover:text-brand-900"
               >
                 Sair
               </button>
@@ -347,11 +347,16 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
           />
           <div className="absolute left-0 top-0 h-full w-[86vw] max-w-xs text-white shadow-xl bg-brand-900">
             <div className="flex items-center justify-between border-b px-4 py-4 border-brand-800">
-              <span className="text-sm font-semibold text-brand-100">Menu</span>
+              <div className="min-w-0">
+                <span className="block text-sm font-semibold text-brand-100">Menu</span>
+                {userEmail ? (
+                  <span className="block truncate text-xs text-brand-300">{userEmail}</span>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMobileNav(false)}
-                className="rounded-full border px-3 py-1 text-xs hover:bg-opacity-100 border-brand-700/60 text-brand-100 hover:bg-brand-800"
+                className="ml-2 shrink-0 rounded-full border px-3 py-2 text-sm min-h-[40px] hover:bg-opacity-100 border-brand-700/60 text-brand-100 hover:bg-brand-800"
               >
                 Fechar
               </button>
@@ -372,7 +377,7 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                             href={item.href}
                             onClick={() => setShowMobileNav(false)}
                             className={clsx(
-                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-2 text-sm font-medium transition hover:text-white hover:bg-brand-700/80",
+                              "group flex flex-1 items-center gap-2.5 rounded-full px-3 py-3 text-sm font-medium transition hover:text-white hover:bg-brand-700/80",
                               active
                                 ? "bg-brand-700 text-white shadow-[0_10px_24px_rgba(15,23,42,0.28)] ring-1 ring-white/20"
                                 : "text-brand-100/90"
@@ -380,14 +385,14 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                           >
                             <span
                               className={clsx(
-                                "inline-flex h-6 w-6 items-center justify-center rounded-full transition-colors",
+                                "inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors",
                                 active
                                   ? "bg-white/20 text-white"
                                   : "bg-white/10 text-white/85 group-hover:bg-white/15 group-hover:text-white"
                               )}
                               aria-hidden="true"
                             >
-                              <NavGlyph name={icon} />
+                              <NavGlyph name={icon} className="h-4 w-4" />
                             </span>
                             <span>{item.label}</span>
                           </Link>
@@ -398,13 +403,30 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                 </div>
               ))}
             </nav>
+            <div className="absolute bottom-0 left-0 right-0 border-t border-brand-800 px-4 py-4 space-y-2"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
+              <button
+                type="button"
+                onClick={() => { setShowMobileNav(false); setShowPasswordModal(true); setPasswordStatus("idle"); setPasswordMessage(""); }}
+                className="flex w-full items-center rounded-full px-4 py-3 text-sm font-medium text-brand-100/90 hover:bg-brand-700/80"
+              >
+                Alterar senha
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center rounded-full px-4 py-3 text-sm font-medium text-brand-100/90 hover:bg-brand-700/80"
+              >
+                Sair
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-white/95 backdrop-blur lg:hidden border-brand-100">
           <nav
-            className="mx-auto grid max-w-md grid-cols-5 gap-1 px-2 pt-2"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.45rem)" }}
+            className="mx-auto grid max-w-md grid-cols-5"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.25rem)" }}
           >
             {mobileQuickItems.map((item) => {
               const active = isItemActive(item.href);
@@ -414,37 +436,37 @@ export function AppShell({ children, activePath }: { children: ReactNode; active
                   key={item.href}
                   href={item.href}
                   className={clsx(
-                    "flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition",
+                    "flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition",
                     active ? "bg-brand-100 text-brand-900" : "text-text-muted hover:bg-surface hover:text-text"
                   )}
                 >
                   <span
                     className={clsx(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-full",
+                      "inline-flex h-7 w-7 items-center justify-center rounded-full",
                       active ? "bg-brand-200 text-brand-900" : "bg-surface text-text-muted"
                     )}
                     aria-hidden="true"
                   >
-                    <NavGlyph name={icon} />
+                    <NavGlyph name={icon} className="h-4 w-4" />
                   </span>
-                  <span className="w-full truncate text-center">{item.label}</span>
+                  <span className="w-full truncate text-center leading-none">{item.label}</span>
                 </Link>
               );
             })}
             <button
               type="button"
               onClick={() => setShowMobileNav(true)}
-              className="flex flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 text-[10px] font-medium transition text-brand-800 hover:bg-brand-50"
+              className="flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition text-brand-800 hover:bg-brand-50"
             >
               <span
-                className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-100 text-brand-800"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-brand-800"
                 aria-hidden="true"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-3.5 w-3.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-4 w-4">
                   <path d="M4 7h16M4 12h16M4 17h16" />
                 </svg>
               </span>
-              <span>Menu</span>
+              <span className="leading-none">Menu</span>
             </button>
           </nav>
       </div>

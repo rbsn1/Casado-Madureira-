@@ -88,25 +88,25 @@ export function CadastrosMensaisCard({
         </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto pb-1">
-        <div className="flex min-w-max gap-3 md:grid md:min-w-0 md:grid-cols-3">
-          <div className="w-[180px] shrink-0 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2 md:w-auto">
+      <div className="mt-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-brand-700">Total {year}</p>
-            <p className="text-2xl font-semibold text-brand-950">{total}</p>
+            <p className="text-xl font-semibold text-brand-950 sm:text-2xl">{total}</p>
             <p className="text-[11px] text-text-muted">{totalDiffText ?? "—"}</p>
           </div>
 
-          <div className="w-[180px] shrink-0 rounded-xl border border-border bg-bg px-3 py-2 md:w-auto">
+          <div className="rounded-xl border border-border bg-bg px-3 py-2">
             <p className="text-[11px] uppercase tracking-wide text-text-muted">Pico</p>
-            <p className="text-lg font-semibold text-text">
+            <p className="text-base font-semibold text-text sm:text-lg">
               {peak.label} ({peak.value})
             </p>
             <p className="text-[11px] text-text-muted">Maior volume mensal</p>
           </div>
 
-          <div className="w-[180px] shrink-0 rounded-xl border border-border bg-bg px-3 py-2 md:w-auto">
-            <p className="text-[11px] uppercase tracking-wide text-text-muted">Média mensal</p>
-            <p className="text-lg font-semibold text-text">{average.toFixed(1)}</p>
+          <div className="rounded-xl border border-border bg-bg px-3 py-2">
+            <p className="text-[11px] uppercase tracking-wide text-text-muted">Média</p>
+            <p className="text-base font-semibold text-text sm:text-lg">{average.toFixed(1)}</p>
             <p className="text-[11px] text-text-muted">Distribuição anual</p>
           </div>
         </div>

@@ -231,14 +231,14 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      <div className="card p-5">
-        <form className="grid gap-4 md:grid-cols-2">
+      <div className="card p-4 sm:p-5">
+        <form className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1 text-sm">
             <span className="text-text">Tipo de relatório</span>
             <select
               value={reportType}
               onChange={(event) => setReportType(event.target.value)}
-              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+              className="w-full rounded-xl border border-border px-4 py-3 text-base focus:border-brand-400 focus:outline-none"
             >
               <option>Integração & Batismo</option>
               <option>Voluntariado por departamento</option>
@@ -251,7 +251,7 @@ export default function RelatoriosPage() {
             <select
               value={period}
               onChange={(event) => setPeriod(event.target.value)}
-              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+              className="w-full rounded-xl border border-border px-4 py-3 text-base focus:border-brand-400 focus:outline-none"
             >
               <option>Hoje</option>
               <option>Semana</option>
@@ -267,7 +267,7 @@ export default function RelatoriosPage() {
                   type="date"
                   value={customStart}
                   onChange={(event) => setCustomStart(event.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-base focus:border-brand-400 focus:outline-none"
                 />
               </label>
               <label className="space-y-1 text-sm">
@@ -276,7 +276,7 @@ export default function RelatoriosPage() {
                   type="date"
                   value={customEnd}
                   onChange={(event) => setCustomEnd(event.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-base focus:border-brand-400 focus:outline-none"
                 />
               </label>
             </>
@@ -285,42 +285,43 @@ export default function RelatoriosPage() {
             <span className="text-text">Ano (para consolidado anual)</span>
             <input
               type="number"
+              inputMode="numeric"
               min={2020}
               value={year}
               onChange={(event) => setYear(Number(event.target.value))}
-              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand-400 focus:outline-none"
+              className="w-full rounded-xl border border-border px-4 py-3 text-base focus:border-brand-400 focus:outline-none"
             />
           </label>
           <label className="space-y-1 text-sm">
             <span className="text-text">Formato</span>
-            <div className="flex gap-3">
-              <label className="flex items-center gap-1 text-text">
-                <input type="checkbox" defaultChecked /> PDF
+            <div className="flex gap-4 pt-1">
+              <label className="flex min-h-[44px] items-center gap-2 text-base text-text">
+                <input type="checkbox" defaultChecked className="h-5 w-5" /> PDF
               </label>
-              <label className="flex items-center gap-1 text-text">
-                <input type="checkbox" defaultChecked /> Excel/CSV
+              <label className="flex min-h-[44px] items-center gap-2 text-base text-text">
+                <input type="checkbox" defaultChecked className="h-5 w-5" /> Excel/CSV
               </label>
             </div>
           </label>
-          <div className="md:col-span-2 flex flex-wrap gap-2">
+          <div className="grid gap-3 sm:col-span-2 sm:flex sm:flex-wrap">
             <button
               type="button"
               onClick={handleGenerate}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              className="min-h-[48px] w-full rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white hover:bg-brand-700 sm:w-auto"
             >
               Gerar Relatório
             </button>
             <button
               type="button"
               onClick={handleExportPdf}
-              className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50"
+              className="min-h-[48px] w-full rounded-xl border border-brand-300 px-5 py-3 text-base font-semibold text-brand-900 hover:bg-brand-50 sm:w-auto"
             >
               Exportar PDF
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50"
+              className="min-h-[48px] w-full rounded-xl border border-brand-300 px-5 py-3 text-base font-semibold text-brand-900 hover:bg-brand-50 sm:w-auto"
             >
               Exportar Excel/CSV
             </button>

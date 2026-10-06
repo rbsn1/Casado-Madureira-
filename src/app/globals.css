@@ -33,18 +33,25 @@ body {
 
 @media (max-width: 640px) {
   body {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   input,
   select,
   textarea,
   button {
-    font-size: 16px;
+    font-size: 16px; /* prevents iOS zoom on focus */
   }
 
   .card {
     @apply rounded-xl;
+  }
+}
+
+/* Ensure tap targets are reachable on mobile */
+@media (max-width: 1024px) {
+  button, a, [role="button"] {
+    min-height: 44px;
   }
 }
 
