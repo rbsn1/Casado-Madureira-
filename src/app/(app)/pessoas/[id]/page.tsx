@@ -15,7 +15,6 @@ type Pessoa = {
   culto_origem?: string | null;
   data: string | null;
   observacoes: string | null;
-  cadastro_completo_status?: "pendente" | "link_enviado" | "concluido" | null;
 };
 
 type Integracao = {
@@ -65,12 +64,6 @@ export default function PessoaPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState("");
 
-  function cadastroCompletoLabel(status: Pessoa["cadastro_completo_status"]) {
-    if (status === "concluido") return "Cadastro completo";
-    if (status === "link_enviado") return "Link enviado";
-    return "Pendente de complementação";
-  }
-
   const loadPessoa = useCallback(async () => {
     if (!supabaseClient || !pessoaId) return;
     setLoading(true);
@@ -85,7 +78,7 @@ export default function PessoaPerfilPage() {
     ] = await Promise.all([
       supabaseClient
         .from("pessoas")
-        .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, data, observacoes, cadastro_completo_status")
+        .select("id, nome_completo, telefone_whatsapp, origem, culto_origem, data, observacoes")
         .eq("id", pessoaId)
         .single(),
       supabaseClient
@@ -168,12 +161,6 @@ export default function PessoaPerfilPage() {
               <dt className="text-xs text-text-muted">Culto</dt>
               <dd className="text-sm font-semibold text-text">
                 {cultoOrigemLabelFromValue(pessoa?.culto_origem ?? pessoa?.origem)}
-              </dd>
-            </div>
-            <div className="rounded-lg border border-surface bg-surface/60 p-3">
-              <dt className="text-xs text-text-muted">Status do cadastro</dt>
-              <dd className="text-sm font-semibold text-text">
-                {cadastroCompletoLabel(pessoa?.cadastro_completo_status ?? "pendente")}
               </dd>
             </div>
             <div className="rounded-lg border border-surface bg-surface/60 p-3">

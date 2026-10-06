@@ -8,15 +8,7 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { cultoOrigemLabelFromValue } from "@/lib/cultoOrigem";
 import { useCadastrosPermissions } from "@/hooks/useCadastrosPermissions";
 import { importCadastrosFile } from "@/lib/cadastrosImport";
-import {
-  CadastroCompletoStatus,
-  PessoaItem,
-  deletePessoa,
-  generateCompletionLink,
-  getCadastroCompletoClass,
-  getCadastroCompletoLabel,
-  loadPessoas as loadPessoasFromApi
-} from "@/lib/cadastrosApi";
+import { PessoaItem, deletePessoa, loadPessoas as loadPessoasFromApi } from "@/lib/cadastrosApi";
 import { CadastroForm } from "@/components/cadastros/CadastroForm";
 import { AdicionarDoGrupoModal } from "@/components/cadastros/AdicionarDoGrupoModal";
 
@@ -27,21 +19,18 @@ const fieldClass =
 
 function CadastrosContent() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { isCadastradorOnly, canManageCadastrosDirectly, canGenerateCompletionLink } = useCadastrosPermissions();
+  const { canManageCadastrosDirectly } = useCadastrosPermissions();
 
   const [loading, setLoading] = useState(true);
   const [feedbackTone, setFeedbackTone] = useState<"error" | "success" | "info">("info");
   const [statusMessage, setStatusMessage] = useState("");
   const [pessoas, setPessoas] = useState<PessoaItem[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"TODOS" | CadastroCompletoStatus>("TODOS");
   const [showCreate, setShowCreate] = useState(false);
   const [showGroupAdd, setShowGroupAdd] = useState(false);
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [editingPessoa, setEditingPessoa] = useState<PessoaItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [generatingLinkForId, setGeneratingLinkForId] = useState<string | null>(null);
-  const [hasCompletionStatusColumn, setHasCompletionStatusColumn] = useState(true);
   const [hasCultoColumn, setHasCultoColumn] = useState(true);
 
   const reloadPessoas = useCallback(async () => {
@@ -57,7 +46,6 @@ function CadastrosContent() {
 
     const result = await loadPessoasFromApi(supabaseClient);
     setHasCultoColumn(result.hasCultoColumn);
-    setHasCompletionStatusColumn(result.hasCompletionStatusColumn);
 
     if (result.errorMessage) {
       setFeedbackTone("error");
@@ -78,16 +66,14 @@ function CadastrosContent() {
     const term = search.trim().toLowerCase();
     return pessoas.filter((pessoa) => {
       const cultoLabel = cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem).toLowerCase();
-      const matchesSearch =
+      return (
         !term ||
         pessoa.nome_completo.toLowerCase().includes(term) ||
         (pessoa.telefone_whatsapp ?? "").toLowerCase().includes(term) ||
-        cultoLabel.includes(term);
-      const matchesStatus =
-        statusFilter === "TODOS" || (pessoa.cadastro_completo_status ?? "pendente") === statusFilter;
-      return matchesSearch && matchesStatus;
+        cultoLabel.includes(term)
+      );
     });
-  }, [pessoas, search, statusFilter]);
+  }, [pessoas, search]);
 
   const todayCount = useMemo(() => {
     const todayKey = new Intl.DateTimeFormat("pt-BR", {
@@ -131,15 +117,10 @@ function CadastrosContent() {
       pessoa.nome_completo,
       pessoa.telefone_whatsapp ?? "",
       pessoa.data ?? "",
-      cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem),
-      getCadastroCompletoLabel(pessoa.cadastro_completo_status)
+      cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)
     ]);
 
-    downloadCsv(
-      "cadastros-rapidos-ccm.csv",
-      ["nome", "contato", "data", "culto", "status_cadastro"],
-      rows
-    );
+    downloadCsv("cadastros-ccm.csv", ["nome", "contato", "data", "culto"], rows);
   }
 
   async function handleImportFile(event: React.ChangeEvent<HTMLInputElement>) {
@@ -150,8 +131,7 @@ function CadastrosContent() {
 
     const result = await importCadastrosFile(supabaseClient, file, {
       canManageCadastrosDirectly,
-      hasCultoColumn,
-      hasCompletionStatusColumn
+      hasCultoColumn
     });
 
     setFeedbackTone(result.tone);
@@ -189,56 +169,13 @@ function CadastrosContent() {
     await reloadPessoas();
   }
 
-  async function handleGenerateCompletionLink(pessoa: PessoaItem) {
-    if (!supabaseClient) return;
-
-    setGeneratingLinkForId(pessoa.id);
-    setStatusMessage("");
-
-    const { link, errorMessage } = await generateCompletionLink(supabaseClient, pessoa.id, window.location.origin);
-
-    if (errorMessage || !link) {
-      setFeedbackTone("error");
-      setStatusMessage(errorMessage ?? "Não foi possível gerar o link de cadastro completo.");
-      setGeneratingLinkForId(null);
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(link);
-      setFeedbackTone("success");
-      setStatusMessage(`Link copiado para ${pessoa.nome_completo}.`);
-    } catch {
-      window.prompt("Copie o link de cadastro completo:", link);
-      setFeedbackTone("info");
-      setStatusMessage(`Link gerado para ${pessoa.nome_completo}.`);
-    }
-
-    setGeneratingLinkForId(null);
-    await reloadPessoas();
-  }
-
   return (
     <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm text-text-muted">Gestão de Pessoas</p>
-          <h2 className="text-xl font-semibold text-brand-900">
-            {isCadastradorOnly ? "Cadastros rápidos" : "Cadastros"}
-          </h2>
-          <p className="mt-1 text-sm text-text-muted">
-            {isCadastradorOnly ? (
-              <>
-                Visualize o cadastro inicial resumido do perfil <strong>CADASTRADOR</strong>, com foco em nome,
-                contato, data, culto e status de complementação.
-              </>
-            ) : (
-              <>
-                Perfis administrativos usam o formulário completo. O fluxo reduzido fica restrito ao perfil{" "}
-                <strong>CADASTRADOR</strong> para posterior complementação.
-              </>
-            )}
-          </p>
+          <h2 className="text-xl font-semibold text-brand-900">Cadastros</h2>
+          <p className="mt-1 text-sm text-text-muted">Nome completo, telefone, culto de origem e data de cada cadastro.</p>
         </div>
 
         <div className="grid gap-2 sm:flex sm:flex-wrap">
@@ -246,7 +183,7 @@ function CadastrosContent() {
             onClick={openCreate}
             className={`${toolbarButtonClass} bg-brand-600 text-white hover:bg-brand-700`}
           >
-            {isCadastradorOnly ? "Novo cadastro rápido (Cadastrador)" : "Novo cadastro completo"}
+            Novo cadastro
           </button>
           <button
             onClick={() => setShowGroupAdd(true)}
@@ -300,24 +237,6 @@ function CadastrosContent() {
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Cadastros feitos hoje</p>
           <p className="mt-1 text-3xl font-semibold text-brand-900">{todayCount}</p>
-          <p className="mt-1 text-xs text-text-muted">
-            {isCadastradorOnly
-              ? "Fluxo pensado para operação rápida em culto."
-              : "Perfis administrativos usam o formulário completo no CCM."}
-          </p>
-        </div>
-        <div className="rounded-xl border border-warning-100 bg-warning-100 px-4 py-3 text-sm leading-6 text-warning-600 sm:max-w-md">
-          {isCadastradorOnly ? (
-            <>
-              O formulário resumido é do perfil <strong>CADASTRADOR</strong> e cada novo registro entra como{" "}
-              <strong>pendente de complementação</strong>.
-            </>
-          ) : (
-            <>
-              Perfis administrativos usam o <strong>formulário completo</strong>. O fluxo reduzido fica reservado ao{" "}
-              <strong>CADASTRADOR</strong> para complementação posterior.
-            </>
-          )}
         </div>
       </div>
 
@@ -325,10 +244,7 @@ function CadastrosContent() {
         <CadastroForm
           key={editingPessoa?.id ?? "new"}
           editingPessoa={editingPessoa}
-          isCadastradorOnly={isCadastradorOnly}
-          canManageCadastrosDirectly={canManageCadastrosDirectly}
           hasCultoColumn={hasCultoColumn}
-          hasCompletionStatusColumn={hasCompletionStatusColumn}
           onCancel={closeForm}
           onResult={async (result) => {
             setFeedbackTone(result.tone);
@@ -361,16 +277,6 @@ function CadastrosContent() {
             onChange={(event) => setSearch(event.target.value)}
             className={`${fieldClass} sm:max-w-sm`}
           />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as "TODOS" | CadastroCompletoStatus)}
-            className={`${fieldClass} sm:w-auto`}
-          >
-            <option value="TODOS">Todos os status</option>
-            <option value="pendente">Pendente de complementação</option>
-            <option value="link_enviado">Link enviado</option>
-            <option value="concluido">Cadastro completo</option>
-          </select>
           <button
             onClick={reloadPessoas}
             className={`${toolbarButtonClass} bg-brand-100 text-brand-900`}
@@ -416,13 +322,6 @@ function CadastrosContent() {
                       </Link>
                       <p className="mt-1 text-xs text-text-muted">{pessoa.telefone_whatsapp ?? "Sem contato"}</p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${getCadastroCompletoClass(
-                        pessoa.cadastro_completo_status
-                      )}`}
-                    >
-                      {getCadastroCompletoLabel(pessoa.cadastro_completo_status)}
-                    </span>
                   </div>
 
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
@@ -452,23 +351,6 @@ function CadastrosContent() {
                         Editar
                       </button>
                     ) : null}
-                    {canGenerateCompletionLink && hasCompletionStatusColumn ? (
-                      <button
-                        type="button"
-                        onClick={() => handleGenerateCompletionLink(pessoa)}
-                        disabled={
-                          generatingLinkForId === pessoa.id ||
-                          pessoa.cadastro_completo_status === "concluido"
-                        }
-                        className="rounded-xl border border-info-100 px-3 py-3 text-xs font-semibold text-info-600 hover:bg-info-100 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        {pessoa.cadastro_completo_status === "concluido"
-                          ? "Cadastro completo"
-                          : generatingLinkForId === pessoa.id
-                            ? "Gerando link..."
-                            : "Gerar link completo"}
-                      </button>
-                    ) : null}
                     {canManageCadastrosDirectly ? (
                       <button
                         type="button"
@@ -489,7 +371,7 @@ function CadastrosContent() {
           <table className="min-w-full divide-y divide-border text-sm">
             <thead className="bg-surface">
               <tr>
-                {["Nome", "Contato", "Data", "Culto", "Status do cadastro", "Ações"].map((col) => (
+                {["Nome", "Contato", "Data", "Culto", "Ações"].map((col) => (
                   <th key={col} className="px-4 py-2 text-left font-semibold text-text-muted">
                     {col}
                   </th>
@@ -499,7 +381,7 @@ function CadastrosContent() {
             <tbody className="divide-y divide-surface">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-muted">
                     Carregando cadastros...
                   </td>
                 </tr>
@@ -507,7 +389,7 @@ function CadastrosContent() {
 
               {!loading && !filtered.length ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-text-muted">
+                  <td colSpan={5} className="px-4 py-6 text-center text-sm text-text-muted">
                     Nenhum cadastro encontrado.
                   </td>
                 </tr>
@@ -528,15 +410,6 @@ function CadastrosContent() {
                     {cultoOrigemLabelFromValue(pessoa.culto_origem ?? pessoa.origem)}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold ${getCadastroCompletoClass(
-                        pessoa.cadastro_completo_status
-                      )}`}
-                    >
-                      {getCadastroCompletoLabel(pessoa.cadastro_completo_status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/pessoas/${pessoa.id}`}
@@ -551,23 +424,6 @@ function CadastrosContent() {
                           className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50"
                         >
                           Editar
-                        </button>
-                      ) : null}
-                      {canGenerateCompletionLink && hasCompletionStatusColumn ? (
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateCompletionLink(pessoa)}
-                          disabled={
-                            generatingLinkForId === pessoa.id ||
-                            pessoa.cadastro_completo_status === "concluido"
-                          }
-                          className="rounded-lg border border-info-100 px-3 py-1 text-xs font-semibold text-info-600 hover:bg-info-100 disabled:cursor-not-allowed disabled:opacity-70"
-                        >
-                          {pessoa.cadastro_completo_status === "concluido"
-                            ? "Completo"
-                            : generatingLinkForId === pessoa.id
-                              ? "Gerando..."
-                              : "Link completo"}
                         </button>
                       ) : null}
                       {canManageCadastrosDirectly ? (

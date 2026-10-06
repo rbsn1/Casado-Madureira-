@@ -8,7 +8,7 @@ import {
 } from "@/lib/cultoOrigem";
 import { parseBrazilPhone } from "@/lib/phone";
 import { createQuickCcmRegistration } from "@/lib/ccmQuickRegistration";
-import { isMissingColumnError, type CadastroCompletoStatus } from "@/lib/cadastrosApi";
+import { isMissingColumnError } from "@/lib/cadastrosApi";
 
 type ImportCadastroItem = {
   sourceLine: number;
@@ -16,7 +16,6 @@ type ImportCadastroItem = {
   telefone_whatsapp: string;
   data: string;
   culto_origem: CultoOrigemCode;
-  cadastro_completo_status: CadastroCompletoStatus;
   created_at: string;
   updated_at: string;
   request_id: string;
@@ -30,7 +29,6 @@ export type ImportCadastrosResult = {
 export type ImportCadastrosOptions = {
   canManageCadastrosDirectly: boolean;
   hasCultoColumn: boolean;
-  hasCompletionStatusColumn: boolean;
 };
 
 function isMissingRequestIdColumnError(message: string, code?: string) {
@@ -99,13 +97,6 @@ function normalizeImportDate(value: string | number | Date | null | undefined) {
 
 function isoDateToManausCreatedAt(isoDate: string) {
   return `${isoDate}T12:00:00-04:00`;
-}
-
-function parseCadastroCompletoStatus(value: string | null | undefined): CadastroCompletoStatus {
-  const normalized = String(value ?? "").trim().toLowerCase();
-  if (normalized === "concluido" || normalized === "concluído") return "concluido";
-  if (normalized === "link_enviado" || normalized === "link enviado") return "link_enviado";
-  return "pendente";
 }
 
 type ImportCell = string | number | boolean | Date | null;
@@ -180,10 +171,7 @@ function buildImportPayload(headers: string[], rows: ImportCell[][]) {
         culto_origem: cultoParsed,
         created_at: isoDateToManausCreatedAt(isoDate),
         updated_at: isoDateToManausCreatedAt(isoDate),
-        request_id: crypto.randomUUID(),
-        cadastro_completo_status: parseCadastroCompletoStatus(
-          String(row[headerIndex.status_cadastro] ?? row[headerIndex.status] ?? "pendente")
-        )
+        request_id: crypto.randomUUID()
       };
 
       return item;
@@ -212,10 +200,6 @@ async function submitImportPayload(
 
       if (options.hasCultoColumn) {
         rowPayload.culto_origem = item.culto_origem;
-      }
-
-      if (options.hasCompletionStatusColumn) {
-        rowPayload.cadastro_completo_status = item.cadastro_completo_status;
       }
 
       return rowPayload;

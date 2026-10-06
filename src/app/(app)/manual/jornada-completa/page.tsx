@@ -5,9 +5,7 @@ const mindMap = `PORTAL CCM (JORNADA COMPLETA)
 │  ├─ Login público (CCM)
 │  └─ Login interno (/acesso-interno)
 ├─ 2) Captação (CCM é fonte única)
-│  ├─ Pré-cadastro de pessoa no CCM
-│  ├─ Geração de link de cadastro completo
-│  ├─ Membro conclui dados (CPF, RG, foto, etc.)
+│  ├─ Cadastro no CCM (nome, telefone, culto, data)
 │  ├─ Regras de deduplicação/idempotência
 │  └─ Encaminhamento para acompanhamento inicial
 ├─ 3) Operação Interna CCM
@@ -58,8 +56,8 @@ export default function ManualJornadaCompletaPage() {
           <article className="rounded-xl border border-border bg-surface p-4">
             <p className="font-semibold text-text">2. Cadastro oficial de membros (CCM)</p>
             <p className="mt-1">
-              Todo membro nasce no CCM via pré-cadastro. Em seguida, a equipe envia um link seguro para o membro
-              concluir o cadastro completo com dados adicionais (como CPF, RG e foto), mantendo a mesma base única de
+              Todo membro nasce no CCM com um cadastro de quatro campos: nome completo, telefone, culto de origem e
+              data. O sistema não coleta documentos nem outros dados pessoais sensíveis, e mantém uma base única de
               pessoas, com deduplicação e rastreabilidade.
             </p>
           </article>

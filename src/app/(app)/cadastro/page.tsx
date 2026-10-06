@@ -129,7 +129,7 @@ export default function CadastroInternoPage() {
     }
 
     setStatus("success");
-    setMessage("Cadastro rápido salvo com sucesso. Os dados complementares serão preenchidos depois.");
+    setMessage("Cadastro salvo com sucesso.");
     setNome("");
     setTelefone("");
     setDataCadastro(currentLocalDateInputValue());
@@ -140,34 +140,17 @@ export default function CadastroInternoPage() {
     <div className="mx-auto w-full max-w-4xl space-y-5 sm:space-y-6">
       <div>
         <p className="text-sm text-text-muted">Gestão de Pessoas</p>
-        <h2 className="text-xl font-semibold text-brand-900 md:text-2xl">Cadastro rápido no culto</h2>
+        <h2 className="text-xl font-semibold text-brand-900 md:text-2xl">Cadastro no culto</h2>
         <p className="mt-1 text-sm text-text-muted">
-          Fluxo resumido do perfil <strong>CADASTRADOR</strong>: registre só o essencial agora e deixe a complementação para depois.
+          Registre nome completo, telefone, culto de origem e data.
         </p>
-      </div>
-
-      <div className="grid gap-3 sm:hidden">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-brand-100 bg-brand-50 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-700">Operação</p>
-            <p className="mt-1 text-sm font-semibold text-brand-950">4 campos</p>
-          </div>
-          <div className="rounded-2xl border border-warning-100 bg-warning-100 px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning-600">Depois</p>
-            <p className="mt-1 text-sm font-semibold text-warning-600">Completar cadastro</p>
-          </div>
-        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6">
         <form className="card min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 md:p-6" onSubmit={handleSubmit}>
-          <div className="rounded-2xl border border-warning-100 bg-warning-100 px-4 py-3 text-sm text-warning-600">
-            Formulário resumido exclusivo para o perfil <strong>CADASTRADOR</strong>: <strong>nome, contato, data e culto</strong>. Os demais dados serão completados depois.
-          </div>
-
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className={fieldLabelClass}>Nome</span>
+              <span className={fieldLabelClass}>Nome completo</span>
               <input
                 required
                 name="nome_completo"
@@ -180,7 +163,7 @@ export default function CadastroInternoPage() {
             </label>
 
             <label className="space-y-1 text-sm">
-              <span className={fieldLabelClass}>Contato</span>
+              <span className={fieldLabelClass}>Telefone</span>
               <input
                 required
                 name="telefone_whatsapp"
@@ -206,7 +189,7 @@ export default function CadastroInternoPage() {
             </label>
 
             <label className="space-y-1 text-sm md:col-span-2">
-              <span className={fieldLabelClass}>Culto</span>
+              <span className={fieldLabelClass}>Culto de origem</span>
               <select
                 name="culto_origem"
                 value={cultoOrigem}
@@ -257,10 +240,9 @@ export default function CadastroInternoPage() {
           </div>
 
           <ul className="space-y-3 text-sm leading-6 text-text-muted">
-            <li>Este formato reduzido é o fluxo operacional do perfil <strong>CADASTRADOR</strong>.</li>
-            <li>O registro entra como <strong>pendente de complementação</strong>.</li>
-            <li>A equipe pode enviar o link de cadastro completo depois.</li>
-            <li>A listagem do CCM passa a mostrar o status desse complemento.</li>
+            <li>O cadastro pede só nome completo, telefone, culto de origem e data.</li>
+            <li>Não registramos documentos, endereço, e-mail ou outros dados pessoais.</li>
+            <li>O cadastro aparece na listagem do CCM assim que é salvo.</li>
           </ul>
         </aside>
       </div>
