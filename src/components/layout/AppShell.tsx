@@ -20,7 +20,6 @@ type NavGlyphName =
   | "dashboard"
   | "cadastro"
   | "list"
-  | "agenda"
   | "report"
   | "admin"
   | "manual"
@@ -33,7 +32,6 @@ const navSections: { title: string; items: NavItem[] }[] = [
       { href: "/", label: "Dashboard", roles: ["ADMIN_MASTER","PASTOR","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
       { href: "/cadastro", label: "Cadastro", roles: ["CADASTRADOR"] },
       { href: "/cadastros", label: "Cadastros", roles: ["ADMIN_MASTER","SECRETARIA","NOVOS_CONVERTIDOS","LIDER_DEPTO","VOLUNTARIO"] },
-      { href: "/admin/agenda-semanal", label: "Agenda semanal", roles: ["ADMIN_MASTER"] },
       { href: "/relatorios", label: "Relatórios", roles: ["ADMIN_MASTER","SECRETARIA"] },
       { href: "/admin/whatsapp", label: "WhatsApp", roles: ["ADMIN_MASTER","SUPER_ADMIN","SECRETARIA"] },
       { href: "/admin", label: "Admin", roles: ["ADMIN_MASTER"] },
@@ -47,9 +45,6 @@ function getNavGlyph(href: string): NavGlyphName {
   if (href === "/" || href.endsWith("/dashboard")) return "dashboard";
   if (href.includes("/cadastro") && !href.includes("/cadastros")) return "cadastro";
   if (href.includes("/cadastros") || href.includes("/convertidos")) return "list";
-  if (href.includes("/confraternizacao")) return "agenda";
-  if (href.includes("/escalas") || href.includes("/escala")) return "agenda";
-  if (href.includes("/agenda")) return "agenda";
   if (href.includes("/relatorios")) return "report";
   if (href.includes("/admin")) return "admin";
   if (href.includes("/fila") || href.includes("/novos-convertidos")) return "fila";
@@ -80,13 +75,6 @@ function NavGlyph({ name, className }: { name: NavGlyphName; className?: string 
           <circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none" />
           <circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none" />
           <circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none" />
-        </svg>
-      );
-    case "agenda":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={clsx("h-3.5 w-3.5", className)} aria-hidden="true">
-          <rect x="3.5" y="5" width="17" height="15.5" rx="2.6" />
-          <path d="M3.5 9.2h17M8 3.8v2.8M16 3.8v2.8" />
         </svg>
       );
     case "report":

@@ -2,8 +2,6 @@
 
 import { UsersSection } from "@/components/admin/UsersSection";
 import { LoginBackgroundSection } from "@/components/admin/LoginBackgroundSection";
-import { SpecialEventSection } from "@/components/admin/SpecialEventSection";
-import { WeeklyAgendaSection } from "@/components/admin/WeeklyAgendaSection";
 
 export default function AdminPage() {
   return (
@@ -15,8 +13,6 @@ export default function AdminPage() {
 
       <UsersSection />
       <LoginBackgroundSection />
-      <SpecialEventSection />
-      <WeeklyAgendaSection />
     </div>
   );
 }
