@@ -33,7 +33,7 @@ tela exibe, então sai junto.
   removidas (`/agenda`, `/escalas`, `/confraternizacao`).
 - `src/app/globals.css`: remover `.agenda-card` e `@keyframes agendaShine`
   (nenhum uso restante).
-- Nova migration `0086_remove_weekly_schedule.sql`:
+- Nova migration `0088_remove_weekly_schedule.sql`:
   - `drop table if exists public.weekly_schedule_events` (sem `cascade`: se
     algo no banco ainda depender dela, a migration falha e faz rollback em vez
     de derrubar o dependente silenciosamente);

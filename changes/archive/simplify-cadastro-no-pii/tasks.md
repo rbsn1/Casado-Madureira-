@@ -12,4 +12,4 @@
 - [x] Textos de `/cadastro` e do manual técnico
 - [x] Criar `supabase/migrations/0087_disable_pii_collection.sql` (sem aplicar)
 - [x] Build e lint no Node 20 sem erros
-- [ ] (Separado, com autorização) aplicar a migration
+- [x] (Separado, com autorização) aplicar a migration
